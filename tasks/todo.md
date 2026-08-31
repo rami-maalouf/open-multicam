@@ -1,6 +1,6 @@
 # OpenMulticam Release 1 Executable Task List
 
-Status: T009 in progress
+Status: T010 in progress
 
 Approved inputs: `SPEC.md` and `tasks/plan.md`
 
@@ -241,12 +241,12 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 **Outcome:** Define one durable manifest shared by single, discrete, PiP, and split recordings.
 
 **Acceptance criteria:**
-- [ ] Manifest and clip schemas represent staging, ready, recoverable, interrupted, and corrupt outcomes.
-- [ ] Schema versioning rejects unknown future versions without hiding files.
-- [ ] Fixture tests cover all Release 1 modes and expected A/B identity.
+- [x] Manifest and clip schemas represent staging, ready, recoverable, interrupted, and corrupt outcomes.
+- [x] Schema versioning rejects unknown future versions without hiding files.
+- [x] Fixture tests cover all Release 1 modes and expected A/B identity.
 
 **Verification:**
-- [ ] Run `bun run test -- recording-manifest` and `bun run typecheck`.
+- [x] Run `bun run test -- recording-manifest` and `bun run typecheck`.
 
 **Dependencies:** T008
 
@@ -258,9 +258,9 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 
 #### Verification checkpoint 1A: JavaScript contracts
 
-- [ ] T008 and T009 tests pass with exhaustive type checking.
-- [ ] Contract fixtures cover every Release 1 output shape.
-- [ ] No frame or sample-buffer type exists in the JavaScript boundary.
+- [x] T008 and T009 tests pass with exhaustive type checking.
+- [x] Contract fixtures cover every Release 1 output shape.
+- [x] No frame or sample-buffer type exists in the JavaScript boundary.
 
 ### T010: Scaffold the local Expo capture module
 
