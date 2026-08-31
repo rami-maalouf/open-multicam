@@ -140,9 +140,15 @@ async function createTestPackage(packageRoot) {
   await mkdir(sourceRoot, { recursive: true });
   await mkdir(testRoot, { recursive: true });
   await writeFile(join(packageRoot, "Package.swift"), packageManifest);
-  await copyFile(
-    join(nativeRoot, "CaptureBoundary.swift"),
-    join(sourceRoot, "CaptureBoundary.swift"),
+  const sourceFiles = [
+    "CaptureBoundary.swift",
+    "CaptureModels.swift",
+    "CaptureStateMachine.swift",
+  ];
+  await Promise.all(
+    sourceFiles.map((fileName) =>
+      copyFile(join(nativeRoot, fileName), join(sourceRoot, fileName)),
+    ),
   );
 
   const testFiles = (await readdir(repositoryTests)).filter((fileName) =>
@@ -158,6 +164,102 @@ async function createTestPackage(packageRoot) {
       copyFile(join(repositoryTests, fileName), join(testRoot, basename(fileName))),
     ),
   );
+}
+
+async function findFile(directory, fileName) {
+  const entries = await readdir(directory, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const entryPath = join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      const nested = await findFile(entryPath, fileName);
+
+      if (nested) {
+        return nested;
+      }
+    } else if (entry.name === fileName) {
+      return entryPath;
+    }
+  }
+
+  return undefined;
+}
+
+async function enforceStateMachineCoverage(packageRoot) {
+  const derivedData = join(packageRoot, "DerivedData");
+  const profile = await findFile(
+    join(derivedData, "Build", "ProfileData"),
+    "Coverage.profdata",
+  );
+  const executable = join(
+    derivedData,
+    "Build",
+    "Products",
+    "Debug-iphonesimulator",
+    "MulticamCaptureBoundaryTests.xctest",
+    "MulticamCaptureBoundaryTests",
+  );
+  const source = join(
+    packageRoot,
+    "Sources",
+    "MulticamCaptureBoundary",
+    "CaptureStateMachine.swift",
+  );
+
+  if (!profile) {
+    throw new Error("native coverage profile was not generated");
+  }
+
+  const result = await run("xcrun", [
+    "llvm-cov",
+    "export",
+    executable,
+    `-instr-profile=${profile}`,
+    "--summary-only",
+    "--sources",
+    source,
+  ]);
+
+  if (result.status !== 0) {
+    throw new Error(result.stderr || "unable to read native coverage");
+  }
+
+  const report = JSON.parse(result.stdout);
+  const file = report.data[0]?.files?.find((item) =>
+    item.filename.endsWith("CaptureStateMachine.swift"),
+  );
+  const branches = file?.summary?.branches;
+  const regions = file?.summary?.regions;
+  const lines = file?.summary?.lines;
+
+  if (!branches || !regions || !lines) {
+    throw new Error("state-machine coverage was missing from the native report");
+  }
+
+  console.log(
+    `native state machine coverage: ${regions.percent}% regions, ${lines.percent}% lines`,
+  );
+
+  if (branches.count > 0 && branches.percent < 100) {
+    throw new Error(
+      `native state-machine branch coverage is ${branches.percent}%`,
+    );
+  }
+
+  if (regions.percent < 100 || lines.percent < 100) {
+    const details = await run("xcrun", [
+      "llvm-cov",
+      "show",
+      executable,
+      `-instr-profile=${profile}`,
+      "--show-line-counts-or-regions",
+      source,
+    ]);
+    throw new Error(
+      `native state-machine coverage is ${regions.percent}% regions and ${lines.percent}% lines\n${details.stdout}`,
+    );
+  }
 }
 
 async function main() {
@@ -195,6 +297,7 @@ async function main() {
       return;
     }
 
+    await enforceStateMachineCoverage(packageRoot);
     console.log("native XCTest suite passed");
   } finally {
     await rm(packageRoot, { recursive: true, force: true });

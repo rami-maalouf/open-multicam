@@ -1,6 +1,9 @@
 import ExpoModulesCore
 
 public final class CaptureModule: Module {
+  private let eventSequence = CaptureBoundaryEventSequence()
+  private let stateMachine = CaptureStateMachine()
+
   public func definition() -> ModuleDefinition {
     Name("MulticamCapture")
 
@@ -10,20 +13,91 @@ public final class CaptureModule: Module {
       CaptureDeviceDiscovery.capabilities(isSimulator: Self.isSimulator)
     }
 
-    AsyncFunction("configure") { (_: [String: Any]) -> [String: Any] in
-      CaptureBoundaryPayloads.unavailableResult()
+    AsyncFunction("configure") { (request: [String: Any]) -> [String: Any] in
+      self.teardownTerminalState()
+      let requestId = request["configurationId"] as? String ?? UUID().uuidString
+      let transition = self.stateMachine.send(
+        .beginConfiguration(requestId: requestId)
+      )
+
+      guard case .accepted = transition else {
+        return self.resultPayload(for: transition)
+      }
+
+      self.publish(transition)
+      let failure = self.unavailableFailure
+      self.publish(self.stateMachine.send(.fail(failure)))
+      return failure.resultPayload
     }
 
     AsyncFunction("startRecording") { () -> [String: Any] in
-      CaptureBoundaryPayloads.unavailableResult()
+      let transition = self.stateMachine.send(.beginRecording)
+      self.publish(transition)
+      return self.resultPayload(for: transition)
     }
 
     AsyncFunction("stopRecording") { () -> [String: Any] in
-      CaptureBoundaryPayloads.unavailableResult()
+      let transition = self.stateMachine.send(
+        .requestStop(reason: .userRequested)
+      )
+      self.publish(transition)
+      return self.resultPayload(for: transition)
     }
 
     View(CaptureSurfaceView.self) {
       Events("onCaptureEvent")
+    }
+
+    OnAppEntersBackground {
+      self.publish(
+        self.stateMachine.send(
+          .interrupt(reason: .backgrounded, recoverable: false)
+        )
+      )
+    }
+
+    OnDestroy {
+      self.publish(self.stateMachine.send(.teardown))
+    }
+  }
+
+  private var unavailableFailure: CaptureFailure {
+    CaptureFailure(
+      code: "configuration_unavailable",
+      message: CaptureBoundaryPayloads.unavailableMessage,
+      retryable: true,
+      recoveryAction: "retry"
+    )
+  }
+
+  private func teardownTerminalState() {
+    guard stateMachine.state.isTerminal else {
+      return
+    }
+
+    publish(stateMachine.send(.teardown))
+  }
+
+  private func publish(_ result: CaptureTransitionResult) {
+    guard case let .accepted(_, current) = result else {
+      return
+    }
+
+    guard let event = eventSequence.stateChanged(to: current.payload) else {
+      return
+    }
+
+    sendEvent("onCaptureEvent", event)
+  }
+
+  private func resultPayload(
+    for transition: CaptureTransitionResult
+  ) -> [String: Any] {
+    switch transition {
+    case let .accepted(_, current):
+      return ["ok": true, "value": current.payload]
+    case let .rejected(error):
+      return error.resultPayload
     }
   }
 
