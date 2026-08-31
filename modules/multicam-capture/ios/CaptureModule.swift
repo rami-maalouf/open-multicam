@@ -7,22 +7,19 @@ public final class CaptureModule: Module {
     Events("onCaptureEvent")
 
     AsyncFunction("discoverCapabilities") { () -> [String: Any] in
-      CaptureBoundaryPayloads.deviceCapabilities(
-        discoveredAtMs: Date().timeIntervalSince1970 * 1_000,
-        isSimulator: Self.isSimulator
-      )
+      CaptureDeviceDiscovery.capabilities(isSimulator: Self.isSimulator)
     }
 
     AsyncFunction("configure") { (_: [String: Any]) -> [String: Any] in
-      CaptureBoundaryPayloads.unavailableResult(isSimulator: Self.isSimulator)
+      CaptureBoundaryPayloads.unavailableResult()
     }
 
     AsyncFunction("startRecording") { () -> [String: Any] in
-      CaptureBoundaryPayloads.unavailableResult(isSimulator: Self.isSimulator)
+      CaptureBoundaryPayloads.unavailableResult()
     }
 
     AsyncFunction("stopRecording") { () -> [String: Any] in
-      CaptureBoundaryPayloads.unavailableResult(isSimulator: Self.isSimulator)
+      CaptureBoundaryPayloads.unavailableResult()
     }
 
     View(CaptureSurfaceView.self) {

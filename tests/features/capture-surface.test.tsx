@@ -38,8 +38,9 @@ const simulatorCapabilities = {
   multicam: {
     kind: "unsupported",
     reason: {
-      kind: "multicam-unsupported",
-      message: "Multicamera capture requires a physical iPhone.",
+      kind: "camera-unavailable",
+      message:
+        "No simulator camera was found. Start SimCam, then reopen OpenMulticam.",
     },
   },
   configurations: [],
@@ -59,7 +60,9 @@ describe("native capture surface", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Multicamera capture requires a physical iPhone."),
+        screen.getByText(
+          "No simulator camera was found. Start SimCam, then reopen OpenMulticam.",
+        ),
       ).toBeTruthy();
     });
     expect(mockDiscoverCapabilities).toHaveBeenCalledTimes(1);
@@ -71,7 +74,9 @@ describe("native capture surface", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Multicamera capture requires a physical iPhone."),
+        screen.getByText(
+          "No simulator camera was found. Start SimCam, then reopen OpenMulticam.",
+        ),
       ).toBeTruthy();
     });
 
@@ -103,5 +108,28 @@ describe("native capture surface", () => {
     });
 
     expect(screen.getByLabelText(/Native state failed/)).toBeTruthy();
+  });
+
+  it("reveals the native preview when SimCam exposes a camera", async () => {
+    mockDiscoverCapabilities.mockResolvedValue({
+      ...simulatorCapabilities,
+      cameras: [{ id: "simcam-back", label: "SimCam Back" }],
+      multicam: {
+        kind: "unsupported",
+        reason: {
+          kind: "multicam-unsupported",
+          message:
+            "SimCam is connected. Single-camera preview is available; dual-camera capture still requires a physical iPhone.",
+        },
+      },
+    });
+
+    const screen = render(<CaptureScreen />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Two perspectives. One take.")).toBeNull();
+    });
+    expect(screen.getByText("Single camera preview")).toBeTruthy();
+    expect(screen.getByTestId("native-capture-surface")).toBeTruthy();
   });
 });

@@ -16,10 +16,19 @@ import type {
 } from "@/core/capture/types";
 import { colors, radii, shadows, spacing } from "@/theme";
 
+type CameraMode = "checking" | "unavailable" | "single" | "dual";
+const CAMERA_MODE_LABELS = {
+  checking: "Checking camera",
+  unavailable: "Camera unavailable",
+  single: "Single camera preview",
+  dual: "Dual camera",
+} as const satisfies Record<CameraMode, string>;
+
 export function CaptureScreen() {
   const [availabilityMessage, setAvailabilityMessage] = useState(
     "Checking camera compatibility…",
   );
+  const [cameraMode, setCameraMode] = useState<CameraMode>("checking");
   const [surfaceStateKind, setSurfaceStateKind] =
     useState<CaptureState["kind"]>("idle");
   const latestEventSequence = useRef(0);
@@ -35,14 +44,19 @@ export function CaptureScreen() {
         }
 
         if (capabilities.multicam.kind === "supported") {
+          setCameraMode("dual");
           setAvailabilityMessage("Dual-camera capture is available.");
           return;
         }
 
+        setCameraMode(
+          capabilities.cameras.length > 0 ? "single" : "unavailable",
+        );
         setAvailabilityMessage(capabilities.multicam.reason.message);
       })
       .catch(() => {
         if (isMounted) {
+          setCameraMode("unavailable");
           setAvailabilityMessage("Camera compatibility could not be checked.");
         }
       });
@@ -130,21 +144,23 @@ export function CaptureScreen() {
           style={StyleSheet.absoluteFill}
           testID="native-capture-surface"
         />
-        <View pointerEvents="none" style={styles.previewOverlay}>
-          <View style={styles.previewMark}>
-            <Icon name="viewfinder" size="prominent" tone="previewLabel" />
+        {cameraMode === "checking" || cameraMode === "unavailable" ? (
+          <View pointerEvents="none" style={styles.previewOverlay}>
+            <View style={styles.previewMark}>
+              <Icon name="viewfinder" size="prominent" tone="previewLabel" />
+            </View>
+            <AppText
+              style={styles.previewTitle}
+              tone="previewLabel"
+              variant="title"
+            >
+              Two perspectives. One take.
+            </AppText>
+            <AppText style={styles.previewCopy} tone="previewSecondary">
+              {availabilityMessage}
+            </AppText>
           </View>
-          <AppText
-            style={styles.previewTitle}
-            tone="previewLabel"
-            variant="title"
-          >
-            Two perspectives. One take.
-          </AppText>
-          <AppText style={styles.previewCopy} tone="previewSecondary">
-            {availabilityMessage}
-          </AppText>
-        </View>
+        ) : null}
       </View>
 
       <View style={styles.captureFooter}>
@@ -152,9 +168,13 @@ export function CaptureScreen() {
           material="previewOverlay"
           style={styles.modePill}
         >
-          <Icon name="rectangle.split.2x1" size="compact" tone="accent" />
+          <Icon
+            name={cameraMode === "dual" ? "rectangle.split.2x1" : "video.fill"}
+            size="compact"
+            tone="accent"
+          />
           <AppText tone="previewLabel" variant="caption">
-            Dual camera
+            {CAMERA_MODE_LABELS[cameraMode]}
           </AppText>
         </AdaptiveMaterial>
         <View
