@@ -101,8 +101,10 @@ if (command === "--probe") {
     console.error("native tests are unavailable until the local capture module exists");
     process.exitCode = 1;
   } else {
-    console.error("the native test runner must be configured with the capture module");
-    process.exitCode = 1;
+    const result = spawnSync("bun", ["scripts/run-native-tests.mjs"], {
+      stdio: "inherit",
+    });
+    process.exitCode = result.status ?? 1;
   }
 } else if (command !== undefined) {
   console.error(`unknown repository-check command: ${command}`);

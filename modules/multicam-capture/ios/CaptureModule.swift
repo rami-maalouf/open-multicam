@@ -1,45 +1,5 @@
 import ExpoModulesCore
 
-enum CaptureBoundaryPayloads {
-  static let simulatorMessage = "Multicamera capture requires a physical iPhone."
-  static let unavailableMessage = "Camera discovery is not active yet."
-
-  static func deviceCapabilities(
-    discoveredAtMs: Double,
-    isSimulator: Bool
-  ) -> [String: Any] {
-    let reason: [String: Any] = isSimulator
-      ? ["kind": "multicam-unsupported", "message": simulatorMessage]
-      : ["kind": "camera-unavailable", "message": unavailableMessage]
-
-    return [
-      "kind": "device-capabilities",
-      "schemaVersion": 1,
-      "discoveredAtMs": discoveredAtMs,
-      "cameras": [[String: Any]](),
-      "multicam": ["kind": "unsupported", "reason": reason],
-      "configurations": [[String: Any]]()
-    ]
-  }
-
-  static func unavailableResult(isSimulator: Bool) -> [String: Any] {
-    let code = isSimulator ? "multicam_unsupported" : "configuration_unavailable"
-    let message = isSimulator ? simulatorMessage : unavailableMessage
-    let recoveryAction = isSimulator ? "select-configuration" : "retry"
-
-    return [
-      "ok": false,
-      "error": [
-        "kind": "capture-error",
-        "code": code,
-        "message": message,
-        "retryable": !isSimulator,
-        "recoveryAction": recoveryAction
-      ]
-    ]
-  }
-}
-
 public final class CaptureModule: Module {
   public func definition() -> ModuleDefinition {
     Name("MulticamCapture")
