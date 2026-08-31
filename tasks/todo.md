@@ -1,6 +1,6 @@
 # OpenMulticam Release 1 Executable Task List
 
-Status: Checkpoint A awaiting human visual approval
+Status: T008 in progress
 
 Approved inputs: `SPEC.md` and `tasks/plan.md`
 
@@ -212,7 +212,7 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 - [x] T005 through T007B and `bun run validate` pass from a clean checkout.
 - [x] Secret, identity, and forbidden-file scans pass.
 - [x] A development client launches the original shell on an iPhone simulator.
-- [ ] Human approves the visual foundation before native capture UI work.
+- [x] Human approves the visual foundation before native capture UI work.
 
 ## Phase 1: Retire native feasibility risks
 
