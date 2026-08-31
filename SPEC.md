@@ -1,26 +1,30 @@
-# Spec: Multicam Studio
+# Spec: OpenMulticam
 
-Working product name: Multicam Studio
+Product name: OpenMulticam
 
-Working repository path: `/Users/rami/Documents/code/react-native/multicam-camera`
+Repository path: `/Users/rami/Documents/code/react-native/open-multicam`
 
-Status: Phase 1 draft - awaiting human approval
+Status: Phase 1 revised - awaiting final human approval
 
 Date: 2026-08-31
 
-## Approved-for-draft assumptions
+## Resolved product decisions
 
-1. This phase produces the specification only. Starter migration, planning, task breakdown, and implementation wait for human approval.
-2. DoubleTake is a capability and quality reference. The new product will use original branding, visual design, copy, and assets.
-3. Release 1 is iOS-first and supports iPhone and iPad. Android gets platform-neutral contracts and a clear unsupported surface, but not a shipping multicamera implementation.
-4. The deployment target remains iOS 18.6 from the starter unless the human chooses a different minimum.
-5. The app is private and local-first. Release 1 has no account, backend, cloud sync, advertising, telemetry, subscription, or paywall.
-6. A sustainable 1080p capture path is the release baseline. Higher resolutions, higher frame rates, HEVC, and hardware-specific audio features appear only when the running device reports support and the configuration passes device tests.
-7. React Native and Expo own the application shell. A local Swift Expo module owns all frame-sensitive capture, preview, focus, exposure, compositing, audio metering, and file-writing work.
+1. The product name is OpenMulticam. The repository folder and Expo slug are `open-multicam`, and the URL scheme is `openmulticam`. The final Apple bundle identifier is confirmed when the new EAS project is created.
+2. Release 1 ships for iPhone only.
+3. Android remains a planned product target after the iPhone core is complete. Release 1 preserves platform-neutral contracts but contains no shipping Android capture implementation.
+4. Release 1 delivers the dependable DoubleTake-style core. Advanced capture and monitoring features are planned separately and do not block the core release.
+5. The deployment target remains iOS 18.6. Newer camera-performance APIs are enabled conditionally when available.
+6. Release 1 records 1080p H.264 video at supported broadcast frame rates of 24, 25, or 30 fps.
+7. Internal deletion is permanent after an explicit destructive confirmation. There is no Recently Deleted area.
+8. The app is private and local-first. Release 1 has no account, backend, cloud sync, advertising, telemetry, subscription, paywall, or donation flow.
+9. DoubleTake is a capability and quality reference. OpenMulticam uses original branding, visual design, copy, and assets.
+10. React Native and Expo own the application shell. A local Swift Expo module owns all frame-sensitive capture, preview, focus, exposure, compositing, audio metering, and file-writing work.
+11. This phase produces the specification only. Starter migration, planning, task breakdown, and implementation wait for final human approval.
 
 ## Objective
 
-Build an original, professional multicamera video app that lets a creator see, configure, and record two compatible iPhone or iPad cameras at the same time without sacrificing reliability or native feel.
+Build an original, professional multicamera video app that lets a creator see, configure, and record two compatible iPhone cameras at the same time without sacrificing reliability or native feel.
 
 The primary user is a solo creator, interviewer, educator, traveler, performer, or small production team that wants two synchronized perspectives from one device. Success means the user can open the app, understand exactly which camera combinations the device supports, begin recording quickly, trust that both perspectives remain synchronized, and export playable files without losing a take.
 
@@ -72,6 +76,10 @@ Apple's platform contracts refine the implementation:
 
 The reference app's 1080p statement is treated as its product contract, not as a permanent universal AVFoundation limit. This app negotiates real formats at runtime and verifies them on hardware.
 
+### Minimum OS rationale
+
+iOS 18 supports the A12-based iPhone XS, XS Max, and XR, while iOS 26 begins with iPhone 11 and supported iPhone SE models. The newer launch and storage APIs needed by this architecture can be guarded with runtime availability checks. Keeping iOS 18.6 therefore preserves three relevant multicamera-capable phones without forcing a separate capture architecture. The minimum should be raised only if physical-device testing proves that the A12 path cannot meet the Release 1 reliability or performance thresholds.
+
 ## Scope
 
 ### Release 1 scope
@@ -81,30 +89,45 @@ The reference app's 1080p statement is treated as its product contract, not as a
 3. Visual camera picker with compatible A/B lens selection.
 4. Discrete, PiP composite, split composite, and single-camera fallback modes.
 5. Portrait 9:16 and landscape 16:9 recording.
-6. Runtime-derived resolution, frame-rate, codec, and stabilization options.
-7. Per-camera focus, exposure, exposure lock, focus lock, and supported zoom.
-8. White-balance matching or lock when the selected formats support it.
-9. Native record controls, timer, dropped-frame indicator, storage estimate, audio meter, and thermal warning.
-10. Built-in or connected microphone route display, with input gain only where the system exposes it.
-11. Internal recording library with grouped takes, playback, details, rename, delete, share, Photos export, and batch export.
-12. Crash and interruption recovery for files that reached a playable state.
-13. Light and dark appearance, VoiceOver, Dynamic Type outside the viewfinder, Reduce Motion, Increase Contrast, and minimum touch targets.
-14. Development builds, unit tests, integration tests, simulator flows with synthetic capture, and physical-device acceptance.
+6. Sustainable 1080p H.264 recording at supported 24, 25, or 30 fps.
+7. Per-camera focus, exposure, exposure lock, and focus lock.
+8. Native record controls, timer, dropped-frame indicator, storage estimate, audio meter, and thermal warning.
+9. Automatic use and display of the active built-in or connected microphone route.
+10. Internal recording library with grouped takes, playback, details, rename, permanent delete, share, Photos export, and batch export.
+11. Crash and interruption recovery for files that reached a playable state.
+12. Light and dark appearance, VoiceOver, Dynamic Type outside the viewfinder, Reduce Motion, Increase Contrast, and minimum touch targets.
+13. Development builds, unit tests, integration tests, simulator flows with synthetic capture, and physical-device acceptance.
 
-### Power features included behind capability checks
+### Product roadmap after Release 1
+
+#### Release 1.1: Advanced iPhone capture
 
 - Highest sustainable device-reported multicamera resolution through a `Max` quality option.
-- 60 fps only when both selected cameras, the output mode, and the measured hardware budget support it.
-- HEVC output only when both encoding and downstream playback/export tests pass.
-- RGB histogram, zebra exposure warning, and stereo audio meter rendered natively and disabled first under pressure.
-- External microphone routing when iOS exposes the device as an input.
-- Supported microphone gain and pickup-pattern controls on compatible iPad hardware.
+- 60 fps when both selected cameras, output mode, writer throughput, and measured hardware budget support it.
+- HEVC output after downstream playback and export compatibility tests pass.
+- Per-camera pinch zoom, exposure bias, and white-balance controls.
+- RGB histogram and zebra exposure warning rendered natively and disabled first under pressure.
+- Manual audio input selection, gain, and supported pickup-pattern controls.
+- Additional professional stabilization choices.
 - iOS 26 or newer performance APIs, including deferred output initialization and deterministic professional video storage, when available at build and runtime.
+
+#### Release 2: Android core
+
+- Reproduce the validated Release 1 core on Android devices that expose reliable concurrent-camera support.
+- Preserve the shared recording-set, manifest, library, playback, export, and typed error contracts.
+- Derive camera-pair compatibility from the running Android device rather than promising universal two-camera support.
+- Research and approve the current Android camera architecture before implementation planning begins.
+
+#### Later product considerations
+
+- Optional donations may be considered after the capture product is stable. They do not influence Release 1 architecture or scope.
+- iPad support requires a separate product decision and acceptance matrix.
 
 ### Explicitly out of scope for Release 1
 
 - Copying DoubleTake's name, icon, visual identity, screenshots, text, or proprietary layout.
-- Android multicamera recording or a Google Play release.
+- iPad support.
+- Android multicamera recording or a Google Play release. Android is planned for Release 2.
 - Web capture.
 - Three or more simultaneous recorded cameras.
 - Remote cameras, network streaming, NDI, RTMP, or live broadcasting.
@@ -113,7 +136,8 @@ The reference app's 1080p statement is treated as its product contract, not as a
 - Background camera recording.
 - Cloud backup, collaboration, accounts, analytics, ads, subscriptions, or purchases.
 - Lock Screen capture, Camera Control integration, widgets, Live Activities, or Apple Watch.
-- Guaranteed 4K multicamera capture. `Max` is capability-derived and must never be marketed as 4K until the supported device matrix proves it.
+- Max quality, HEVC, 60 fps, manual zoom, exposure bias, white-balance control, histogram, zebra, manual audio routing, input gain, or pickup-pattern controls. These belong to Release 1.1.
+- Guaranteed 4K multicamera capture. A future `Max` mode is capability-derived and must never be marketed as 4K until the supported device matrix proves it.
 
 ## Product invariants
 
@@ -146,7 +170,8 @@ The reference app's 1080p statement is treated as its product contract, not as a
 - Enumerate front, wide, ultra-wide, telephoto, and other video devices exposed by AVFoundation.
 - Return stable camera descriptors with native unique id, position, device type, display label, field of view, zoom range, focus support, exposure support, torch support, stabilization support, and supported formats.
 - Return exact supported multicamera device sets rather than constructing pairs heuristically.
-- For each pair, calculate valid common frame rates, output dimensions, codecs, stabilization choices, and estimated hardware cost.
+- For each pair, calculate valid common 1080p H.264 configurations at 24, 25, and 30 fps plus estimated hardware cost.
+- Preserve raw capability data behind the native boundary for later roadmap work, but do not expose unapproved advanced options in Release 1.
 - Mark options as `recommended`, `available`, `high pressure`, or `unavailable` with a user-readable reason.
 - Cache labels and prior choices, but re-query capabilities every launch and after a media-services reset.
 
@@ -201,35 +226,29 @@ The reference app's 1080p statement is treated as its product contract, not as a
 
 ### FR-06: Recording configuration
 
-- Provide `Balanced` and `Max` quality choices.
-- `Balanced` prefers 1920 by 1080 at 30 fps with enough headroom to sustain the selected mode.
-- `Max` selects the highest common device-reported format that passes capability, hardware-cost, writer-throughput, and physical-device tests.
-- Always offer 24, 25, and 30 fps when the selected pair supports them. Offer 60 fps only after full validation.
-- Offer H.264 as the compatibility default. Offer HEVC only when supported and clearly label its compatibility tradeoff.
-- Offer stabilization modes only when both selected formats and connections support them.
+- Release 1 records 1920 by 1080 H.264 with enough headroom to sustain the selected mode.
+- Offer 24, 25, and 30 fps only when the selected pair supports the chosen rate.
+- If a selected pair cannot sustain the Release 1 format, mark the pair unavailable and recommend another pair or single-camera mode. Do not silently lower resolution.
+- Apply one tested stabilization policy automatically when both selected formats and connections support it. Manual stabilization selection belongs to Release 1.1.
 - Show an estimated recording-time range from current free storage and the selected bitrate.
-- Persist the last valid mode and preset per device. Fall back visibly if a later session cannot sustain it.
+- Persist the last valid mode, camera pair, and frame rate per device. Fall back visibly if a later session cannot sustain them.
 
-### FR-07: Focus, exposure, zoom, and white balance
+### FR-07: Focus and exposure
 
 - Tapping a preview selects its camera and sets focus and exposure points in that camera's normalized sensor coordinates.
 - A second intentional lock action locks focus and exposure. The reticle clearly distinguishes scanning, locked, and unavailable states.
 - Camera A and B retain independent point-of-interest and lock state.
-- Pinch zoom affects only the selected camera and is clamped to the stable optical and digital range reported by the device.
-- Provide exposure bias control within the system-recommended range.
-- Provide white-balance lock or matched auto-white-balance only when it can be sustained by both selected cameras.
-- Focus, exposure, zoom, and white-balance changes continue during recording without rebuilding the session.
+- Focus and exposure changes continue during recording without rebuilding the session.
+- Manual zoom, exposure bias, and white-balance controls belong to Release 1.1.
 
 ### FR-08: Audio
 
 - Record one continuous AAC audio source per take.
 - Display the active route, channel count, sample rate, and a native meter with clipping indication.
-- Handle built-in microphones, supported wired microphones, and supported USB audio inputs.
+- Use the current system-selected built-in or connected microphone input without providing manual route selection.
 - If the route changes before recording, revalidate and show the new route.
 - If the route changes during recording, finalize the current take safely and explain why recording stopped unless seamless continuity is proven on the device matrix.
-- Show gain control only when `isInputGainSettable` is true.
-- Show supported pickup-pattern choices only when the active input exposes them.
-- Never show a nonfunctional audio control.
+- Manual route selection, gain, and pickup-pattern controls belong to Release 1.1.
 
 ### FR-09: Recording lifecycle
 
@@ -245,9 +264,9 @@ The reference app's 1080p statement is treated as its product contract, not as a
 ### FR-10: Sustainable performance and pressure handling
 
 - Reject any preflight configuration whose hardware cost is above 1.0.
-- Default presets target hardware cost at or below 0.80. `Max` may use up to 0.95 after device validation.
+- Release 1 configurations target hardware cost at or below 0.80.
 - Observe hardware cost, system pressure cost, thermal state, dropped sample buffers, writer backpressure, and free storage.
-- Under rising pressure, first disable histogram and zebra overlays, then reduce preview-only work, then lower allowed frame rate if the active format supports it.
+- Under rising pressure, first reduce preview-only diagnostics and visual work, then lower allowed frame rate if the active format supports it.
 - Never change encoded dimensions or codec mid-take.
 - At critical pressure, stop and finalize rather than risking corrupt output.
 - Report the pressure source and the action taken in the manifest and user-facing take details.
@@ -283,7 +302,7 @@ The reference app's 1080p statement is treated as its product contract, not as a
 
 ### FR-14: Settings and diagnostics
 
-- Use native grouped controls for default mode, default pair, quality, frame rate, codec, stabilization, overlays, audio input behavior, and haptics.
+- Use native grouped controls for default mode, default pair, frame rate, automatic audio-route behavior, and haptics.
 - Include current device capability diagnostics and an exportable text report with no captured media or private file paths.
 - Include storage used by the internal library and a direct library-management action.
 - Include permission state, app version, privacy statement, acknowledgements, and support information.
@@ -315,7 +334,7 @@ The reference app's 1080p statement is treated as its product contract, not as a
 | orientation | `portrait` or `landscape` fixed at start |
 | aspectRatio | `9:16` or `16:9` |
 | frameRate | Validated numeric frame rate |
-| codec | `h264` or capability-gated `hevc` |
+| codec | `h264` in Release 1 |
 | cameraAId, cameraBId | Stable AVFoundation unique ids, B nullable in single mode |
 | audioRoute | Sanitized route and channel metadata |
 | warnings | Typed pressure, interruption, frame-drop, or recovery records |
@@ -340,13 +359,12 @@ The reference app's 1080p statement is treated as its product contract, not as a
 
 | Field | Contract |
 | --- | --- |
-| quality | `balanced` or `max` |
-| width, height | Concrete dimensions resolved before recording |
-| frameRate | 24, 25, 30, or validated 60 |
-| codec | `h264` or `hevc` |
+| profile | `core1080p` in Release 1 |
+| width, height | 1920 by 1080, rotated for portrait output |
+| frameRate | Supported 24, 25, or 30 |
+| codec | `h264` |
 | bitrate | Device-tested integer bits per second |
-| stabilization | Concrete AVFoundation stabilization mode |
-| overlays | Histogram, zebra, and audio meter flags |
+| stabilization | Automatically selected tested AVFoundation mode |
 
 Each recording-set directory contains the clips, thumbnails, and a versioned `manifest.json`. The manifest is written through a temporary file and atomic rename. SQLite indexes manifests for fast queries and can be rebuilt.
 
@@ -362,7 +380,7 @@ Expo Router application shell
        -> capture actor and state machine
        -> AVCaptureMultiCamSession
        -> native preview and direct-manipulation controls
-       -> Metal compositor and overlays
+       -> Metal compositor and native diagnostics
        -> synchronized AVAssetWriter pipeline
        -> file finalization and native asset inspection
   -> recording catalog
@@ -376,7 +394,7 @@ Expo Router application shell
 
 - Own one capture service actor and one serial session executor.
 - Export capability discovery, configuration, lifecycle, and coarse state events.
-- Export a native `CaptureSurfaceView` that owns preview layers, Metal rendering, record control, PiP gestures, focus reticles, histograms, zebra overlays, and audio meters.
+- Export a native `CaptureSurfaceView` that owns preview layers, Metal rendering, record control, PiP gestures, focus reticles, and audio meters.
 - Keep session setup, `startRunning`, `stopRunning`, frame processing, and writer calls off the main thread.
 - Synchronize video and audio sample buffers on the capture-session clock.
 - Use separate asset writers for separate files and one composited writer for PiP or split output.
@@ -444,7 +462,7 @@ The Swift boundary mirrors these typed states. Expected failures return stable e
 
 - Expo Modules API with a local Swift module.
 - AVFoundation and AVFAudio.
-- Metal and MetalKit for composite rendering and analysis overlays.
+- Metal and MetalKit for composite rendering.
 - Core Media and Core Video for timestamped sample buffers and pixel-buffer pools.
 - AVAssetWriter and AVAssetReader for writing and validation.
 - Photos only through add-only export behavior.
@@ -485,7 +503,7 @@ Intended script behavior:
 ## Project structure
 
 ```text
-multicam-camera/
+open-multicam/
   assets/                         app-owned icons and launch artwork
   docs/
     architecture/                approved decisions and capture diagrams
@@ -629,19 +647,18 @@ Implementation begins from an explicit allowlist and initializes a fresh Git rep
 
 At minimum, test:
 
-- The oldest supported A12-class iPhone.
+- An iPhone XS or XR as the oldest supported A12-class iPhone.
 - A mid-generation three-camera Pro iPhone.
 - A current-generation Pro iPhone.
-- A supported iPad Pro if iPad remains in release scope.
 - Built-in microphone and one supported external microphone.
 
-For every device, record all supported A/B pairs in discrete, PiP, and split modes at Balanced 24, 25, and 30 fps. Test Max and 60 fps only where offered by runtime capability discovery.
+For every device, record all supported A/B pairs in discrete, PiP, and split modes at 1080p H.264 and every supported Release 1 frame rate of 24, 25, and 30 fps.
 
 Required device scenarios:
 
 - Fresh permission grant, denial, and Settings recovery.
 - Portrait and landscape capture.
-- Focus, exposure, lock, zoom, swap, PiP drag, resize, hide, and restore during recording.
+- Focus, exposure, lock, swap, PiP drag, resize, hide, and restore during recording.
 - Backgrounding, phone or audio interruption, route disconnect, low storage, media-services reset, and system-pressure escalation.
 - Thirty-minute sustained default capture in a 20 to 24 degree Celsius environment.
 - Export to Photos, Files through share, and multi-file batch export.
@@ -654,7 +671,7 @@ Required device scenarios:
 - The native preview sustains the requested frame rate with no continuous run of more than three dropped frames during the 30-minute default stress test.
 - Discrete A/B files begin and end within one encoded frame of each other and remain within one frame of drift after 30 minutes.
 - Audio stays within one frame of its associated video at the beginning and end of the stress recording.
-- Peak resident memory for Balanced 1080p30 dual capture on the oldest device is at most 350 MB with no monotonic growth greater than 5 percent after the first five minutes.
+- Peak resident memory for 1080p30 dual capture on the oldest device is at most 350 MB with no monotonic growth greater than 5 percent after the first five minutes.
 - Default stress capture does not reach critical thermal or system-pressure shutdown in the stated environment.
 - Stopping a take presents a finalizing state immediately and a playable library item within 2 seconds for a 30-second take and within 5 seconds for a 30-minute take, excluding thumbnail generation.
 - No successful take is corrupt, missing an expected clip, or absent after relaunch.
@@ -674,7 +691,7 @@ Required device scenarios:
 
 ### Ask first
 
-- Change the iOS deployment target or add Android release scope.
+- Change the iOS deployment target, begin Android implementation, or change the approved release order.
 - Add any dependency outside the approved stack.
 - Add remote services, telemetry, analytics, accounts, purchases, subscriptions, or network access.
 - Change output codecs, file containers, manifest schema compatibility, or deletion behavior.
@@ -696,7 +713,7 @@ Required device scenarios:
 
 ## Success criteria
 
-Phase 1 is approved when the human confirms the product scope, platform scope, working identity, minimum OS, and Release 1 power-feature boundary.
+Phase 1 is approved when the human confirms this revised specification as the source of truth for planning.
 
 Release 1 is complete when:
 
@@ -709,12 +726,12 @@ Release 1 is complete when:
 7. VoiceOver, large text, Reduce Motion, light/dark appearance, and touch-target audits pass.
 8. `bun run validate` and production iOS build validation pass from a clean checkout.
 9. The starter source repository is unchanged and the new repository contains none of its secrets, generated files, or product identity.
-10. A human completes final visual and capture-quality review on physical iPhone and iPad hardware.
+10. A human completes final visual and capture-quality review on physical iPhone hardware.
 
 ## Risks and required spikes before implementation planning
 
-1. **Device format matrix:** enumerate actual multicamera formats, combinations, and costs on available A12, mid-generation, and current hardware. This decides whether `Max`, HEVC, and 60 fps enter Release 1.
-2. **Writer architecture:** compare paired `AVCaptureMovieFileOutput` against synchronized `AVCaptureVideoDataOutput` plus AVAssetWriter. The chosen design must satisfy dual-file synchronization, live composite, overlays, and recovery without maintaining two unrelated pipelines.
+1. **Device format matrix:** enumerate actual 1080p H.264 multicamera formats, combinations, frame rates, and costs on available A12, mid-generation, and current hardware. Record higher-format findings for Release 1.1 without expanding Release 1.
+2. **Writer architecture:** compare paired `AVCaptureMovieFileOutput` against synchronized `AVCaptureVideoDataOutput` plus AVAssetWriter. The chosen design must satisfy dual-file synchronization, live composite, and recovery without maintaining two unrelated pipelines.
 3. **Composite fidelity:** prove one Metal compositor can render preview and writer output from the same geometry and timestamps at sustainable 1080p30.
 4. **Audio duplication:** prove one audio source can be written to both discrete files with the required drift bound and safe route-change behavior.
 5. **Expo native-view lifecycle:** prove navigation, backgrounding, fast refresh, development-client reload, and native view remounts cannot leave the camera or microphone active.
@@ -722,15 +739,9 @@ Release 1 is complete when:
 
 No product feature implementation begins until these spikes are converted into approved plan tasks. Spike findings update this spec before downstream implementation.
 
-## Open questions requiring human approval
+## Remaining approval gate
 
-1. Is `Multicam Studio` an acceptable working name and `multicam-camera` an acceptable repository folder, or should both change now?
-2. Should Release 1 ship on iPad as well as iPhone, or should iPad be deferred until the iPhone capture experience is complete?
-3. Should Android receive a later native implementation, or should this be deliberately Apple-only despite using React Native and Expo?
-4. Do you want the proposed pro features in Release 1, or should Release 1 stop at DoubleTake-style parity and move histogram, zebra, external audio controls, HEVC, Max quality, and 60 fps to Release 2?
-5. Is iOS 18.6 the correct minimum, or should the app target a newer OS to reduce compatibility work and use newer camera-performance APIs more aggressively?
-6. Should internal deletion be immediately permanent after confirmation, or should the app include a recoverable Recently Deleted area?
-7. Is a private, offline, no-account, no-telemetry Release 1 the intended business model, or will monetization and analytics requirements arrive before architecture planning?
+The discovery questions are resolved. The human must now approve this revised Phase 1 specification before the workflow advances to technical planning. Approval authorizes a selective starter migration and the creation of `tasks/plan.md`; it does not authorize feature implementation until the later Plan and Tasks gates are also approved.
 
 ## Sources
 
@@ -743,6 +754,8 @@ No product feature implementation begins until these spikes are converted into a
 - [Apple systemPressureCost](https://developer.apple.com/documentation/avfoundation/avcapturemulticamsession/systempressurecost)
 - [Apple AVMultiCamPiP sample](https://developer.apple.com/documentation/avfoundation/avmulticampip-capturing-from-multiple-cameras)
 - [Apple responsive camera guidance](https://developer.apple.com/documentation/avfoundation/building-a-responsive-camera-app-that-launches-quickly)
+- [Apple iOS 18 compatible iPhone models](https://support.apple.com/en-us/104985)
+- [Apple iOS 26 compatible iPhone models](https://support.apple.com/en-ie/guide/iphone/iphe3fa5df43/ios)
 - [Expo SDK 57 UI](https://docs.expo.dev/versions/v57.0.0/sdk/ui/)
 - [Expo SDK 57 Video](https://docs.expo.dev/versions/v57.0.0/sdk/video/)
 - [Expo SDK 57 Media Library](https://docs.expo.dev/versions/v57.0.0/sdk/media-library/)
