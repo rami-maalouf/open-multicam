@@ -1,6 +1,6 @@
 # OpenMulticam Release 1 Executable Task List
 
-Status: T010A in progress
+Status: T011 in progress
 
 Approved inputs: `SPEC.md` and `tasks/plan.md`
 
@@ -267,12 +267,12 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 **Outcome:** Establish the typed Expo Modules boundary and native view registration without real camera ownership.
 
 **Acceptance criteria:**
-- [ ] The module exposes typed capability, lifecycle, and command surfaces matching T008 and T009.
-- [ ] The native surface is registered for iOS development clients.
-- [ ] Unsupported simulator calls return stable typed results.
+- [x] The module exposes typed capability, lifecycle, and command surfaces matching T008 and T009.
+- [x] The native surface is registered for iOS development clients.
+- [x] Unsupported simulator calls return stable typed results.
 
 **Verification:**
-- [ ] Run `bun run typecheck` and the focused capture-boundary tests.
+- [x] Run `bun run typecheck` and the focused capture-boundary tests.
 
 **Dependencies:** T009
 
@@ -287,12 +287,12 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 **Outcome:** Make Swift module tests runnable from the repository validation contract.
 
 **Acceptance criteria:**
-- [ ] `bun run test:native` executes XCTest cases instead of returning the repository placeholder failure.
-- [ ] Tests prove the simulator's stable unsupported results and the module's bounded lifecycle state.
-- [ ] Native test failures produce a nonzero exit status and readable diagnostics.
+- [x] `bun run test:native` executes XCTest cases instead of returning the repository placeholder failure.
+- [x] Tests prove the simulator's stable unsupported results and the module's bounded lifecycle state.
+- [x] Native test failures produce a nonzero exit status and readable diagnostics.
 
 **Verification:**
-- [ ] Run `bun run test:native` and deliberately prove the runner detects one temporary failing assertion before restoring it.
+- [x] Run `bun run test:native` and deliberately prove the runner detects one temporary failing assertion before restoring it.
 
 **Dependencies:** T010A
 
@@ -307,12 +307,12 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 **Outcome:** Replace the JavaScript placeholder with the registered native surface and its bounded state events.
 
 **Acceptance criteria:**
-- [ ] The native surface mounts in the iOS development client without owning camera resources.
-- [ ] Mount and app lifecycle changes publish only the documented state payloads.
-- [ ] The simulator communicates that multicamera capture is unavailable without crashing or leaking framework errors.
+- [x] The native surface mounts in the iOS development client without owning camera resources.
+- [x] Mount and app lifecycle changes publish only the documented state payloads.
+- [x] The simulator communicates that multicamera capture is unavailable without crashing or leaking framework errors.
 
 **Verification:**
-- [ ] Run focused surface tests, `bun run typecheck`, `bun run test:native`, and `bun run ios`.
+- [x] Run focused surface tests, `bun run typecheck`, `bun run test:native`, and `bun run ios`.
 
 **Dependencies:** T010B
 
