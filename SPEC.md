@@ -4,7 +4,7 @@ Product name: OpenMulticam
 
 Repository path: `/Users/rami/Documents/code/react-native/open-multicam`
 
-Status: Phase 1 revised - awaiting final human approval
+Status: Phase 1 approved - Phase 2 planning in review
 
 Date: 2026-08-31
 
@@ -20,7 +20,7 @@ Date: 2026-08-31
 8. The app is private and local-first. Release 1 has no account, backend, cloud sync, advertising, telemetry, subscription, paywall, or donation flow.
 9. DoubleTake is a capability and quality reference. OpenMulticam uses original branding, visual design, copy, and assets.
 10. React Native and Expo own the application shell. A local Swift Expo module owns all frame-sensitive capture, preview, focus, exposure, compositing, audio metering, and file-writing work.
-11. This phase produces the specification only. Starter migration, planning, task breakdown, and implementation wait for final human approval.
+11. Specification approval advances the workflow one gate at a time. Starter migration and implementation wait for separate Plan and Tasks approval.
 
 ## Objective
 
@@ -739,9 +739,11 @@ Release 1 is complete when:
 
 No product feature implementation begins until these spikes are converted into approved plan tasks. Spike findings update this spec before downstream implementation.
 
-## Remaining approval gate
+## Approval history
 
-The discovery questions are resolved. The human must now approve this revised Phase 1 specification before the workflow advances to technical planning. Approval authorizes creation of `tasks/plan.md` and `tasks/todo.md`. Selective starter migration and feature implementation remain blocked until the later Plan and Tasks gates are also approved.
+- Phase 1 specification approved by the human on 2026-08-31.
+- Phase 2 planning is authorized.
+- Selective starter migration and feature implementation remain blocked until the later Plan and Tasks gates are approved.
 
 ## Sources
 
