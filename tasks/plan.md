@@ -1,6 +1,6 @@
 # Implementation Plan: OpenMulticam Release 1
 
-Status: Phase 2 approved - Phase 3 task breakdown in review
+Status: Phase 2 approved - Phase 4 implementation authorized
 
 Approved specification: `SPEC.md`
 
@@ -549,6 +549,6 @@ These do not block plan approval:
 ## Approval history
 
 - Phase 2 implementation plan approved by the human on 2026-08-31.
-- Phase 3 task decomposition is authorized.
+- Phase 3 executable task breakdown approved by the human on 2026-08-31.
 - Phase 3 decomposition added WP-4.4 only to assign ownership for the already approved FR-14 Settings and diagnostics requirement.
-- Human approval of the expanded `tasks/todo.md` will authorize implementation from T001.
+- Phase 4 implementation is authorized from T001 with sequential execution by default.
