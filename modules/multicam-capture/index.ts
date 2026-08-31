@@ -5,6 +5,7 @@ import type { ViewProps } from "react-native";
 import type { CaptureResult } from "@/core/capture/contracts";
 import type {
   CaptureBridgeEvent,
+  CapturePermissions,
   CaptureRequest,
   DeviceCapabilities,
   ResolvedCapturePreset,
@@ -20,6 +21,10 @@ export type MulticamCaptureModuleEvents = {
 };
 
 export declare class MulticamCaptureModule extends NativeModule<MulticamCaptureModuleEvents> {
+  getPermissionStatus(): Promise<CapturePermissions>;
+  requestCameraPermission(): Promise<CapturePermissions>;
+  requestMicrophonePermission(): Promise<CapturePermissions>;
+  openSettings(): Promise<boolean>;
   discoverCapabilities(): Promise<DeviceCapabilities>;
   configure(
     request: CaptureRequest,
