@@ -741,7 +741,7 @@ No product feature implementation begins until these spikes are converted into a
 
 ## Remaining approval gate
 
-The discovery questions are resolved. The human must now approve this revised Phase 1 specification before the workflow advances to technical planning. Approval authorizes a selective starter migration and the creation of `tasks/plan.md`; it does not authorize feature implementation until the later Plan and Tasks gates are also approved.
+The discovery questions are resolved. The human must now approve this revised Phase 1 specification before the workflow advances to technical planning. Approval authorizes creation of `tasks/plan.md` and `tasks/todo.md`. Selective starter migration and feature implementation remain blocked until the later Plan and Tasks gates are also approved.
 
 ## Sources
 
