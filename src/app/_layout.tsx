@@ -51,6 +51,10 @@ export default function RootLayout() {
             name="settings"
             options={{ headerLargeTitle: true, title: "Settings" }}
           />
+          <Stack.Screen
+            name="dev-foundation"
+            options={{ title: "Foundation Preview" }}
+          />
         </Stack>
       </ThemeProvider>
     </AccessibilityPreferencesProvider>
