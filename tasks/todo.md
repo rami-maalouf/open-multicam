@@ -134,7 +134,7 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 
 **Verification:**
 - [x] Run `bun run test -- foundation-behavior` and `bun run typecheck`.
-- [ ] Manually inspect large text, Reduce Motion, and Increase Contrast in the development client.
+- [x] Manually inspect large text, Reduce Motion, and Increase Contrast in the development client.
 
 **Dependencies:** T004
 
@@ -155,7 +155,7 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 
 **Verification:**
 - [x] Run `bun run typecheck` and `bunx expo-doctor`.
-- [ ] Run `bun run ios` and manually navigate all three destinations in a development client.
+- [x] Run `bun run ios` and manually navigate all three destinations in a development client.
 
 **Dependencies:** T005
 
@@ -211,7 +211,7 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 
 - [x] T005 through T007B and `bun run validate` pass from a clean checkout.
 - [x] Secret, identity, and forbidden-file scans pass.
-- [ ] A development client launches the original shell on an iPhone simulator.
+- [x] A development client launches the original shell on an iPhone simulator.
 - [ ] Human approves the visual foundation before native capture UI work.
 
 ## Phase 1: Retire native feasibility risks
