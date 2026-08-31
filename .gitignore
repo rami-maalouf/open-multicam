@@ -1,0 +1,45 @@
+# dependencies
+node_modules/
+
+# expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# generated native projects
+/ios/
+/android/
+.kotlin/
+*.orig.*
+
+# signing and credentials
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# local environments and eas state
+.env*
+.eas/
+
+# local tooling
+.metro-health-check*
+*.tsbuildinfo
+.DS_Store
+
+# tests and validation evidence
+coverage/
+.artifacts/
+dist-validation/
+
+# captured and staged media
+recordings/
+staging/
+exports/
+*.mov
+*.mp4
+*.m4a
+*.caf
