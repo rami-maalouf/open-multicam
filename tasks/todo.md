@@ -1,6 +1,6 @@
 # OpenMulticam Release 1 Executable Task List
 
-Status: Phase 4 implementation authorized - T001 pending
+Status: Phase 4 implementation authorized - T007A pending
 
 Approved inputs: `SPEC.md` and `tasks/plan.md`
 
@@ -165,30 +165,51 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 
 **Commit:** `feat: add openmulticam route shell`
 
-### T007: Add the development foundation preview and E2E entry points
+### T007A: Add fail-closed E2E scenario runners
 
-**Outcome:** Make foundation states reviewable and provide empty simulator and device runners that fail clearly when a scenario is unavailable.
+**Outcome:** Route named simulator and device scenarios through explicit Bun entry points without letting an unavailable scenario pass.
 
 **Acceptance criteria:**
-- [ ] A development-only screen renders semantic controls across appearance and text-size states.
-- [ ] Simulator and device runners accept named scenarios and cannot report an unimplemented scenario as passing.
-- [ ] The development screen and synthetic switches are excluded from release behavior.
+- [ ] Package commands forward scenario arguments to Bun-owned runners instead of unsupported Jest flags.
+- [ ] The simulator runner executes only a known scenario test and rejects missing or unknown scenarios.
+- [ ] The device runner rejects every scenario until a physical-device harness is implemented.
 
 **Verification:**
-- [ ] Run `bun run test:e2e:sim -- --scenario foundation-preview`.
+- [ ] Run `bun run test:e2e:sim -- --scenario unavailable` and confirm an actionable nonzero exit.
 - [ ] Run `bun run test:e2e:device -- --scenario unavailable` and confirm the runner exits nonzero with an actionable message.
 
 **Dependencies:** T006
 
-**Files likely touched:** `src/app/dev-foundation.tsx`, `src/screens/settings/foundation-preview-screen.tsx`, `e2e/simulator/foundation-preview.test.ts`, `e2e/device/runner.ts`, `tests/features/release-surface.test.tsx`
+**Files likely touched:** `package.json`, `e2e/simulator/runner.ts`, `e2e/simulator/foundation-preview.test.ts`, `e2e/device/runner.ts`
 
-**Estimated scope:** Medium, 5 files
+**Estimated scope:** Small, 4 files
+
+**Commit:** `test: add e2e scenario runners`
+
+### T007B: Add the development foundation preview
+
+**Outcome:** Make semantic foundation states reviewable while keeping synthetic controls out of release behavior.
+
+**Acceptance criteria:**
+- [ ] A development-only screen renders semantic controls across appearance and text-size states.
+- [ ] The foundation-preview simulator scenario verifies the reachable review surface.
+- [ ] The development screen and synthetic switches redirect away from release behavior.
+
+**Verification:**
+- [ ] Run `bun run test -- release-surface` and `bun run typecheck`.
+- [ ] Run `bun run test:e2e:sim -- --scenario foundation-preview`.
+
+**Dependencies:** T007A
+
+**Files likely touched:** `src/app/dev-foundation.tsx`, `src/screens/settings/foundation-preview-screen.tsx`, `tests/features/release-surface.test.tsx`
+
+**Estimated scope:** Medium, 3 files
 
 **Commit:** `test: add foundation review harness`
 
 #### Checkpoint A: Foundation approval
 
-- [ ] T005 through T007 and `bun run validate` pass from a clean checkout.
+- [ ] T005 through T007B and `bun run validate` pass from a clean checkout.
 - [ ] Secret, identity, and forbidden-file scans pass.
 - [ ] A development client launches the original shell on an iPhone simulator.
 - [ ] Human approves the visual foundation before native capture UI work.
@@ -1985,7 +2006,7 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 | Work package | Executable tasks |
 | --- | --- |
 | WP-0.1 Selective migration | T001-T002, T004-T006 |
-| WP-0.2 Validation discipline | T003, T007 |
+| WP-0.2 Validation discipline | T003, T007A-T007B |
 | WP-1.1 Contracts and lifecycle | T008-T013 |
 | WP-1.2 Capabilities and dual preview | T014-T016 |
 | WP-1.3 Writer architecture | T017-T020 |
@@ -2028,7 +2049,7 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 | FR-12 Playback and details | T033, T042, T057-T059 |
 | FR-13 Export and sharing | T043, T062-T065, Checkpoint H |
 | FR-14 Settings and diagnostics | T060, T070, T083 |
-| FR-15 Accessibility and interaction quality | T004-T007, T028, T038, T045, T051, T053, T073-T075 |
+| FR-15 Accessibility and interaction quality | T004-T007B, T028, T038, T045, T051, T053, T073-T075 |
 
 ## Phase 3 approval record
 
