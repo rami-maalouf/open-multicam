@@ -93,10 +93,59 @@ struct CaptureFailure: Error, Equatable {
   )
 
   static let sessionConfigurationFailed = CaptureFailure(
-    code: "session_configuration_failed",
+    code: "preview_unavailable",
     message: "The camera session could not be prepared.",
     retryable: true,
     recoveryAction: "retry"
+  )
+
+  static let recordingPreparationFailed = CaptureFailure(
+    code: "recording_start_failed",
+    message: "The recording files could not be prepared.",
+    retryable: true,
+    recoveryAction: "retry"
+  )
+
+  static let recordingTooShort = CaptureFailure(
+    code: "recording_stop_failed",
+    message: "No complete video frame was recorded.",
+    retryable: true,
+    recoveryAction: "retry"
+  )
+
+  static let recordingFinalizationFailed = CaptureFailure(
+    code: "finalization_failed",
+    message: "The recording could not be finalized safely.",
+    retryable: true,
+    recoveryAction: "retry"
+  )
+
+  static let recordingValidationFailed = CaptureFailure(
+    code: "output_validation_failed",
+    message: "A recorded file did not pass playback validation.",
+    retryable: false,
+    recoveryAction: "none"
+  )
+
+  static let recordingNotFound = CaptureFailure(
+    code: "internal_failure",
+    message: "That recording is no longer on this iPhone.",
+    retryable: false,
+    recoveryAction: "none"
+  )
+
+  static let invalidRecordingName = CaptureFailure(
+    code: "invalid_request",
+    message: "Use a name between 1 and 120 characters.",
+    retryable: true,
+    recoveryAction: "none"
+  )
+
+  static let recordingCorrupt = CaptureFailure(
+    code: "output_validation_failed",
+    message: "The recording manifest could not be read.",
+    retryable: false,
+    recoveryAction: "none"
   )
 
   var payload: [String: Any] {

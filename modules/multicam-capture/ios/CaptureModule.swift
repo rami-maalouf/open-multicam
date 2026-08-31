@@ -57,18 +57,92 @@ public final class CaptureModule: Module {
       }
     }
 
-    AsyncFunction("startRecording") { () -> [String: Any] in
-      let transition = self.stateMachine.send(.beginRecording)
-      self.publish(transition)
-      return self.resultPayload(for: transition)
+    AsyncFunction("startRecording") { () async -> [String: Any] in
+      let recordingSetId = UUID().uuidString.lowercased()
+      let preparation = self.stateMachine.send(
+        .beginPreparation(recordingSetId: recordingSetId)
+      )
+      self.publish(preparation)
+      guard case .accepted = preparation else {
+        return self.resultPayload(for: preparation)
+      }
+
+      let prepared = await CaptureSessionService.shared.prepareRecording(
+        recordingSetId: recordingSetId
+      )
+
+      switch prepared {
+      case let .failure(failure):
+        self.publish(self.stateMachine.send(.fail(failure)))
+        return failure.resultPayload
+      case .success:
+        let ready = self.stateMachine.send(.finishPreparation)
+        self.publish(ready)
+        let starting = self.stateMachine.send(.beginRecording)
+        self.publish(starting)
+        guard case .accepted = starting else {
+          return self.resultPayload(for: starting)
+        }
+
+        let recording = self.stateMachine.send(
+          .confirmRecordingStarted(
+            startedAtMs: Date().timeIntervalSince1970 * 1_000
+          )
+        )
+        self.publish(recording)
+        return [
+          "ok": true,
+          "value": ["recordingSetId": recordingSetId]
+        ]
+      }
     }
 
-    AsyncFunction("stopRecording") { () -> [String: Any] in
-      let transition = self.stateMachine.send(
+    AsyncFunction("stopRecording") { () async -> [String: Any] in
+      let stopping = self.stateMachine.send(
         .requestStop(reason: .userRequested)
       )
-      self.publish(transition)
-      return self.resultPayload(for: transition)
+      self.publish(stopping)
+      guard case .accepted = stopping else {
+        return self.resultPayload(for: stopping)
+      }
+
+      let finalizing = self.stateMachine.send(.beginFinalization)
+      self.publish(finalizing)
+
+      switch await CaptureSessionService.shared.stopRecording() {
+      case let .failure(failure):
+        self.publish(self.stateMachine.send(.fail(failure)))
+        return failure.resultPayload
+      case let .success(finalized):
+        guard let output = ValidatedRecordingOutput(
+          durationMs: finalized.durationMs,
+          expectedAssetCount: finalized.assetCount,
+          playableAssetCount: finalized.assetCount
+        ) else {
+          let failure = CaptureFailure.recordingValidationFailed
+          self.publish(self.stateMachine.send(.fail(failure)))
+          return failure.resultPayload
+        }
+        self.publish(self.stateMachine.send(.complete(output: output)))
+        return ["ok": true, "value": finalized.manifest]
+      }
+    }
+
+    AsyncFunction("listRecordings") { () -> [[String: Any]] in
+      try CaptureRecordingStorage.listRecordings()
+    }
+
+    AsyncFunction("deleteRecording") { (recordingSetId: String) -> Bool in
+      try CaptureRecordingStorage.deleteRecording(recordingSetId: recordingSetId)
+      return true
+    }
+
+    AsyncFunction("renameRecording") {
+      (recordingSetId: String, name: String) -> [String: Any] in
+      try CaptureRecordingStorage.renameRecording(
+        recordingSetId: recordingSetId,
+        name: name
+      )
     }
 
     View(CaptureSurfaceView.self) {

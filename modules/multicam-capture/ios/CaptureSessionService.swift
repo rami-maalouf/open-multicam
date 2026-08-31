@@ -1,7 +1,7 @@
 import AVFoundation
 import Foundation
 
-final class CaptureSessionService: @unchecked Sendable {
+final class CaptureSessionService: NSObject, @unchecked Sendable {
   static let shared = CaptureSessionService()
 
   private let sessionQueue = DispatchQueue(
@@ -14,8 +14,15 @@ final class CaptureSessionService: @unchecked Sendable {
   private var previewConnections: [AVCaptureConnection] = []
   private var mountedSurfaceCount = 0
   private var wantsPreview = false
+  private var videoOutputs: [AVCaptureVideoDataOutput] = []
+  private var audioOutput: AVCaptureAudioDataOutput?
+  private var dataSynchronizer: AVCaptureDataOutputSynchronizer?
+  private var recordingContext: CaptureRecordingContext?
+  private var recordingWriter: CaptureRecordingWriter?
 
-  private init() {}
+  private override init() {
+    super.init()
+  }
 
   func attachPreviewLayers(_ layers: [AVCaptureVideoPreviewLayer]) {
     sessionQueue.async {
@@ -89,6 +96,86 @@ final class CaptureSessionService: @unchecked Sendable {
     }
   }
 
+  func prepareRecording(
+    recordingSetId: String
+  ) async -> Result<String, CaptureFailure> {
+    await withCheckedContinuation { continuation in
+      sessionQueue.async {
+        guard
+          let preset = self.preset,
+          self.recordingWriter == nil,
+          let captureSession = self.captureSession
+        else {
+          continuation.resume(returning: .failure(.invalidStateTransition))
+          return
+        }
+
+        let deviceIds = [preset.cameraAId, preset.cameraBId].compactMap { $0 }
+        let devices = deviceIds.compactMap { id in
+          captureSession.inputs
+            .compactMap { $0 as? AVCaptureDeviceInput }
+            .first(where: { $0.device.uniqueID == id })?.device
+        }
+
+        do {
+          let context = try CaptureRecordingStorage.prepare(
+            recordingSetId: recordingSetId,
+            preset: preset,
+            devices: devices,
+            expectsAudio: self.audioOutput != nil
+          )
+          self.recordingWriter = try CaptureRecordingWriter(
+            context: context,
+            videoOutputs: self.videoOutputs,
+            audioOutput: self.audioOutput
+          )
+          self.recordingContext = context
+          continuation.resume(returning: .success(context.recordingSetId))
+        } catch let failure as CaptureFailure {
+          continuation.resume(returning: .failure(failure))
+        } catch {
+          continuation.resume(returning: .failure(.recordingPreparationFailed))
+        }
+      }
+    }
+  }
+
+  func stopRecording() async -> Result<CaptureFinalizedRecording, CaptureFailure> {
+    let prepared: (CaptureRecordingContext, CaptureRecordingWriter)? = await withCheckedContinuation {
+      continuation in
+      sessionQueue.async {
+        let value = self.recordingContext.flatMap { context in
+          self.recordingWriter.map { (context, $0) }
+        }
+        self.recordingContext = nil
+        self.recordingWriter = nil
+        continuation.resume(returning: value)
+      }
+    }
+
+    guard let (context, writer) = prepared else {
+      return .failure(.invalidStateTransition)
+    }
+
+    switch await writer.finish() {
+    case let .failure(failure):
+      return .failure(failure)
+    case let .success(writerResult):
+      do {
+        return .success(
+          try await CaptureRecordingStorage.finalize(
+            context: context,
+            writerResult: writerResult
+          )
+        )
+      } catch let failure as CaptureFailure {
+        return .failure(failure)
+      } catch {
+        return .failure(.recordingFinalizationFailed)
+      }
+    }
+  }
+
   private func configureSession(
     preset: CapturePreset,
     snapshot: CaptureCapabilitySnapshot
@@ -123,6 +210,46 @@ final class CaptureSessionService: @unchecked Sendable {
         session.addInputWithNoConnections(input)
       }
 
+      videoOutputs = try devices.map { device in
+        guard
+          let input = session.inputs
+            .compactMap({ $0 as? AVCaptureDeviceInput })
+            .first(where: { $0.device.uniqueID == device.uniqueID }),
+          let port = input.ports.first(where: { $0.mediaType == .video })
+        else {
+          throw CaptureFailure.sessionConfigurationFailed
+        }
+
+        let output = AVCaptureVideoDataOutput()
+        output.alwaysDiscardsLateVideoFrames = false
+        output.videoSettings = [
+          kCVPixelBufferPixelFormatTypeKey as String:
+            kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
+        ]
+        guard session.canAddOutput(output) else {
+          throw CaptureFailure.sessionConfigurationFailed
+        }
+        session.addOutputWithNoConnections(output)
+        let connection = AVCaptureConnection(inputPorts: [port], output: output)
+        applyVideoProperties(connection, preset: preset, position: device.position)
+        guard session.canAddConnection(connection) else {
+          throw CaptureFailure.sessionConfigurationFailed
+        }
+        session.addConnection(connection)
+        return output
+      }
+
+      audioOutput = try configureAudioIfAuthorized(session: session)
+
+      let synchronizedOutputs: [AVCaptureOutput] =
+        videoOutputs.map { $0 as AVCaptureOutput } +
+        (audioOutput.map { [$0 as AVCaptureOutput] } ?? [])
+      let synchronizer = AVCaptureDataOutputSynchronizer(
+        dataOutputs: synchronizedOutputs
+      )
+      synchronizer.setDelegate(self, queue: sessionQueue)
+      dataSynchronizer = synchronizer
+
       session.commitConfiguration()
     } catch {
       session.commitConfiguration()
@@ -133,6 +260,38 @@ final class CaptureSessionService: @unchecked Sendable {
     self.preset = preset
     connectPreviewLayers()
     startSessionIfNeeded()
+  }
+
+  private func configureAudioIfAuthorized(
+    session: AVCaptureSession
+  ) throws -> AVCaptureAudioDataOutput? {
+    guard
+      AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
+      let microphone = AVCaptureDevice.default(for: .audio)
+    else {
+      return nil
+    }
+
+    let input = try AVCaptureDeviceInput(device: microphone)
+    guard session.canAddInput(input) else {
+      return nil
+    }
+    session.addInputWithNoConnections(input)
+
+    guard let port = input.ports.first(where: { $0.mediaType == .audio }) else {
+      return nil
+    }
+    let output = AVCaptureAudioDataOutput()
+    guard session.canAddOutput(output) else {
+      return nil
+    }
+    session.addOutputWithNoConnections(output)
+    let connection = AVCaptureConnection(inputPorts: [port], output: output)
+    guard session.canAddConnection(connection) else {
+      return nil
+    }
+    session.addConnection(connection)
+    return output
   }
 
   private func configure(
@@ -254,5 +413,19 @@ final class CaptureSessionService: @unchecked Sendable {
     disconnectPreviewLayers()
     captureSession = nil
     preset = nil
+    videoOutputs = []
+    audioOutput = nil
+    dataSynchronizer = nil
+    recordingContext = nil
+    recordingWriter = nil
+  }
+}
+
+extension CaptureSessionService: AVCaptureDataOutputSynchronizerDelegate {
+  func dataOutputSynchronizer(
+    _ synchronizer: AVCaptureDataOutputSynchronizer,
+    didOutput synchronizedDataCollection: AVCaptureSynchronizedDataCollection
+  ) {
+    recordingWriter?.append(synchronizedDataCollection)
   }
 }
