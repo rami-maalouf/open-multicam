@@ -1,6 +1,6 @@
 # OpenMulticam Release 1 Executable Task List
 
-Status: T008 in progress
+Status: T009 in progress
 
 Approved inputs: `SPEC.md` and `tasks/plan.md`
 
@@ -221,12 +221,12 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 **Outcome:** Define platform-neutral capture states, capability results, requests, error codes, and event cadence before native implementation.
 
 **Acceptance criteria:**
-- [ ] Public states and failures use exhaustive discriminated unions with no raw native error leakage.
-- [ ] Requests cannot represent an unsupported mode, frame-rate, or output combination without validation.
-- [ ] Contract tests cover every terminal state and error code.
+- [x] Public states and failures use exhaustive discriminated unions with no raw native error leakage.
+- [x] Requests cannot represent an unsupported mode, frame-rate, or output combination without validation.
+- [x] Contract tests cover every terminal state and error code.
 
 **Verification:**
-- [ ] Run `bun run test -- capture-contracts` and `bun run typecheck`.
+- [x] Run `bun run test -- capture-contracts` and `bun run typecheck`.
 
 **Dependencies:** Checkpoint A
 
