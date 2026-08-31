@@ -1,6 +1,6 @@
 # OpenMulticam Release 1 Executable Task List
 
-Status: Phase 4 implementation authorized - T007A pending
+Status: Checkpoint A awaiting human visual approval
 
 Approved inputs: `SPEC.md` and `tasks/plan.md`
 
@@ -32,13 +32,13 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 **Outcome:** Bring over only the approved Expo dependency and tooling foundation while preserving a fresh OpenMulticam repository identity.
 
 **Acceptance criteria:**
-- [ ] Dependencies align with Expo SDK 57 and strict TypeScript without habit-tracker product packages.
-- [ ] Ignore rules exclude environments, generated native projects, media, evidence, coverage, and build artifacts.
-- [ ] A recorded allowlist proves the starter was read-only and no forbidden source was copied.
+- [x] Dependencies align with Expo SDK 57 and strict TypeScript without habit-tracker product packages.
+- [x] Ignore rules exclude environments, generated native projects, media, evidence, coverage, and build artifacts.
+- [x] A recorded allowlist proves the starter was read-only and no forbidden source was copied.
 
 **Verification:**
-- [ ] Run `bun install` and `bunx expo install --check`.
-- [ ] Run `git status --short` in the starter and confirm it is unchanged.
+- [x] Run `bun install` and `bunx expo install --check`.
+- [x] Run `git status --short` in the starter and confirm it is unchanged.
 
 **Dependencies:** None
 
@@ -53,13 +53,13 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 **Outcome:** Configure an original iPhone-only OpenMulticam application without linking EAS or signing credentials.
 
 **Acceptance criteria:**
-- [ ] Name, slug, scheme, iOS deployment target, orientation support, and permission descriptions match the approved specification.
-- [ ] No starter bundle identifier, update URL, project id, app group, CloudKit container, or credential remains.
-- [ ] Placeholder launch artwork and iconography are original OpenMulticam assets.
+- [x] Name, slug, scheme, iOS deployment target, orientation support, and permission descriptions match the approved specification.
+- [x] No starter bundle identifier, update URL, project id, app group, CloudKit container, or credential remains.
+- [x] Placeholder launch artwork and iconography are original OpenMulticam assets.
 
 **Verification:**
-- [ ] Run `bunx expo config --type public` and inspect the resolved iOS configuration.
-- [ ] Run the documented forbidden-identity search from `docs/migration-allowlist.md`.
+- [x] Run `bunx expo config --type public` and inspect the resolved iOS configuration.
+- [x] Run the documented forbidden-identity search from `docs/migration-allowlist.md`.
 
 **Dependencies:** T001
 
@@ -71,22 +71,22 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 
 #### Verification checkpoint 0A: Migration safety
 
-- [ ] T001 and T002 focused checks pass.
-- [ ] The source starter has no worktree change.
-- [ ] Human-only signing and EAS decisions remain untouched.
+- [x] T001 and T002 focused checks pass.
+- [x] The source starter has no worktree change.
+- [x] Human-only signing and EAS decisions remain untouched.
 
 ### T003: Establish test and validation commands
 
 **Outcome:** Make every approved JavaScript, native, simulator, device, and repository validation command explicit and fail-closed.
 
 **Acceptance criteria:**
-- [ ] Package scripts expose all commands listed in the specification and forward scenario arguments.
-- [ ] JavaScript coverage enforces 90 percent globally and supports stricter per-domain thresholds later.
-- [ ] Repository validation rejects generated native folders, captured media, secrets, and forbidden starter identity.
+- [x] Package scripts expose all commands listed in the specification and forward scenario arguments.
+- [x] JavaScript coverage enforces 90 percent globally and supports stricter per-domain thresholds later.
+- [x] Repository validation rejects generated native folders, captured media, secrets, and forbidden starter identity.
 
 **Verification:**
-- [ ] Run `bun run lint`, `bun run typecheck`, and `bun run test:coverage`.
-- [ ] Intentionally exercise the repository checker with a temporary ignored fixture and confirm it reports the violation before the fixture is removed.
+- [x] Run `bun run lint`, `bun run typecheck`, and `bun run test:coverage`.
+- [x] Intentionally exercise the repository checker with a temporary ignored fixture and confirm it reports the violation before the fixture is removed.
 
 **Dependencies:** T002
 
@@ -101,13 +101,13 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 **Outcome:** Create one semantic color, type, spacing, radius, material, and motion source for the app shell.
 
 **Acceptance criteria:**
-- [ ] Tokens support light, dark, increased contrast, and camera-preview readability without copied product styling.
-- [ ] `AppText` and `Icon` consume semantic roles and preserve Dynamic Type.
-- [ ] Foundation tests assert role selection rather than raw implementation details.
+- [x] Tokens support light, dark, increased contrast, and camera-preview readability without copied product styling.
+- [x] `AppText` and `Icon` consume semantic roles and preserve Dynamic Type.
+- [x] Foundation tests assert role selection rather than raw implementation details.
 
 **Verification:**
-- [ ] Run `bun run test -- foundation-theme` and `bun run typecheck`.
-- [ ] Review token output in light and dark appearances.
+- [x] Run `bun run test -- foundation-theme` and `bun run typecheck`.
+- [x] Review token output in light and dark appearances.
 
 **Dependencies:** T003
 
@@ -119,26 +119,26 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 
 #### Verification checkpoint 0B: Tooling and theme
 
-- [ ] T003 and T004 focused tests pass.
-- [ ] `bun run validate` has one documented fail-closed meaning.
-- [ ] Theme roles remain readable over both solid surfaces and live-preview placeholders.
+- [x] T003 and T004 focused tests pass.
+- [x] `bun run validate` has one documented fail-closed meaning.
+- [x] Theme roles remain readable over both solid surfaces and live-preview placeholders.
 
 ### T005: Add accessibility, haptics, and adaptive material foundations
 
 **Outcome:** Provide small shared helpers for accessibility preferences, approved haptics, and native-feeling preview overlays.
 
 **Acceptance criteria:**
-- [ ] Reduce Motion and Increase Contrast are observable without screen-owned duplication.
-- [ ] Haptic calls map semantic events to supported native feedback and degrade safely.
-- [ ] Adaptive material preserves contrast and does not wrap native controls solely for restyling.
+- [x] Reduce Motion and Increase Contrast are observable without screen-owned duplication.
+- [x] Haptic calls map semantic events to supported native feedback and degrade safely.
+- [x] Adaptive material preserves contrast and does not wrap native controls solely for restyling.
 
 **Verification:**
-- [ ] Run `bun run test -- foundation-behavior` and `bun run typecheck`.
+- [x] Run `bun run test -- foundation-behavior` and `bun run typecheck`.
 - [ ] Manually inspect large text, Reduce Motion, and Increase Contrast in the development client.
 
 **Dependencies:** T004
 
-**Files likely touched:** `src/foundation/accessibility/preferences.ts`, `src/foundation/haptics/haptics.ts`, `src/components/adaptive-material.tsx`, `src/testing/render.tsx`, `tests/features/foundation-behavior.test.tsx`
+**Files likely touched:** `src/foundation/accessibility/preferences.tsx`, `src/foundation/haptics/haptics.ts`, `src/components/adaptive-material.tsx`, `src/testing/render.tsx`, `tests/features/foundation-behavior.test.tsx`
 
 **Estimated scope:** Medium, 5 files
 
@@ -149,12 +149,12 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 **Outcome:** Launch an original capture-first Expo Router shell with reachable Library and Settings placeholders.
 
 **Acceptance criteria:**
-- [ ] Route files contain navigation translation only and render dedicated screen bodies.
-- [ ] Capture, Library, and Settings remain reachable with correct accessibility titles and safe areas.
-- [ ] No habit-tracker route, model, copy, or asset survives.
+- [x] Route files contain navigation translation only and render dedicated screen bodies.
+- [x] Capture, Library, and Settings remain reachable with correct accessibility titles and safe areas.
+- [x] No habit-tracker route, model, copy, or asset survives.
 
 **Verification:**
-- [ ] Run `bun run typecheck` and `bunx expo-doctor`.
+- [x] Run `bun run typecheck` and `bunx expo-doctor`.
 - [ ] Run `bun run ios` and manually navigate all three destinations in a development client.
 
 **Dependencies:** T005
@@ -170,13 +170,13 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 **Outcome:** Route named simulator and device scenarios through explicit Bun entry points without letting an unavailable scenario pass.
 
 **Acceptance criteria:**
-- [ ] Package commands forward scenario arguments to Bun-owned runners instead of unsupported Jest flags.
-- [ ] The simulator runner executes only a known scenario test and rejects missing or unknown scenarios.
-- [ ] The device runner rejects every scenario until a physical-device harness is implemented.
+- [x] Package commands forward scenario arguments to Bun-owned runners instead of unsupported Jest flags.
+- [x] The simulator runner executes only a known scenario test and rejects missing or unknown scenarios.
+- [x] The device runner rejects every scenario until a physical-device harness is implemented.
 
 **Verification:**
-- [ ] Run `bun run test:e2e:sim -- --scenario unavailable` and confirm an actionable nonzero exit.
-- [ ] Run `bun run test:e2e:device -- --scenario unavailable` and confirm the runner exits nonzero with an actionable message.
+- [x] Run `bun run test:e2e:sim -- --scenario unavailable` and confirm an actionable nonzero exit.
+- [x] Run `bun run test:e2e:device -- --scenario unavailable` and confirm the runner exits nonzero with an actionable message.
 
 **Dependencies:** T006
 
@@ -191,13 +191,13 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 **Outcome:** Make semantic foundation states reviewable while keeping synthetic controls out of release behavior.
 
 **Acceptance criteria:**
-- [ ] A development-only screen renders semantic controls across appearance and text-size states.
-- [ ] The foundation-preview simulator scenario verifies the reachable review surface.
-- [ ] The development screen and synthetic switches redirect away from release behavior.
+- [x] A development-only screen renders semantic controls across appearance and text-size states.
+- [x] The foundation-preview simulator scenario verifies the reachable review surface.
+- [x] The development screen and synthetic switches redirect away from release behavior.
 
 **Verification:**
-- [ ] Run `bun run test -- release-surface` and `bun run typecheck`.
-- [ ] Run `bun run test:e2e:sim -- --scenario foundation-preview`.
+- [x] Run `bun run test -- release-surface` and `bun run typecheck`.
+- [x] Run `bun run test:e2e:sim -- --scenario foundation-preview`.
 
 **Dependencies:** T007A
 
@@ -209,8 +209,8 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 
 #### Checkpoint A: Foundation approval
 
-- [ ] T005 through T007B and `bun run validate` pass from a clean checkout.
-- [ ] Secret, identity, and forbidden-file scans pass.
+- [x] T005 through T007B and `bun run validate` pass from a clean checkout.
+- [x] Secret, identity, and forbidden-file scans pass.
 - [ ] A development client launches the original shell on an iPhone simulator.
 - [ ] Human approves the visual foundation before native capture UI work.
 
