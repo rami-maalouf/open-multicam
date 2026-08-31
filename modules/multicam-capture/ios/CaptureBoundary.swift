@@ -1,40 +1,65 @@
 import Foundation
 
 enum CaptureBoundaryPayloads {
-  static let simulatorMessage = "Multicamera capture requires a physical iPhone."
+  static let simulatorCameraUnavailableMessage =
+    "No simulator camera was found. Start SimCam, then reopen OpenMulticam."
+  static let simulatorSingleCameraMessage =
+    "SimCam is connected. Single-camera preview is available; dual-camera capture still requires a physical iPhone."
+  static let deviceSingleCameraMessage =
+    "Single-camera preview is available, but this iPhone does not support multicamera capture."
   static let unavailableMessage = "Camera discovery is not active yet."
 
   static func deviceCapabilities(
     discoveredAtMs: Double,
+    cameras: [[String: Any]],
+    isMulticamSupported: Bool,
     isSimulator: Bool
   ) -> [String: Any] {
-    let reason: [String: Any] = isSimulator
-      ? ["kind": "multicam-unsupported", "message": simulatorMessage]
-      : ["kind": "camera-unavailable", "message": unavailableMessage]
+    let multicam: [String: Any]
+
+    if isMulticamSupported {
+      multicam = ["kind": "supported"]
+    } else if cameras.isEmpty {
+      multicam = [
+        "kind": "unsupported",
+        "reason": [
+          "kind": "camera-unavailable",
+          "message": isSimulator
+            ? simulatorCameraUnavailableMessage
+            : unavailableMessage
+        ]
+      ]
+    } else {
+      multicam = [
+        "kind": "unsupported",
+        "reason": [
+          "kind": "multicam-unsupported",
+          "message": isSimulator
+            ? simulatorSingleCameraMessage
+            : deviceSingleCameraMessage
+        ]
+      ]
+    }
 
     return [
       "kind": "device-capabilities",
       "schemaVersion": 1,
       "discoveredAtMs": discoveredAtMs,
-      "cameras": [[String: Any]](),
-      "multicam": ["kind": "unsupported", "reason": reason],
+      "cameras": cameras,
+      "multicam": multicam,
       "configurations": [[String: Any]]()
     ]
   }
 
-  static func unavailableResult(isSimulator: Bool) -> [String: Any] {
-    let code = isSimulator ? "multicam_unsupported" : "configuration_unavailable"
-    let message = isSimulator ? simulatorMessage : unavailableMessage
-    let recoveryAction = isSimulator ? "select-configuration" : "retry"
-
+  static func unavailableResult() -> [String: Any] {
     return [
       "ok": false,
       "error": [
         "kind": "capture-error",
-        "code": code,
-        "message": message,
-        "retryable": !isSimulator,
-        "recoveryAction": recoveryAction
+        "code": "configuration_unavailable",
+        "message": unavailableMessage,
+        "retryable": true,
+        "recoveryAction": "retry"
       ]
     ]
   }
