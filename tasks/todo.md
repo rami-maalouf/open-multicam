@@ -1,6 +1,6 @@
 # OpenMulticam Release 1 Executable Task List
 
-Status: T010 in progress
+Status: T010A in progress
 
 Approved inputs: `SPEC.md` and `tasks/plan.md`
 
@@ -262,25 +262,65 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 - [x] Contract fixtures cover every Release 1 output shape.
 - [x] No frame or sample-buffer type exists in the JavaScript boundary.
 
-### T010: Scaffold the local Expo capture module
+### T010A: Scaffold the local Expo capture boundary
 
 **Outcome:** Establish the typed Expo Modules boundary and native view registration without real camera ownership.
 
 **Acceptance criteria:**
 - [ ] The module exposes typed capability, lifecycle, and command surfaces matching T008 and T009.
-- [ ] The native view mounts in the development client and publishes bounded state events.
+- [ ] The native surface is registered for iOS development clients.
 - [ ] Unsupported simulator calls return stable typed results.
 
 **Verification:**
-- [ ] Run `bun run typecheck`, `bun run test:native`, and `bun run ios`.
+- [ ] Run `bun run typecheck` and the focused capture-boundary tests.
 
 **Dependencies:** T009
 
-**Files likely touched:** `modules/multicam-capture/expo-module.config.json`, `modules/multicam-capture/index.ts`, `modules/multicam-capture/ios/CaptureModule.swift`, `modules/multicam-capture/ios/CaptureSurfaceView.swift`, `modules/multicam-capture/ios/Tests/CaptureModuleTests.swift`
+**Files likely touched:** `modules/multicam-capture/expo-module.config.json`, `modules/multicam-capture/index.ts`, `modules/multicam-capture/ios/MulticamCapture.podspec`, `modules/multicam-capture/ios/CaptureModule.swift`, `modules/multicam-capture/ios/CaptureSurfaceView.swift`
 
 **Estimated scope:** Medium, 5 files
 
 **Commit:** `feat: scaffold multicam capture module`
+
+### T010B: Add an executable native test harness
+
+**Outcome:** Make Swift module tests runnable from the repository validation contract.
+
+**Acceptance criteria:**
+- [ ] `bun run test:native` executes XCTest cases instead of returning the repository placeholder failure.
+- [ ] Tests prove the simulator's stable unsupported results and the module's bounded lifecycle state.
+- [ ] Native test failures produce a nonzero exit status and readable diagnostics.
+
+**Verification:**
+- [ ] Run `bun run test:native` and deliberately prove the runner detects one temporary failing assertion before restoring it.
+
+**Dependencies:** T010A
+
+**Files likely touched:** `modules/multicam-capture/ios/MulticamCapture.podspec`, `modules/multicam-capture/ios/Tests/CaptureModuleTests.swift`, `scripts/run-native-tests.mjs`, `scripts/check-repository.mjs`
+
+**Estimated scope:** Medium, 4 files
+
+**Commit:** `test: add native module test harness`
+
+### T010C: Mount and verify the native capture surface
+
+**Outcome:** Replace the JavaScript placeholder with the registered native surface and its bounded state events.
+
+**Acceptance criteria:**
+- [ ] The native surface mounts in the iOS development client without owning camera resources.
+- [ ] Mount and app lifecycle changes publish only the documented state payloads.
+- [ ] The simulator communicates that multicamera capture is unavailable without crashing or leaking framework errors.
+
+**Verification:**
+- [ ] Run focused surface tests, `bun run typecheck`, `bun run test:native`, and `bun run ios`.
+
+**Dependencies:** T010B
+
+**Files likely touched:** `modules/multicam-capture/index.ts`, `modules/multicam-capture/ios/CaptureSurfaceView.swift`, `src/screens/shell/app-shell-screens.tsx`, `tests/features/capture-surface.test.tsx`
+
+**Estimated scope:** Medium, 4 files
+
+**Commit:** `feat: mount multicam capture surface`
 
 ### T011: Implement and prove the native capture state machine
 
@@ -294,7 +334,7 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 **Verification:**
 - [ ] Run `bun run test:native` and inspect the state-machine coverage report.
 
-**Dependencies:** T010
+**Dependencies:** T010C
 
 **Files likely touched:** `modules/multicam-capture/ios/CaptureStateMachine.swift`, `modules/multicam-capture/ios/CaptureModels.swift`, `modules/multicam-capture/ios/Tests/CaptureStateMachineTests.swift`
 
@@ -304,7 +344,7 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 
 #### Verification checkpoint 1B: Native boundary and state
 
-- [ ] T010 and T011 native tests pass.
+- [ ] T010A, T010B, T010C, and T011 native tests pass.
 - [ ] Module events round-trip through TypeScript without raw file paths or framework errors.
 - [ ] An illegal transition cannot activate a capture resource.
 
