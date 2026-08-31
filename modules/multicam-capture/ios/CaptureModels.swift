@@ -78,6 +78,20 @@ struct CaptureFailure: Error, Equatable {
     recoveryAction: "retry"
   )
 
+  static let invalidRequest = CaptureFailure(
+    code: "invalid_request",
+    message: "The capture request is incomplete or malformed.",
+    retryable: false,
+    recoveryAction: "select-configuration"
+  )
+
+  static let configurationUnavailable = CaptureFailure(
+    code: "configuration_unavailable",
+    message: "The selected camera configuration is no longer available.",
+    retryable: true,
+    recoveryAction: "select-configuration"
+  )
+
   var payload: [String: Any] {
     [
       "kind": "capture-error",

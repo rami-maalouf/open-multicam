@@ -1,46 +1,179 @@
 import AVFoundation
+import CoreMedia
 import Foundation
 
-enum CaptureDeviceDiscovery {
-  static func capabilities(isSimulator: Bool) -> [String: Any] {
+struct CaptureConfigurationDescriptor {
+  let id: String
+  let mode: CaptureMode
+  let output: CaptureOutput
+  let cameraIds: [String]
+  let frameRates: [Int]
+  let availability: String
+  let bitrate: Int
+  let estimatedHardwareCost: Double
+
+  var payload: [String: Any] {
+    [
+      "kind": "supported",
+      "id": id,
+      "mode": mode.rawValue,
+      "output": output.rawValue,
+      "cameraIds": cameraIds,
+      "frameRates": frameRates,
+      "availability": availability,
+      "profile": "core1080p",
+      "codec": "h264",
+      "bitrate": bitrate,
+      "stabilization": "standard",
+      "estimatedHardwareCost": estimatedHardwareCost
+    ]
+  }
+}
+
+struct CaptureCapabilitySnapshot {
+  let devices: [AVCaptureDevice]
+  let configurations: [CaptureConfigurationDescriptor]
+  let recommendedConfigurationId: String?
+  let isMulticamSupported: Bool
+  let isSimulator: Bool
+
+  var payload: [String: Any] {
     CaptureBoundaryPayloads.deviceCapabilities(
       discoveredAtMs: Date().timeIntervalSince1970 * 1_000,
-      cameras: videoDevices.map(cameraDescriptor),
+      cameras: devices.map(CaptureDeviceDiscovery.cameraDescriptor),
+      configurations: configurations.map(\.payload),
+      recommendedConfigurationId: recommendedConfigurationId,
+      isMulticamSupported: isMulticamSupported,
+      isSimulator: isSimulator
+    )
+  }
+
+  func device(id: String) -> AVCaptureDevice? {
+    devices.first { $0.uniqueID == id }
+  }
+
+  func resolve(request: [String: Any]) -> Result<CapturePreset, CaptureFailure> {
+    guard
+      let configurationId = request["configurationId"] as? String,
+      let configuration = configurations.first(where: { $0.id == configurationId }),
+      let modeValue = request["mode"] as? String,
+      let mode = CaptureMode(rawValue: modeValue),
+      let outputValue = request["output"] as? String,
+      let output = CaptureOutput(rawValue: outputValue),
+      let cameraAId = request["cameraAId"] as? String,
+      let orientationValue = request["orientation"] as? String,
+      let orientation = CaptureOrientation(rawValue: orientationValue),
+      let frameRate = request["frameRate"] as? Int
+    else {
+      return .failure(.invalidRequest)
+    }
+
+    let cameraBId = request["cameraBId"] as? String
+    let requestedIds = [cameraAId, cameraBId].compactMap { $0 }
+
+    guard
+      configuration.mode == mode,
+      configuration.output == output,
+      Set(configuration.cameraIds) == Set(requestedIds),
+      configuration.frameRates.contains(frameRate)
+    else {
+      return .failure(.configurationUnavailable)
+    }
+
+    return .success(
+      CapturePreset(
+        configurationId: configurationId,
+        mode: mode,
+        output: output,
+        cameraAId: cameraAId,
+        cameraBId: cameraBId,
+        orientation: orientation,
+        width: orientation == .portrait ? 1_080 : 1_920,
+        height: orientation == .portrait ? 1_920 : 1_080,
+        frameRate: frameRate,
+        bitrate: configuration.bitrate,
+        stabilization: "standard"
+      )
+    )
+  }
+}
+
+enum CaptureDeviceDiscovery {
+  private static let releaseFrameRates = [24, 25, 30]
+
+  static func capabilities(isSimulator: Bool) -> [String: Any] {
+    snapshot(isSimulator: isSimulator).payload
+  }
+
+  static func snapshot(isSimulator: Bool) -> CaptureCapabilitySnapshot {
+    let discovery = discoverySession
+    let devices = sortedDevices(discovery.devices)
+    let singleConfigurations = devices.compactMap {
+      singleConfiguration(for: $0, isSimulator: isSimulator)
+    }
+    let multicamSupported =
+      !isSimulator && AVCaptureMultiCamSession.isMultiCamSupported
+    let availableDualConfigurations = multicamSupported
+      ? dualConfigurations(discovery: discovery)
+      : []
+    let configurations = availableDualConfigurations + singleConfigurations
+    let recommended =
+      availableDualConfigurations.first?.id ?? singleConfigurations.first?.id
+
+    return CaptureCapabilitySnapshot(
+      devices: devices,
+      configurations: configurations,
+      recommendedConfigurationId: recommended,
       isMulticamSupported:
-        !isSimulator && AVCaptureMultiCamSession.isMultiCamSupported,
+        multicamSupported && !availableDualConfigurations.isEmpty,
       isSimulator: isSimulator
     )
   }
 
   static func preferredVideoDevice() -> AVCaptureDevice? {
-    videoDevices.first(where: { $0.position == .back }) ?? videoDevices.first
+    let devices = sortedDevices(discoverySession.devices)
+    return devices.first(where: { $0.position == .back }) ?? devices.first
   }
 
-  private static var videoDevices: [AVCaptureDevice] {
-    let discovery = AVCaptureDevice.DiscoverySession(
-      deviceTypes: [
-        .builtInWideAngleCamera,
-        .builtInUltraWideCamera,
-        .builtInTelephotoCamera,
-        .builtInTrueDepthCamera,
-        .external
-      ],
-      mediaType: .video,
-      position: .unspecified
-    )
+  static func format(
+    for device: AVCaptureDevice,
+    frameRate: Int,
+    requiresMulticam: Bool
+  ) -> AVCaptureDevice.Format? {
+    device.formats
+      .filter { format in
+        let dimensions = CMVideoFormatDescriptionGetDimensions(
+          format.formatDescription
+        )
+        let is1080p =
+          (dimensions.width == 1_920 && dimensions.height == 1_080) ||
+          (dimensions.width == 1_080 && dimensions.height == 1_920)
+        let supportsRate = format.videoSupportedFrameRateRanges.contains {
+          $0.minFrameRate <= Double(frameRate) &&
+            $0.maxFrameRate >= Double(frameRate)
+        }
 
-    return discovery.devices.sorted { lhs, rhs in
-      if lhs.position != rhs.position {
-        return positionRank(lhs.position) < positionRank(rhs.position)
+        return is1080p &&
+          supportsRate &&
+          (!requiresMulticam || format.isMultiCamSupported)
       }
-
-      return lhs.localizedName.localizedStandardCompare(rhs.localizedName) == .orderedAscending
-    }
+      .sorted { lhs, rhs in
+        let left = CMVideoFormatDescriptionGetDimensions(lhs.formatDescription)
+        let right = CMVideoFormatDescriptionGetDimensions(rhs.formatDescription)
+        return left.width * left.height < right.width * right.height
+      }
+      .first
   }
 
-  private static func cameraDescriptor(_ device: AVCaptureDevice) -> [String: Any] {
-    let minimumZoom = finiteValue(device.minAvailableVideoZoomFactor, fallback: 1)
-    let maximumZoom = finiteValue(device.maxAvailableVideoZoomFactor, fallback: minimumZoom)
+  static func cameraDescriptor(_ device: AVCaptureDevice) -> [String: Any] {
+    let minimumZoom = finiteValue(
+      device.minAvailableVideoZoomFactor,
+      fallback: 1
+    )
+    let maximumZoom = finiteValue(
+      device.maxAvailableVideoZoomFactor,
+      fallback: minimumZoom
+    )
     let fieldOfView = finiteValue(
       CGFloat(device.activeFormat.videoFieldOfView),
       fallback: 0
@@ -62,7 +195,107 @@ enum CaptureDeviceDiscovery {
     ]
   }
 
-  private static func finiteValue(_ value: CGFloat, fallback: CGFloat) -> Double {
+  private static var discoverySession: AVCaptureDevice.DiscoverySession {
+    AVCaptureDevice.DiscoverySession(
+      deviceTypes: [
+        .builtInWideAngleCamera,
+        .builtInUltraWideCamera,
+        .builtInTelephotoCamera,
+        .builtInTrueDepthCamera,
+        .external
+      ],
+      mediaType: .video,
+      position: .unspecified
+    )
+  }
+
+  private static func singleConfiguration(
+    for device: AVCaptureDevice,
+    isSimulator: Bool
+  ) -> CaptureConfigurationDescriptor? {
+    var frameRates = releaseFrameRates.filter {
+      format(for: device, frameRate: $0, requiresMulticam: false) != nil
+    }
+
+    if isSimulator && frameRates.isEmpty {
+      frameRates = [30]
+    }
+
+    guard !frameRates.isEmpty else {
+      return nil
+    }
+
+    return CaptureConfigurationDescriptor(
+      id: "single:\(device.uniqueID)",
+      mode: .single,
+      output: .singleFile,
+      cameraIds: [device.uniqueID],
+      frameRates: frameRates,
+      availability: device.position == .back ? "recommended" : "available",
+      bitrate: 16_000_000,
+      estimatedHardwareCost: 0.45
+    )
+  }
+
+  private static func dualConfigurations(
+    discovery: AVCaptureDevice.DiscoverySession
+  ) -> [CaptureConfigurationDescriptor] {
+    discovery.supportedMultiCamDeviceSets.compactMap { deviceSet in
+      let devices = sortedDevices(Array(deviceSet))
+
+      guard devices.count == 2 else {
+        return nil
+      }
+
+      let frameRates = releaseFrameRates.filter { frameRate in
+        devices.allSatisfy {
+          format(for: $0, frameRate: frameRate, requiresMulticam: true) != nil
+        }
+      }
+
+      guard !frameRates.isEmpty else {
+        return nil
+      }
+
+      let ids = devices.map(\.uniqueID)
+      let isFrontBack = Set(devices.map(\.position)) == Set([.front, .back])
+
+      return CaptureConfigurationDescriptor(
+        id: "discrete:\(ids.joined(separator: ":"))",
+        mode: .discrete,
+        output: .dualFiles,
+        cameraIds: ids,
+        frameRates: frameRates,
+        availability: isFrontBack ? "recommended" : "available",
+        bitrate: 12_000_000,
+        estimatedHardwareCost: 0.80
+      )
+    }
+    .sorted { lhs, rhs in
+      if lhs.availability != rhs.availability {
+        return lhs.availability == "recommended"
+      }
+      return lhs.id < rhs.id
+    }
+  }
+
+  private static func sortedDevices(
+    _ devices: [AVCaptureDevice]
+  ) -> [AVCaptureDevice] {
+    devices.sorted { lhs, rhs in
+      if lhs.position != rhs.position {
+        return positionRank(lhs.position) < positionRank(rhs.position)
+      }
+
+      return lhs.localizedName.localizedStandardCompare(rhs.localizedName) ==
+        .orderedAscending
+    }
+  }
+
+  private static func finiteValue(
+    _ value: CGFloat,
+    fallback: CGFloat
+  ) -> Double {
     Double(value.isFinite ? value : fallback)
   }
 
@@ -92,7 +325,9 @@ enum CaptureDeviceDiscovery {
     }
   }
 
-  private static func deviceTypeName(_ deviceType: AVCaptureDevice.DeviceType) -> String {
+  private static func deviceTypeName(
+    _ deviceType: AVCaptureDevice.DeviceType
+  ) -> String {
     switch deviceType {
     case .builtInWideAngleCamera:
       "wide"

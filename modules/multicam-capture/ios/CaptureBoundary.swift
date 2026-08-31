@@ -12,6 +12,8 @@ enum CaptureBoundaryPayloads {
   static func deviceCapabilities(
     discoveredAtMs: Double,
     cameras: [[String: Any]],
+    configurations: [[String: Any]] = [],
+    recommendedConfigurationId: String? = nil,
     isMulticamSupported: Bool,
     isSimulator: Bool
   ) -> [String: Any] {
@@ -41,14 +43,20 @@ enum CaptureBoundaryPayloads {
       ]
     }
 
-    return [
+    var result: [String: Any] = [
       "kind": "device-capabilities",
       "schemaVersion": 1,
       "discoveredAtMs": discoveredAtMs,
       "cameras": cameras,
       "multicam": multicam,
-      "configurations": [[String: Any]]()
+      "configurations": configurations
     ]
+
+    if let recommendedConfigurationId {
+      result["recommendedConfigurationId"] = recommendedConfigurationId
+    }
+
+    return result
   }
 
   static func unavailableResult() -> [String: Any] {
