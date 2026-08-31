@@ -1,6 +1,6 @@
 # Implementation Plan: OpenMulticam Release 1
 
-Status: Phase 2 draft - awaiting human approval
+Status: Phase 2 approved - Phase 3 task breakdown in review
 
 Approved specification: `SPEC.md`
 
@@ -380,11 +380,22 @@ Exit evidence:
 - Partial batch failure retries failed files only.
 - Permanent delete removes clips, manifest, thumbnails, and catalog row after confirmation.
 
+### WP-4.4: Complete Settings and diagnostics
+
+Build native grouped defaults for mode, valid pair, frame rate, audio-route behavior, and haptics. Present current capabilities, Library storage use, permission states, app and privacy information, acknowledgements, support, and a sanitized exportable diagnostics report.
+
+Exit evidence:
+
+- Persisted defaults are revalidated against current device capabilities.
+- Diagnostics contain bounded capability and performance information but no media, private paths, identifiers, analytics, or secrets.
+- Settings remain accessible without capture permission and provide direct Library management.
+
 ### Checkpoint H: Local media workflow complete
 
 - Record, organize, inspect, export, and delete work for every mode.
 - Photos denial does not block share or internal playback.
 - Library remains correct after relaunch and catalog rebuild.
+- Settings and sanitized diagnostics match actual certified behavior.
 
 ## Phase 5: Hardening and human-quality pass
 
@@ -535,6 +546,9 @@ These do not block plan approval:
 - Exact connected iPhone inventory for checkpoints B through J.
 - Final App Store signing and submission strategy, which is outside Release 1 implementation scope.
 
-## Phase 2 approval gate
+## Approval history
 
-Human approval of this plan authorizes Phase 3 task decomposition only. It does not authorize starter migration or implementation. After `tasks/todo.md` is expanded and approved, implementation may begin from WP-0.1.
+- Phase 2 implementation plan approved by the human on 2026-08-31.
+- Phase 3 task decomposition is authorized.
+- Phase 3 decomposition added WP-4.4 only to assign ownership for the already approved FR-14 Settings and diagnostics requirement.
+- Human approval of the expanded `tasks/todo.md` will authorize implementation from T001.
