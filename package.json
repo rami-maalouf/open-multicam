@@ -11,7 +11,7 @@
     "test": "jest --runInBand",
     "test:coverage": "jest --runInBand --coverage",
     "test:native": "bun scripts/check-repository.mjs --native-tests",
-    "test:e2e:sim": "jest --runInBand e2e/simulator",
+    "test:e2e:sim": "bun e2e/simulator/runner.ts",
     "test:e2e:device": "bun e2e/device/runner.ts",
     "check:repository": "bun scripts/check-repository.mjs",
     "doctor": "bunx expo-doctor",
