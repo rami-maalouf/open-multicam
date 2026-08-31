@@ -21,6 +21,17 @@ export type CaptureOrientation = (typeof CAPTURE_ORIENTATIONS)[number];
 export type CaptureProfile = "core1080p";
 export type CaptureCodec = "h264";
 export type CaptureStabilization = "off" | "standard" | "cinematic";
+export type CapturePermissionStatus =
+  | "not-determined"
+  | "authorized"
+  | "denied"
+  | "restricted";
+
+export type CapturePermissions = Readonly<{
+  kind: "capture-permissions";
+  camera: CapturePermissionStatus;
+  microphone: CapturePermissionStatus;
+}>;
 
 export type CameraPosition = "front" | "back" | "unspecified";
 export type CameraDeviceType =

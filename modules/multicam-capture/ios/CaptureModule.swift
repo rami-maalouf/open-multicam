@@ -13,6 +13,22 @@ public final class CaptureModule: Module {
       CaptureDeviceDiscovery.capabilities(isSimulator: Self.isSimulator)
     }
 
+    AsyncFunction("getPermissionStatus") { () -> [String: Any] in
+      CapturePermissions.statusPayload()
+    }
+
+    AsyncFunction("requestCameraPermission") { () async -> [String: Any] in
+      await CapturePermissions.requestCamera()
+    }
+
+    AsyncFunction("requestMicrophonePermission") { () async -> [String: Any] in
+      await CapturePermissions.requestMicrophone()
+    }
+
+    AsyncFunction("openSettings") { () async -> Bool in
+      await CapturePermissions.openSettings()
+    }
+
     AsyncFunction("configure") { (request: [String: Any]) -> [String: Any] in
       self.teardownTerminalState()
       let requestId = request["configurationId"] as? String ?? UUID().uuidString
