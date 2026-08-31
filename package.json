@@ -5,7 +5,17 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start --dev-client",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "lint": "expo lint --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --runInBand",
+    "test:coverage": "jest --runInBand --coverage",
+    "test:native": "bun scripts/check-repository.mjs --native-tests",
+    "test:e2e:sim": "jest --runInBand e2e/simulator",
+    "test:e2e:device": "bun e2e/device/runner.ts",
+    "check:repository": "bun scripts/check-repository.mjs",
+    "doctor": "bunx expo-doctor",
+    "validate": "bun run check:repository && bun run lint && bun run typecheck && bun run test:coverage && bun run doctor"
   },
   "dependencies": {
     "@expo/ui": "~57.0.14",
