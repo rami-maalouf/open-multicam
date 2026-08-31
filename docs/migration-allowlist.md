@@ -43,3 +43,53 @@ eslint.config.js  44af05c397754512a3990df13dc957b116104479ccd9ddfdce74148aee6569
 ```
 
 Before committing T001, compare the starter commit, status, and these hashes to this baseline. Any difference blocks completion until explained by the human.
+
+## T002 identity rewrite
+
+T002 used the starter's app and EAS files only to understand configuration shape. No value carrying product, bundle, entitlement, update, credential, project, channel, or signing identity was copied.
+
+OpenMulticam intentionally has:
+
+- iPhone-only platform configuration with iPad disabled.
+- A minimum deployment target of iOS 18.6.
+- The `openmulticam` URL scheme.
+- Camera, microphone, and add-only Photos descriptions written for this product.
+- No bundle identifier yet. Final Apple identity remains gated near release preparation.
+- No EAS project id, owner, updates URL, submit profile, credential, entitlement, or channel.
+- Embedded updates only. Runtime network updates are disabled for the local-only Release 1 contract.
+
+Run this forbidden-identity check from the OpenMulticam repository:
+
+```bash
+if rg -n 'habittracker|habit-tracker|ripples|Ripples|1e477943-ecf0-4d66-8967-c77e0ec0019c|com\.ramimaalouf\.habittracker|iCloud\.com\.ramimaalouf\.habittracker' app.json eas.json package.json; then
+  exit 1
+fi
+```
+
+## Original asset provenance
+
+The icon and launch artwork were generated with the built-in image-generation tool. No starter or reference-app asset was supplied to the generator.
+
+Final icon prompt:
+
+```text
+Use case: logo-brand
+Asset type: 1024 by 1024 iOS app icon for OpenMulticam
+Primary request: an original, professional symbol for simultaneous two-camera filmmaking. Build the mark from two bold offset viewfinder brackets that overlap into a clean central circular record point, subtly suggesting both an open frame and two synchronized lenses.
+Style/medium: minimal vector-like app icon, strong geometric silhouette, premium native iOS finish, flat shapes with only restrained depth
+Composition/framing: centered mark, generous optical balance, full-bleed square canvas, readable at very small size; do not bake rounded corners into the artwork
+Color palette: near-black ink background, warm signal-coral primary bracket, cool pale-cyan secondary bracket, small off-white central point
+Constraints: completely original; no text; no letters; no existing brand resemblance; no DoubleTake imagery; no literal camera body; no aperture-shutter cliché; no watermark; no mockup; no device frame; no transparency; crisp edges; sRGB-friendly contrast
+```
+
+Final launch-art prompt:
+
+```text
+Use case: precise-object-edit
+Asset type: opaque square launch-screen artwork for OpenMulticam
+Primary request: replace the entire checkerboard background with one perfectly uniform solid near-black ink color #05090B. Keep the geometric mark centered, but scale the complete mark down proportionally to occupy about 52 percent of the square width, leaving generous equal dark padding on every side.
+Invariants: preserve the coral left bracket, pale-cyan right bracket, intentional near-black center ring, off-white center circle, mark geometry, overlap, colors, and crisp smooth edges
+Constraints: opaque full-bleed square background; absolutely no checkerboard; no transparency; no texture; no vignette; no speckles; no shadow; no glow; no text; no watermark; no redesign; no extra elements
+```
+
+Both project files are opaque 1024 by 1024 RGB PNGs. The original generator outputs remain outside the repository.

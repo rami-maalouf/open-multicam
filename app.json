@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "OpenMulticam",
+    "slug": "open-multicam",
+    "description": "Private, native multicamera video recording for iPhone.",
+    "version": "1.0.0",
+    "platforms": ["ios"],
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "scheme": "openmulticam",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "deploymentTarget": "18.6",
+      "icon": "./assets/icon.png",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "OpenMulticam uses your iPhone cameras to preview and record the camera views you select.",
+        "NSMicrophoneUsageDescription": "OpenMulticam uses the selected microphone to record sound with your videos.",
+        "NSPhotoLibraryAddUsageDescription": "OpenMulticam saves videos to Photos only when you choose Export to Photos."
+      }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 260,
+          "resizeMode": "contain",
+          "backgroundColor": "#05090B",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#05090B"
+          }
+        }
+      ],
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": false,
+          "supportsPictureInPicture": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "enabled": false
+    }
+  }
+}
