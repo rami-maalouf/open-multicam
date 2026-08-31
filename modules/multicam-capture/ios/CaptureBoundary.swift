@@ -62,4 +62,8 @@ final class CaptureBoundaryEventSequence {
       "state": state
     ]
   }
+
+  func invalidateCurrentState() {
+    currentStateKind = nil
+  }
 }

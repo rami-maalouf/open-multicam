@@ -53,4 +53,15 @@ final class CaptureModuleTests: XCTestCase {
     XCTAssertEqual(previewing["sequence"] as? Int, 2)
     XCTAssertNil(events.stateChanged(to: [:]))
   }
+
+  func testLifecycleInvalidationPreservesEventSequence() throws {
+    let events = CaptureBoundaryEventSequence()
+    let firstMount = try XCTUnwrap(events.stateChanged(to: ["kind": "idle"]))
+
+    events.invalidateCurrentState()
+
+    let foreground = try XCTUnwrap(events.stateChanged(to: ["kind": "idle"]))
+    XCTAssertEqual(firstMount["sequence"] as? Int, 1)
+    XCTAssertEqual(foreground["sequence"] as? Int, 2)
+  }
 }

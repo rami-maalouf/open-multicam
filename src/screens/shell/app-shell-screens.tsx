@@ -1,13 +1,72 @@
 import { Link } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import {
+  CaptureSurfaceView,
+  multicamCaptureModule,
+} from "../../../modules/multicam-capture";
 import { AdaptiveMaterial } from "@/components/adaptive-material";
 import { AppText } from "@/components/app-text";
 import { Icon } from "@/components/icon";
+import type {
+  CaptureBridgeEvent,
+  CaptureState,
+} from "@/core/capture/types";
 import { colors, radii, shadows, spacing } from "@/theme";
 
 export function CaptureScreen() {
+  const [availabilityMessage, setAvailabilityMessage] = useState(
+    "Checking camera compatibility…",
+  );
+  const [surfaceStateKind, setSurfaceStateKind] =
+    useState<CaptureState["kind"]>("idle");
+  const latestEventSequence = useRef(0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    multicamCaptureModule
+      .discoverCapabilities()
+      .then((capabilities) => {
+        if (!isMounted) {
+          return;
+        }
+
+        if (capabilities.multicam.kind === "supported") {
+          setAvailabilityMessage("Dual-camera capture is available.");
+          return;
+        }
+
+        setAvailabilityMessage(capabilities.multicam.reason.message);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setAvailabilityMessage("Camera compatibility could not be checked.");
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleCaptureEvent = useCallback(
+    ({ nativeEvent }: { nativeEvent: CaptureBridgeEvent }) => {
+      if (
+        nativeEvent.kind !== "state-changed" ||
+        nativeEvent.sequence <= latestEventSequence.current
+      ) {
+        return;
+      }
+
+      latestEventSequence.current = nativeEvent.sequence;
+      setSurfaceStateKind(nativeEvent.state.kind);
+    },
+    [],
+  );
+
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.captureScreen}>
       <View style={styles.captureTopBar}>
@@ -61,19 +120,31 @@ export function CaptureScreen() {
 
       <View
         accessible
-        accessibilityLabel="Camera preview placeholder"
+        accessibilityLabel={`Camera preview. Native state ${surfaceStateKind}. ${availabilityMessage}`}
         accessibilityRole="image"
-        style={styles.previewPlaceholder}
+        style={styles.previewSurface}
       >
-        <View style={styles.previewMark}>
-          <Icon name="viewfinder" size="prominent" tone="previewLabel" />
+        <CaptureSurfaceView
+          accessible={false}
+          onCaptureEvent={handleCaptureEvent}
+          style={StyleSheet.absoluteFill}
+          testID="native-capture-surface"
+        />
+        <View pointerEvents="none" style={styles.previewOverlay}>
+          <View style={styles.previewMark}>
+            <Icon name="viewfinder" size="prominent" tone="previewLabel" />
+          </View>
+          <AppText
+            style={styles.previewTitle}
+            tone="previewLabel"
+            variant="title"
+          >
+            Two perspectives. One take.
+          </AppText>
+          <AppText style={styles.previewCopy} tone="previewSecondary">
+            {availabilityMessage}
+          </AppText>
         </View>
-        <AppText tone="previewLabel" variant="title">
-          Two perspectives. One take.
-        </AppText>
-        <AppText style={styles.previewCopy} tone="previewSecondary">
-          Camera availability will appear here after the native device check.
-        </AppText>
       </View>
 
       <View style={styles.captureFooter}>
@@ -250,7 +321,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 44,
   },
-  previewPlaceholder: {
+  previewSurface: {
+    flex: 1,
+    overflow: "hidden",
+  },
+  previewOverlay: {
     alignItems: "center",
     flex: 1,
     justifyContent: "center",
@@ -269,6 +344,10 @@ const styles = StyleSheet.create({
   previewCopy: {
     marginTop: spacing.small,
     maxWidth: 320,
+    textAlign: "center",
+  },
+  previewTitle: {
+    maxWidth: 360,
     textAlign: "center",
   },
   captureFooter: {
