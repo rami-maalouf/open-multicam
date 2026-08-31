@@ -92,6 +92,13 @@ struct CaptureFailure: Error, Equatable {
     recoveryAction: "select-configuration"
   )
 
+  static let sessionConfigurationFailed = CaptureFailure(
+    code: "session_configuration_failed",
+    message: "The camera session could not be prepared.",
+    retryable: true,
+    recoveryAction: "retry"
+  )
+
   var payload: [String: Any] {
     [
       "kind": "capture-error",

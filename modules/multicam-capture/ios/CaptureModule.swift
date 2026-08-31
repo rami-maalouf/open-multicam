@@ -29,7 +29,7 @@ public final class CaptureModule: Module {
       await CapturePermissions.openSettings()
     }
 
-    AsyncFunction("configure") { (request: [String: Any]) -> [String: Any] in
+    AsyncFunction("configure") { (request: [String: Any]) async -> [String: Any] in
       self.teardownTerminalState()
       let requestId = request["configurationId"] as? String ?? UUID().uuidString
       let transition = self.stateMachine.send(
@@ -41,9 +41,20 @@ public final class CaptureModule: Module {
       }
 
       self.publish(transition)
-      let failure = self.unavailableFailure
-      self.publish(self.stateMachine.send(.fail(failure)))
-      return failure.resultPayload
+      let result = await CaptureSessionService.shared.configure(
+        request: request,
+        isSimulator: Self.isSimulator
+      )
+
+      switch result {
+      case let .success(preset):
+        let completed = self.stateMachine.send(.finishConfiguration(preset: preset))
+        self.publish(completed)
+        return self.resultPayload(for: completed)
+      case let .failure(failure):
+        self.publish(self.stateMachine.send(.fail(failure)))
+        return failure.resultPayload
+      }
     }
 
     AsyncFunction("startRecording") { () -> [String: Any] in
@@ -73,6 +84,7 @@ public final class CaptureModule: Module {
     }
 
     OnDestroy {
+      CaptureSessionService.shared.tearDown()
       self.publish(self.stateMachine.send(.teardown))
     }
   }
