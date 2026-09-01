@@ -120,7 +120,10 @@ enum CaptureDeviceDiscovery {
 
   static func snapshot(isSimulator: Bool) -> CaptureCapabilitySnapshot {
     let discovery = discoverySession
-    let devices = sortedDevices(discovery.devices)
+    let devices = videoDevices(
+      discoveredDevices: discovery.devices,
+      isSimulator: isSimulator
+    )
     let singleConfigurations = devices.compactMap {
       singleConfiguration(for: $0, isSimulator: isSimulator)
     }
@@ -144,7 +147,10 @@ enum CaptureDeviceDiscovery {
   }
 
   static func preferredVideoDevice() -> AVCaptureDevice? {
-    let devices = sortedDevices(discoverySession.devices)
+    let devices = videoDevices(
+      discoveredDevices: discoverySession.devices,
+      isSimulator: isSimulatorBuild
+    )
     return devices.first(where: { $0.position == .back }) ?? devices.first
   }
 
@@ -220,6 +226,31 @@ enum CaptureDeviceDiscovery {
       mediaType: .video,
       position: .unspecified
     )
+  }
+
+  private static var isSimulatorBuild: Bool {
+#if targetEnvironment(simulator)
+    true
+#else
+    false
+#endif
+  }
+
+  private static func videoDevices(
+    discoveredDevices: [AVCaptureDevice],
+    isSimulator: Bool
+  ) -> [AVCaptureDevice] {
+    let devices = sortedDevices(discoveredDevices)
+
+    guard
+      isSimulator,
+      devices.isEmpty,
+      let defaultVideoDevice = AVCaptureDevice.default(for: .video)
+    else {
+      return devices
+    }
+
+    return [defaultVideoDevice]
   }
 
   private static func singleConfiguration(

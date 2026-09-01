@@ -57,7 +57,7 @@ const simulatorCapabilities = {
     reason: {
       kind: "camera-unavailable",
       message:
-        "No simulator camera was found. Start SimCam, then reopen OpenMulticam.",
+        "No simulator camera source was found. Start the EAS Camera helper or SimCam, then reopen OpenMulticam.",
     },
   },
   configurations: [],
@@ -83,7 +83,7 @@ const simcamCapabilities = {
     reason: {
       kind: "multicam-unsupported",
       message:
-        "SimCam is connected. Single-camera preview is available; dual-camera capture still requires a physical iPhone.",
+        "Simulator camera input is connected. Single-camera preview is available; dual-camera capture still requires a physical iPhone.",
     },
   },
   configurations: [
@@ -150,7 +150,7 @@ describe("native capture surface", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "No simulator camera was found. Start SimCam, then reopen OpenMulticam.",
+          "No simulator camera source was found. Start the EAS Camera helper or SimCam, then reopen OpenMulticam.",
         ),
       ).toBeTruthy();
     });
@@ -163,7 +163,7 @@ describe("native capture surface", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "No simulator camera was found. Start SimCam, then reopen OpenMulticam.",
+          "No simulator camera source was found. Start the EAS Camera helper or SimCam, then reopen OpenMulticam.",
         ),
       ).toBeTruthy();
     });

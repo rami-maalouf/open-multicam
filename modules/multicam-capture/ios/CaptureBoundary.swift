@@ -2,9 +2,9 @@ import Foundation
 
 enum CaptureBoundaryPayloads {
   static let simulatorCameraUnavailableMessage =
-    "No simulator camera was found. Start SimCam, then reopen OpenMulticam."
+    "No simulator camera source was found. Start the EAS Camera helper or SimCam, then reopen OpenMulticam."
   static let simulatorSingleCameraMessage =
-    "SimCam is connected. Single-camera preview is available; dual-camera capture still requires a physical iPhone."
+    "Simulator camera input is connected. Single-camera preview is available; dual-camera capture still requires a physical iPhone."
   static let deviceSingleCameraMessage =
     "Single-camera preview is available, but this iPhone does not support multicamera capture."
   static let unavailableMessage = "Camera discovery is not active yet."
