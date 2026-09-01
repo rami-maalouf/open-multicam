@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import { useColorScheme } from "react-native";
 
 import { AccessibilityPreferencesProvider } from "@/foundation/accessibility/preferences";
+import "@/core/telemetry";
 import { colors } from "@/theme";
 
 export default function RootLayout() {

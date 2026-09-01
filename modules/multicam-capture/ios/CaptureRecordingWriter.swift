@@ -3,11 +3,58 @@ import CoreImage
 import Foundation
 
 final class CaptureRecordingWriter: @unchecked Sendable {
+  private struct PipDiagnostics {
+    var synchronizedCollections = 0
+    var primaryFramesSeen = 0
+    var secondaryFramesSeen = 0
+    var validFramePairs = 0
+    var writerUnavailableCount = 0
+    var inputNotReadyCount = 0
+    var pixelBufferPoolMissingCount = 0
+    var bufferAllocationFailureCount = 0
+    var appendRejectionCount = 0
+    var framesAppended = 0
+
+    func payload(writer: AVAssetWriter?) -> [String: Any] {
+      var result: [String: Any] = [
+        "synchronizedCollections": synchronizedCollections,
+        "primaryFramesSeen": primaryFramesSeen,
+        "secondaryFramesSeen": secondaryFramesSeen,
+        "validFramePairs": validFramePairs,
+        "writerUnavailableCount": writerUnavailableCount,
+        "inputNotReadyCount": inputNotReadyCount,
+        "pixelBufferPoolMissingCount": pixelBufferPoolMissingCount,
+        "bufferAllocationFailureCount": bufferAllocationFailureCount,
+        "appendRejectionCount": appendRejectionCount,
+        "framesAppended": framesAppended,
+        "writerStatus": Self.statusName(writer?.status ?? .unknown)
+      ]
+
+      if let error = writer?.error as NSError? {
+        result["writerErrorDomain"] = error.domain
+        result["writerErrorCode"] = error.code
+      }
+      return result
+    }
+
+    private static func statusName(_ status: AVAssetWriter.Status) -> String {
+      switch status {
+      case .unknown: "unknown"
+      case .writing: "writing"
+      case .completed: "completed"
+      case .failed: "failed"
+      case .cancelled: "cancelled"
+      @unknown default: "future"
+      }
+    }
+  }
+
   private struct OutputWriter {
     let output: AVCaptureVideoDataOutput?
     let writer: AVAssetWriter
     let videoInput: AVAssetWriterInput
     let pixelBufferAdaptor: AVAssetWriterInputPixelBufferAdaptor?
+    let compositePixelBufferPool: CVPixelBufferPool?
     let audioInput: AVAssetWriterInput?
   }
 
@@ -20,6 +67,9 @@ final class CaptureRecordingWriter: @unchecked Sendable {
   private var startedAt: CMTime?
   private var lastVideoTime: CMTime?
   private var hasWrittenAudio = false
+  private var pipDiagnostics = PipDiagnostics()
+  private var latestPipPrimaryBuffer: CVPixelBuffer?
+  private var latestPipSecondaryBuffer: CVPixelBuffer?
 
   init(
     context: CaptureRecordingContext,
@@ -145,8 +195,13 @@ final class CaptureRecordingWriter: @unchecked Sendable {
 
   func finish() async -> Result<CaptureWriterResult, CaptureFailure> {
     guard let startedAt, let lastVideoTime else {
+      let failure = preset.mode == .pip
+        ? CaptureFailure.recordingTooShort.withDiagnostics(
+            pipDiagnostics.payload(writer: writers.first?.writer)
+          )
+        : CaptureFailure.recordingTooShort
       writers.forEach { $0.writer.cancelWriting() }
-      return .failure(.recordingTooShort)
+      return .failure(failure)
     }
 
     writers.forEach {
@@ -213,18 +268,37 @@ final class CaptureRecordingWriter: @unchecked Sendable {
     writer.add(videoInput)
 
     let pixelBufferAdaptor: AVAssetWriterInputPixelBufferAdaptor?
+    let compositePixelBufferPool: CVPixelBufferPool?
     if isComposite {
+      let pixelBufferAttributes: [String: Any] = [
+        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+        kCVPixelBufferWidthKey as String: context.preset.width,
+        kCVPixelBufferHeightKey as String: context.preset.height,
+        kCVPixelBufferIOSurfacePropertiesKey as String: [:],
+        kCVPixelBufferMetalCompatibilityKey as String: true,
+        kCVPixelBufferCGBitmapContextCompatibilityKey as String: true
+      ]
       pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(
         assetWriterInput: videoInput,
-        sourcePixelBufferAttributes: [
-          kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-          kCVPixelBufferWidthKey as String: context.preset.width,
-          kCVPixelBufferHeightKey as String: context.preset.height,
-          kCVPixelBufferIOSurfacePropertiesKey as String: [:]
-        ]
+        sourcePixelBufferAttributes: pixelBufferAttributes
       )
+
+      var pool: CVPixelBufferPool?
+      guard
+        CVPixelBufferPoolCreate(
+          nil,
+          nil,
+          pixelBufferAttributes as CFDictionary,
+          &pool
+        ) == kCVReturnSuccess,
+        let pool
+      else {
+        throw CaptureFailure.recordingPreparationFailed
+      }
+      compositePixelBufferPool = pool
     } else {
       pixelBufferAdaptor = nil
+      compositePixelBufferPool = nil
     }
 
     let audioInput: AVAssetWriterInput?
@@ -257,34 +331,71 @@ final class CaptureRecordingWriter: @unchecked Sendable {
       writer: writer,
       videoInput: videoInput,
       pixelBufferAdaptor: pixelBufferAdaptor,
+      compositePixelBufferPool: compositePixelBufferPool,
       audioInput: audioInput
     )
   }
 
   private func appendPip(_ collection: AVCaptureSynchronizedDataCollection) {
+    pipDiagnostics.synchronizedCollections += 1
     guard
       videoOutputs.count == 2,
       let writer = writers.first,
       let adaptor = writer.pixelBufferAdaptor,
-      let compositorContext,
-      writer.videoInput.isReadyForMoreMediaData,
-      let primary = synchronizedVideoSample(
-        from: collection,
-        output: videoOutputs[0]
-      ),
-      let secondary = synchronizedVideoSample(
-        from: collection,
-        output: videoOutputs[1]
-      ),
-      let primaryBuffer = CMSampleBufferGetImageBuffer(primary),
-      let secondaryBuffer = CMSampleBufferGetImageBuffer(secondary),
-      let pool = adaptor.pixelBufferPool
+      let compositorContext
     else {
       return
     }
 
-    let time = CMSampleBufferGetPresentationTimeStamp(primary)
+    let primarySample = synchronizedVideoSample(
+      from: collection,
+      output: videoOutputs[0]
+    )
+    let secondarySample = synchronizedVideoSample(
+      from: collection,
+      output: videoOutputs[1]
+    )
+
+    if
+      let secondarySample,
+      let secondaryBuffer = CMSampleBufferGetImageBuffer(secondarySample)
+    {
+      latestPipSecondaryBuffer = secondaryBuffer
+      pipDiagnostics.secondaryFramesSeen += 1
+    }
+
+    guard let primarySample else {
+      return
+    }
+    guard let primaryBuffer = CMSampleBufferGetImageBuffer(primarySample) else {
+      return
+    }
+    latestPipPrimaryBuffer = primaryBuffer
+    pipDiagnostics.primaryFramesSeen += 1
+
+    guard
+      let primaryBuffer = latestPipPrimaryBuffer,
+      let secondaryBuffer = latestPipSecondaryBuffer
+    else {
+      return
+    }
+    pipDiagnostics.validFramePairs += 1
+
+    let time = CMSampleBufferGetPresentationTimeStamp(primarySample)
     beginIfNeeded(at: time)
+
+    guard writer.writer.status == .writing else {
+      pipDiagnostics.writerUnavailableCount += 1
+      return
+    }
+    guard writer.videoInput.isReadyForMoreMediaData else {
+      pipDiagnostics.inputNotReadyCount += 1
+      return
+    }
+    guard let pool = writer.compositePixelBufferPool else {
+      pipDiagnostics.pixelBufferPoolMissingCount += 1
+      return
+    }
 
     autoreleasepool {
       var destination: CVPixelBuffer?
@@ -292,6 +403,7 @@ final class CaptureRecordingWriter: @unchecked Sendable {
         CVPixelBufferPoolCreatePixelBuffer(nil, pool, &destination) == kCVReturnSuccess,
         let destination
       else {
+        pipDiagnostics.bufferAllocationFailureCount += 1
         return
       }
 
@@ -329,7 +441,10 @@ final class CaptureRecordingWriter: @unchecked Sendable {
         colorSpace: CGColorSpaceCreateDeviceRGB()
       )
       if adaptor.append(destination, withPresentationTime: time) {
+        pipDiagnostics.framesAppended += 1
         updateLastVideoTime(time)
+      } else {
+        pipDiagnostics.appendRejectionCount += 1
       }
     }
   }

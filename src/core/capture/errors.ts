@@ -207,6 +207,7 @@ export type CaptureError = {
     message: string;
     retryable: boolean;
     recoveryAction: CaptureRecoveryAction;
+    diagnostics?: Readonly<Record<string, unknown>>;
   }>;
 }[CaptureErrorCode];
 

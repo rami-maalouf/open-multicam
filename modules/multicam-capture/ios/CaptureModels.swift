@@ -70,6 +70,21 @@ struct CaptureFailure: Error, Equatable {
   let message: String
   let retryable: Bool
   let recoveryAction: String
+  let diagnostics: [String: Any]?
+
+  init(
+    code: String,
+    message: String,
+    retryable: Bool,
+    recoveryAction: String,
+    diagnostics: [String: Any]? = nil
+  ) {
+    self.code = code
+    self.message = message
+    self.retryable = retryable
+    self.recoveryAction = recoveryAction
+    self.diagnostics = diagnostics
+  }
 
   static let invalidStateTransition = CaptureFailure(
     code: "invalid_state_transition",
@@ -149,17 +164,41 @@ struct CaptureFailure: Error, Equatable {
   )
 
   var payload: [String: Any] {
-    [
+    var result: [String: Any] = [
       "kind": "capture-error",
       "code": code,
       "message": message,
       "retryable": retryable,
       "recoveryAction": recoveryAction
     ]
+    if let diagnostics {
+      result["diagnostics"] = diagnostics
+    }
+    return result
   }
 
   var resultPayload: [String: Any] {
     ["ok": false, "error": payload]
+  }
+
+  func withDiagnostics(_ diagnostics: [String: Any]) -> CaptureFailure {
+    CaptureFailure(
+      code: code,
+      message: message,
+      retryable: retryable,
+      recoveryAction: recoveryAction,
+      diagnostics: diagnostics
+    )
+  }
+
+  static func == (lhs: CaptureFailure, rhs: CaptureFailure) -> Bool {
+    lhs.code == rhs.code &&
+      lhs.message == rhs.message &&
+      lhs.retryable == rhs.retryable &&
+      lhs.recoveryAction == rhs.recoveryAction &&
+      NSDictionary(dictionary: lhs.diagnostics ?? [:]).isEqual(
+        to: rhs.diagnostics ?? [:]
+      )
   }
 }
 

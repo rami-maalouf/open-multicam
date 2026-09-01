@@ -28,6 +28,10 @@ import type {
   DeviceCapabilities,
   SupportedCaptureConfiguration,
 } from "@/core/capture/types";
+import {
+  reportRecorderFailure,
+  reportRecorderSuccess,
+} from "@/core/telemetry/recorder";
 import { playHaptic } from "@/foundation/haptics/haptics";
 import { colors, radii, spacing } from "@/theme";
 
@@ -379,6 +383,7 @@ export function CaptureScreen() {
       setElapsedMs(0);
       const result = await multicamCaptureModule.startRecording();
       if (!result.ok) {
+        await reportRecorderFailure("start", result.error);
         setPhase("failed");
         setMessage(result.error.message);
         await playHaptic("error");
@@ -399,11 +404,13 @@ export function CaptureScreen() {
       setRecordingStartedAt(null);
       isUserStopping.current = false;
       if (!result.ok) {
+        await reportRecorderFailure("stop", result.error);
         setPhase("failed");
         setMessage(result.error.message);
         await playHaptic("error");
         return;
       }
+      await reportRecorderSuccess();
       await playHaptic("success");
       if (capabilities !== null && selectedConfigurationId !== null) {
         await configure(capabilities, selectedConfigurationId);

@@ -8,6 +8,8 @@ module.exports = {
   ],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
+    "^tuft-telemetry/expo$":
+      "<rootDir>/tests/mocks/tuft-telemetry-expo.ts",
   },
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",
