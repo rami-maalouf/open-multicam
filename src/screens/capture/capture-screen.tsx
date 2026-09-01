@@ -1,4 +1,4 @@
-import { Link } from "expo-router";
+import { Link, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AppState,
@@ -278,6 +278,13 @@ export function CaptureScreen() {
     phaseRef.current = phase;
   }, [phase]);
 
+  useFocusEffect(
+    useCallback(() => {
+      const refreshTimer = setTimeout(() => void refresh(), 0);
+      return () => clearTimeout(refreshTimer);
+    }, [refresh]),
+  );
+
   useEffect(() => {
     const shouldRetry =
       phase === "unavailable" &&
@@ -296,8 +303,6 @@ export function CaptureScreen() {
   }, [capabilities, phase, rediscoverSimulatorCamera]);
 
   useEffect(() => {
-    const initialRefresh = setTimeout(() => void refresh(), 0);
-
     const appStateSubscription = AppState.addEventListener(
       "change",
       (nextState) => {
@@ -337,7 +342,6 @@ export function CaptureScreen() {
     );
 
     return () => {
-      clearTimeout(initialRefresh);
       appStateSubscription.remove();
       moduleSubscription.remove();
     };

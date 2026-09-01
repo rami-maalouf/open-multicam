@@ -14,6 +14,7 @@ const mockStartRecording = jest.fn();
 const mockStopRecording = jest.fn();
 const mockOpenSettings = jest.fn();
 let mockModuleEventListener: ((event: unknown) => void) | null = null;
+let mockCaptureFocusEffect: (() => void | (() => void)) | null = null;
 
 jest.mock("../../modules/multicam-capture", () => {
   const React = require("react");
@@ -43,9 +44,17 @@ jest.mock("../../modules/multicam-capture", () => {
   };
 });
 
-jest.mock("expo-router", () => ({
-  Link: ({ children }: { children: ReactNode }) => children,
-}));
+jest.mock("expo-router", () => {
+  const React = require("react");
+
+  return {
+    Link: ({ children }: { children: ReactNode }) => children,
+    useFocusEffect: (callback: () => void | (() => void)) => {
+      mockCaptureFocusEffect = callback;
+      React.useEffect(callback, [callback]);
+    },
+  };
+});
 
 const simulatorCapabilities = {
   kind: "device-capabilities",
@@ -109,6 +118,7 @@ const simcamCapabilities = {
 describe("native capture surface", () => {
   beforeEach(() => {
     mockModuleEventListener = null;
+    mockCaptureFocusEffect = null;
     mockDiscoverCapabilities.mockReset();
     mockDiscoverCapabilities.mockResolvedValue(simulatorCapabilities);
     mockGetPermissionStatus.mockReset();
@@ -289,6 +299,26 @@ describe("native capture surface", () => {
     await waitFor(() => {
       expect(mockStartRecording).toHaveBeenCalledTimes(1);
       expect(mockStopRecording).toHaveBeenCalledTimes(1);
+      expect(mockConfigure).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
+    });
+  });
+
+  it("reconfigures the camera when the capture route regains focus", async () => {
+    mockDiscoverCapabilities.mockResolvedValue(simcamCapabilities);
+    const screen = render(<CaptureScreen />);
+
+    await waitFor(() => {
+      expect(mockConfigure).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
+    });
+
+    act(() => {
+      mockCaptureFocusEffect?.();
+    });
+
+    await waitFor(() => {
+      expect(mockDiscoverCapabilities).toHaveBeenCalledTimes(2);
       expect(mockConfigure).toHaveBeenCalledTimes(2);
       expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
     });
