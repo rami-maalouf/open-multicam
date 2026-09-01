@@ -63,7 +63,7 @@ struct CaptureCapabilitySnapshot {
       let cameraAId = request["cameraAId"] as? String,
       let orientationValue = request["orientation"] as? String,
       let orientation = CaptureOrientation(rawValue: orientationValue),
-      let frameRate = request["frameRate"] as? Int
+      let frameRate = Self.integerValue(request["frameRate"])
     else {
       return .failure(.invalidRequest)
     }
@@ -95,6 +95,19 @@ struct CaptureCapabilitySnapshot {
         stabilization: "standard"
       )
     )
+  }
+
+  private static func integerValue(_ value: Any?) -> Int? {
+    switch value {
+    case let integer as Int:
+      integer
+    case let double as Double where double.rounded() == double:
+      Int(double)
+    case let number as NSNumber where number.doubleValue.rounded() == number.doubleValue:
+      number.intValue
+    default:
+      nil
+    }
   }
 }
 
