@@ -15,6 +15,7 @@ final class CaptureModuleTests: XCTestCase {
     XCTAssertEqual(payload["kind"] as? String, "device-capabilities")
     XCTAssertEqual(payload["schemaVersion"] as? Int, 1)
     XCTAssertEqual(payload["discoveredAtMs"] as? Double, 1_234)
+    XCTAssertEqual(payload["isSimulator"] as? Bool, true)
     XCTAssertEqual(multicam["kind"] as? String, "unsupported")
     XCTAssertEqual(reason["kind"] as? String, "camera-unavailable")
     XCTAssertEqual(
@@ -56,6 +57,7 @@ final class CaptureModuleTests: XCTestCase {
     let multicam = try XCTUnwrap(payload["multicam"] as? [String: Any])
 
     XCTAssertEqual(multicam["kind"] as? String, "supported")
+    XCTAssertEqual(payload["isSimulator"] as? Bool, false)
     XCTAssertNil(multicam["reason"])
   }
 

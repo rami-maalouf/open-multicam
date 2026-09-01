@@ -48,6 +48,7 @@ const capabilities: DeviceCapabilities = {
   kind: "device-capabilities",
   schemaVersion: 1,
   discoveredAtMs: 1_788_195_600_000,
+  isSimulator: false,
   cameras,
   multicam: { kind: "supported" },
   configurations: [

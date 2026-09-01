@@ -146,6 +146,7 @@ export type DeviceCapabilities = Readonly<{
   kind: "device-capabilities";
   schemaVersion: 1;
   discoveredAtMs: number;
+  isSimulator: boolean;
   cameras: readonly CameraDescriptor[];
   multicam:
     | Readonly<{ kind: "supported" }>

@@ -42,6 +42,8 @@ type CapturePhase =
   | "unavailable"
   | "failed";
 
+const simulatorCameraRetryMs = 1_000;
+
 function supportedConfigurations(
   capabilities: DeviceCapabilities,
 ): readonly SupportedCaptureConfiguration[] {
@@ -137,6 +139,7 @@ export function CaptureScreen() {
   const moduleEventSequence = useRef(0);
   const currentConfigurationId = useRef<string | null>(null);
   const isUserStopping = useRef(false);
+  const isRediscoveringSimulatorCamera = useRef(false);
   const phaseRef = useRef<CapturePhase>(phase);
 
   const configurations = useMemo(
@@ -246,9 +249,47 @@ export function CaptureScreen() {
     }
   }, [configure]);
 
+  const rediscoverSimulatorCamera = useCallback(async () => {
+    if (isRediscoveringSimulatorCamera.current) {
+      return;
+    }
+
+    isRediscoveringSimulatorCamera.current = true;
+    try {
+      const discovered = await multicamCaptureModule.discoverCapabilities();
+      if (supportedConfigurations(discovered).length === 0) {
+        return;
+      }
+
+      setCapabilities(discovered);
+      await configure(discovered, currentConfigurationId.current ?? undefined);
+    } catch {
+      return;
+    } finally {
+      isRediscoveringSimulatorCamera.current = false;
+    }
+  }, [configure]);
+
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
+
+  useEffect(() => {
+    const shouldRetry =
+      phase === "unavailable" &&
+      capabilities?.isSimulator === true &&
+      capabilities.cameras.length === 0;
+
+    if (!shouldRetry) {
+      return;
+    }
+
+    const retryTimer = setInterval(() => {
+      void rediscoverSimulatorCamera();
+    }, simulatorCameraRetryMs);
+
+    return () => clearInterval(retryTimer);
+  }, [capabilities, phase, rediscoverSimulatorCamera]);
 
   useEffect(() => {
     const initialRefresh = setTimeout(() => void refresh(), 0);

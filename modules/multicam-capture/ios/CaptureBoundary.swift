@@ -47,6 +47,7 @@ enum CaptureBoundaryPayloads {
       "kind": "device-capabilities",
       "schemaVersion": 1,
       "discoveredAtMs": discoveredAtMs,
+      "isSimulator": isSimulator,
       "cameras": cameras,
       "multicam": multicam,
       "configurations": configurations

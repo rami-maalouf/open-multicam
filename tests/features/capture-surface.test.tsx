@@ -51,6 +51,7 @@ const simulatorCapabilities = {
   kind: "device-capabilities",
   schemaVersion: 1,
   discoveredAtMs: 1_234,
+  isSimulator: true,
   cameras: [],
   multicam: {
     kind: "unsupported",
@@ -155,6 +156,32 @@ describe("native capture surface", () => {
       ).toBeTruthy();
     });
     expect(mockDiscoverCapabilities).toHaveBeenCalledTimes(1);
+  });
+
+  it("detects a simulator camera injected after the app launches", async () => {
+    mockDiscoverCapabilities
+      .mockResolvedValueOnce(simulatorCapabilities)
+      .mockResolvedValue(simcamCapabilities);
+
+    const screen = render(<CaptureScreen />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "No simulator camera source was found. Start the EAS Camera helper or SimCam, then reopen OpenMulticam.",
+        ),
+      ).toBeTruthy();
+    });
+
+    await waitFor(
+      () => {
+        expect(screen.getByText("SimCam Back")).toBeTruthy();
+      },
+      { timeout: 2_000 },
+    );
+
+    expect(mockDiscoverCapabilities).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
   });
 
   it("accepts only newer documented state events", async () => {
