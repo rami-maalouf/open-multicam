@@ -103,10 +103,12 @@ final class CaptureStateMachine {
       }
 
     case let .beginConfiguration(requestId):
-      guard state == .idle else {
+      switch state {
+      case .idle, .previewing:
+        return .success(.configuring(requestId: requestId))
+      default:
         return .failure(.invalidStateTransition)
       }
-      return .success(.configuring(requestId: requestId))
 
     case let .finishConfiguration(preset):
       guard case .configuring = state else {

@@ -133,6 +133,33 @@ final class CaptureStateMachineTests: XCTestCase {
     )
   }
 
+  func testPreviewCanReconfigureWhileRecordingStatesRejectIt() {
+    let previewMachine = CaptureStateMachine(
+      initialState: .previewing(preset: preset)
+    )
+    assertAccepted(
+      previewMachine.send(.beginConfiguration(requestId: "switch-camera")),
+      current: .configuring(requestId: "switch-camera")
+    )
+
+    let recordingStates: [CaptureState] = [
+      .preparing(recordingSetId: "set-1", preset: preset),
+      .ready(recordingSetId: "set-1", preset: preset),
+      .starting(recordingSetId: "set-1", preset: preset),
+      .recording(recordingSetId: "set-1", preset: preset, startedAtMs: 1),
+      .stopping(recordingSetId: "set-1", reason: .userRequested),
+      .finalizing(recordingSetId: "set-1")
+    ]
+
+    for state in recordingStates {
+      let machine = CaptureStateMachine(initialState: state)
+      assertRejected(
+        machine.send(.beginConfiguration(requestId: "switch-camera"))
+      )
+      XCTAssertEqual(machine.state, state)
+    }
+  }
+
   func testFailureAndInterruptionPreserveRecordingIdentity() {
     let failure = CaptureFailure(
       code: "writer_not_ready",
