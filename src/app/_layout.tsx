@@ -48,6 +48,10 @@ export default function RootLayout() {
             options={{ headerLargeTitle: true, title: "Library" }}
           />
           <Stack.Screen
+            name="library/[recordingSetId]"
+            options={{ title: "Take" }}
+          />
+          <Stack.Screen
             name="settings"
             options={{ headerLargeTitle: true, title: "Settings" }}
           />
