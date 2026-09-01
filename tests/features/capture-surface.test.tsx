@@ -373,6 +373,14 @@ describe("native capture surface", () => {
       configurations: [
         {
           ...simcamCapabilities.configurations[0],
+          id: "pip:back:front",
+          mode: "pip",
+          output: "composite-file",
+          cameraIds: ["back", "front"],
+          frameRates: [24, 25, 30],
+        },
+        {
+          ...simcamCapabilities.configurations[0],
           id: "discrete:back:front",
           mode: "discrete",
           output: "dual-files",
@@ -385,14 +393,27 @@ describe("native capture surface", () => {
           cameraIds: ["back"],
         },
       ],
-      recommendedConfigurationId: "discrete:back:front",
+      recommendedConfigurationId: "pip:back:front",
     });
     const screen = render(<CaptureScreen />);
 
     const pickerButton = await screen.findByRole("button", {
       name: "Cameras: Wide + Front",
     });
+    await waitFor(() => {
+      expect(mockConfigure).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          mode: "pip",
+          output: "composite-file",
+          cameraAId: "back",
+          cameraBId: "front",
+        }),
+      );
+    });
     fireEvent.press(pickerButton);
+    expect(screen.getByText("Picture in picture")).toBeTruthy();
+    expect(screen.getByText("Two separate videos")).toBeTruthy();
     fireEvent.press(screen.getByText("Single camera"));
 
     await waitFor(() => {

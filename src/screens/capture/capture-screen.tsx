@@ -48,7 +48,9 @@ function supportedConfigurations(
   return capabilities.configurations.filter(
     (configuration): configuration is SupportedCaptureConfiguration =>
       configuration.kind === "supported" &&
-      (configuration.mode === "single" || configuration.mode === "discrete"),
+      (configuration.mode === "single" ||
+        configuration.mode === "discrete" ||
+        configuration.mode === "pip"),
   );
 }
 
@@ -77,6 +79,16 @@ function createRequest(
       mode: "single",
       output: "single-file",
       cameraAId: configuration.cameraIds[0],
+    } as CaptureRequest;
+  }
+
+  if (configuration.mode === "pip") {
+    return {
+      ...common,
+      mode: "pip",
+      output: "composite-file",
+      cameraAId: configuration.cameraIds[0],
+      cameraBId: configuration.cameraIds[1],
     } as CaptureRequest;
   }
 
@@ -194,7 +206,7 @@ export function CaptureScreen() {
       setSelectedConfigurationId(configuration.id);
       setPhase("ready");
       setMessage(
-        configuration.mode === "discrete"
+        configuration.mode === "discrete" || configuration.mode === "pip"
           ? "Both cameras are ready."
           : "Camera is ready.",
       );
@@ -496,7 +508,9 @@ export function CaptureScreen() {
             <AdaptiveMaterial material="previewOverlay" style={styles.cameraPill}>
               <Icon
                 name={
-                  selectedConfiguration.mode === "discrete"
+                  selectedConfiguration.mode === "pip"
+                    ? "rectangle.inset.filled"
+                    : selectedConfiguration.mode === "discrete"
                     ? "rectangle.split.2x1"
                     : "camera.fill"
                 }
@@ -612,7 +626,9 @@ function ConfigurationPicker({
               <View style={styles.configurationIcon}>
                 <Icon
                   name={
-                    configuration.mode === "discrete"
+                    configuration.mode === "pip"
+                      ? "rectangle.inset.filled"
+                      : configuration.mode === "discrete"
                       ? "rectangle.split.2x1"
                       : "camera.fill"
                   }
@@ -621,9 +637,11 @@ function ConfigurationPicker({
               </View>
               <View style={styles.configurationText}>
                 <AppText variant="headline">
-                  {configuration.mode === "discrete"
-                    ? "Two cameras"
-                    : "Single camera"}
+                  {configuration.mode === "pip"
+                    ? "Picture in picture"
+                    : configuration.mode === "discrete"
+                      ? "Two separate videos"
+                      : "Single camera"}
                 </AppText>
                 <AppText tone="secondary" variant="callout">
                   {cameraLabel(configuration)} · {configuration.frameRates.join(", ")} fps

@@ -253,11 +253,11 @@ enum CaptureDeviceDiscovery {
   private static func dualConfigurations(
     discovery: AVCaptureDevice.DiscoverySession
   ) -> [CaptureConfigurationDescriptor] {
-    discovery.supportedMultiCamDeviceSets.compactMap { deviceSet in
+    discovery.supportedMultiCamDeviceSets.flatMap { deviceSet -> [CaptureConfigurationDescriptor] in
       let devices = sortedDevices(Array(deviceSet))
 
       guard devices.count == 2 else {
-        return nil
+        return []
       }
 
       let frameRates = releaseFrameRates.filter { frameRate in
@@ -267,22 +267,42 @@ enum CaptureDeviceDiscovery {
       }
 
       guard !frameRates.isEmpty else {
-        return nil
+        return []
       }
 
       let ids = devices.map(\.uniqueID)
       let isFrontBack = Set(devices.map(\.position)) == Set([.front, .back])
 
-      return CaptureConfigurationDescriptor(
-        id: "discrete:\(ids.joined(separator: ":"))",
-        mode: .discrete,
-        output: .dualFiles,
-        cameraIds: ids,
-        frameRates: frameRates,
-        availability: isFrontBack ? "recommended" : "available",
-        bitrate: 12_000_000,
-        estimatedHardwareCost: 0.80
-      )
+      var configurations = [
+        CaptureConfigurationDescriptor(
+          id: "discrete:\(ids.joined(separator: ":"))",
+          mode: .discrete,
+          output: .dualFiles,
+          cameraIds: ids,
+          frameRates: frameRates,
+          availability: "available",
+          bitrate: 12_000_000,
+          estimatedHardwareCost: 0.80
+        )
+      ]
+
+      if isFrontBack {
+        configurations.insert(
+          CaptureConfigurationDescriptor(
+            id: "pip:\(ids.joined(separator: ":"))",
+            mode: .pip,
+            output: .compositeFile,
+            cameraIds: ids,
+            frameRates: frameRates,
+            availability: "recommended",
+            bitrate: 16_000_000,
+            estimatedHardwareCost: 0.84
+          ),
+          at: 0
+        )
+      }
+
+      return configurations
     }
     .sorted { lhs, rhs in
       if lhs.availability != rhs.availability {
