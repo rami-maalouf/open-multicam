@@ -3,11 +3,9 @@ import ExpoModulesCore
 import UIKit
 
 final class CaptureSurfaceView: ExpoView {
-  let onCaptureEvent = EventDispatcher()
   private let primaryPreviewLayer = AVCaptureVideoPreviewLayer()
   private let secondaryPreviewLayer = AVCaptureVideoPreviewLayer()
-  private let eventSequence = CaptureBoundaryEventSequence()
-  private var hasPublishedMount = false
+  private var isAttached = false
   private var isObservingLifecycle = false
 
   required init(appContext: AppContext? = nil) {
@@ -48,21 +46,21 @@ final class CaptureSurfaceView: ExpoView {
     super.didMoveToWindow()
 
     guard window != nil else {
-      CaptureSessionService.shared.detachPreviewLayers()
-      hasPublishedMount = false
+      if isAttached {
+        CaptureSessionService.shared.detachPreviewLayers()
+        isAttached = false
+      }
       stopObservingLifecycle()
-      eventSequence.invalidateCurrentState()
       return
     }
 
     startObservingLifecycle()
 
-    guard !hasPublishedMount else {
+    guard !isAttached else {
       return
     }
 
-    hasPublishedMount = true
-    publishIdleState()
+    isAttached = true
     CaptureSessionService.shared.attachPreviewLayers([
       primaryPreviewLayer,
       secondaryPreviewLayer
@@ -102,21 +100,11 @@ final class CaptureSurfaceView: ExpoView {
     NotificationCenter.default.removeObserver(self)
   }
 
-  private func publishIdleState() {
-    guard let event = eventSequence.stateChanged(to: ["kind": "idle"]) else {
-      return
-    }
-
-    onCaptureEvent(event)
-  }
-
   @objc private func appDidEnterBackground() {
     CaptureSessionService.shared.suspendPreview()
-    eventSequence.invalidateCurrentState()
   }
 
   @objc private func appWillEnterForeground() {
-    publishIdleState()
     CaptureSessionService.shared.resumePreview()
   }
 }

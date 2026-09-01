@@ -40,12 +40,7 @@ export declare class MulticamCaptureModule extends NativeModule<MulticamCaptureM
   ): Promise<RecordingSetManifestV1>;
 }
 
-export type CaptureSurfaceProps = ViewProps &
-  Readonly<{
-    onCaptureEvent?: (event: {
-      nativeEvent: CaptureBridgeEvent;
-    }) => void;
-  }>;
+export type CaptureSurfaceProps = ViewProps;
 
 export const multicamCaptureModule =
   requireNativeModule<MulticamCaptureModule>("MulticamCapture");

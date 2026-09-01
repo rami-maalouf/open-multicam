@@ -123,8 +123,8 @@ export function CaptureScreen() {
   );
   const [elapsedMs, setElapsedMs] = useState(0);
   const moduleEventSequence = useRef(0);
-  const viewEventSequence = useRef(0);
   const currentConfigurationId = useRef<string | null>(null);
+  const isUserStopping = useRef(false);
   const phaseRef = useRef<CapturePhase>(phase);
 
   const configurations = useMemo(
@@ -244,7 +244,7 @@ export function CaptureScreen() {
     const appStateSubscription = AppState.addEventListener(
       "change",
       (nextState) => {
-        if (nextState === "active" && phaseRef.current !== "recording") {
+        if (nextState === "active" && !isUserStopping.current) {
           void refresh();
         }
       },
@@ -258,6 +258,23 @@ export function CaptureScreen() {
         ) {
           moduleEventSequence.current = event.sequence;
           setSurfaceState(event.state.kind);
+
+          if (event.state.kind === "completed" && !isUserStopping.current) {
+            setRecordingStartedAt(null);
+            setElapsedMs(0);
+            setPhase("checking");
+            setMessage("The interrupted take was saved safely.");
+            if (AppState.currentState === "active") {
+              void refresh();
+            }
+          } else if (
+            event.state.kind === "failed" &&
+            phaseRef.current === "recording"
+          ) {
+            setRecordingStartedAt(null);
+            setPhase("failed");
+            setMessage(event.state.error.message);
+          }
         }
       },
     );
@@ -322,10 +339,12 @@ export function CaptureScreen() {
     }
 
     if (phase === "recording") {
+      isUserStopping.current = true;
       setPhase("finalizing");
       setMessage("Saving take…");
       const result = await multicamCaptureModule.stopRecording();
       setRecordingStartedAt(null);
+      isUserStopping.current = false;
       if (!result.ok) {
         setPhase("failed");
         setMessage(result.error.message);
@@ -338,19 +357,6 @@ export function CaptureScreen() {
       }
     }
   }, [capabilities, configure, phase, selectedConfigurationId]);
-
-  const handleViewEvent = useCallback(
-    ({ nativeEvent }: { nativeEvent: CaptureBridgeEvent }) => {
-      if (
-        nativeEvent.kind === "state-changed" &&
-        nativeEvent.sequence > viewEventSequence.current
-      ) {
-        viewEventSequence.current = nativeEvent.sequence;
-        setSurfaceState(nativeEvent.state.kind);
-      }
-    },
-    [],
-  );
 
   const canRecord = phase === "ready" || phase === "recording";
   const shouldShowBlockingOverlay = [
@@ -423,7 +429,6 @@ export function CaptureScreen() {
       >
         <CaptureSurfaceView
           accessible={false}
-          onCaptureEvent={handleViewEvent}
           style={StyleSheet.absoluteFill}
           testID="native-capture-surface"
         />

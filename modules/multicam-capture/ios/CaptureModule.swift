@@ -98,34 +98,7 @@ public final class CaptureModule: Module {
     }
 
     AsyncFunction("stopRecording") { () async -> [String: Any] in
-      let stopping = self.stateMachine.send(
-        .requestStop(reason: .userRequested)
-      )
-      self.publish(stopping)
-      guard case .accepted = stopping else {
-        return self.resultPayload(for: stopping)
-      }
-
-      let finalizing = self.stateMachine.send(.beginFinalization)
-      self.publish(finalizing)
-
-      switch await CaptureSessionService.shared.stopRecording() {
-      case let .failure(failure):
-        self.publish(self.stateMachine.send(.fail(failure)))
-        return failure.resultPayload
-      case let .success(finalized):
-        guard let output = ValidatedRecordingOutput(
-          durationMs: finalized.durationMs,
-          expectedAssetCount: finalized.assetCount,
-          playableAssetCount: finalized.assetCount
-        ) else {
-          let failure = CaptureFailure.recordingValidationFailed
-          self.publish(self.stateMachine.send(.fail(failure)))
-          return failure.resultPayload
-        }
-        self.publish(self.stateMachine.send(.complete(output: output)))
-        return ["ok": true, "value": finalized.manifest]
-      }
+      await self.finishRecording(reason: .userRequested)
     }
 
     AsyncFunction("listRecordings") { () -> [[String: Any]] in
@@ -145,16 +118,20 @@ public final class CaptureModule: Module {
       )
     }
 
-    View(CaptureSurfaceView.self) {
-      Events("onCaptureEvent")
-    }
+    View(CaptureSurfaceView.self) {}
 
     OnAppEntersBackground {
-      self.publish(
-        self.stateMachine.send(
-          .interrupt(reason: .backgrounded, recoverable: false)
+      if case .recording = self.stateMachine.state {
+        Task {
+          _ = await self.finishRecording(reason: .backgrounded)
+        }
+      } else {
+        self.publish(
+          self.stateMachine.send(
+            .interrupt(reason: .backgrounded, recoverable: false)
+          )
         )
-      )
+      }
     }
 
     OnDestroy {
@@ -170,6 +147,37 @@ public final class CaptureModule: Module {
       retryable: true,
       recoveryAction: "retry"
     )
+  }
+
+  private func finishRecording(
+    reason: CaptureStopReason
+  ) async -> [String: Any] {
+    let stopping = stateMachine.send(.requestStop(reason: reason))
+    publish(stopping)
+    guard case .accepted = stopping else {
+      return resultPayload(for: stopping)
+    }
+
+    let finalizing = stateMachine.send(.beginFinalization)
+    publish(finalizing)
+
+    switch await CaptureSessionService.shared.stopRecording() {
+    case let .failure(failure):
+      publish(stateMachine.send(.fail(failure)))
+      return failure.resultPayload
+    case let .success(finalized):
+      guard let output = ValidatedRecordingOutput(
+        durationMs: finalized.durationMs,
+        expectedAssetCount: finalized.assetCount,
+        playableAssetCount: finalized.assetCount
+      ) else {
+        let failure = CaptureFailure.recordingValidationFailed
+        publish(stateMachine.send(.fail(failure)))
+        return failure.resultPayload
+      }
+      publish(stateMachine.send(.complete(output: output)))
+      return ["ok": true, "value": finalized.manifest]
+    }
   }
 
   private func teardownTerminalState() {

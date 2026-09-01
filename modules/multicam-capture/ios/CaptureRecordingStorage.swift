@@ -169,6 +169,7 @@ enum CaptureRecordingStorage {
   }
 
   static func listRecordings() throws -> [[String: Any]] {
+    try recoverReadyStagingDirectories()
     let root = try recordingsRoot()
     let directories = try FileManager.default.contentsOfDirectory(
       at: root,
@@ -300,6 +301,62 @@ enum CaptureRecordingStorage {
       label: device.localizedName,
       position: position
     )
+  }
+
+  private static func recoverReadyStagingDirectories() throws {
+    let stagingDirectories = try FileManager.default.contentsOfDirectory(
+      at: stagingRoot(),
+      includingPropertiesForKeys: nil,
+      options: [.skipsHiddenFiles]
+    )
+    let destinationRoot = try recordingsRoot()
+
+    for stagingDirectory in stagingDirectories {
+      let recordingSetId = stagingDirectory.lastPathComponent.lowercased()
+      guard UUID(uuidString: recordingSetId) != nil else {
+        continue
+      }
+
+      let destination = destinationRoot.appendingPathComponent(
+        recordingSetId,
+        isDirectory: true
+      )
+      guard !FileManager.default.fileExists(atPath: destination.path) else {
+        continue
+      }
+
+      let manifestURL = stagingDirectory.appendingPathComponent("manifest.json")
+      guard
+        let data = try? Data(contentsOf: manifestURL),
+        let manifest = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        (manifest["schemaVersion"] as? Int) == 1,
+        (manifest["recordingSetId"] as? String)?.lowercased() == recordingSetId,
+        let outcome = manifest["outcome"] as? [String: Any],
+        (outcome["kind"] as? String) == "ready",
+        let clips = manifest["clips"] as? [[String: Any]],
+        !clips.isEmpty,
+        clips.allSatisfy({ clip in
+          guard let relativePath = clip["relativePath"] as? String else {
+            return false
+          }
+          let filename = (relativePath as NSString).lastPathComponent
+          guard
+            filename == relativePath,
+            filename != ".",
+            filename != ".."
+          else {
+            return false
+          }
+          return FileManager.default.fileExists(
+            atPath: stagingDirectory.appendingPathComponent(relativePath).path
+          )
+        })
+      else {
+        continue
+      }
+
+      try FileManager.default.moveItem(at: stagingDirectory, to: destination)
+    }
   }
 
   private static func applicationSupportRoot() throws -> URL {

@@ -99,13 +99,10 @@ final class CaptureRecordingWriter: @unchecked Sendable {
       return
     }
 
-    if startedAt == nil {
-      let startTime = videoSamples
-        .map(CMSampleBufferGetPresentationTimeStamp)
-        .min(by: { CMTimeCompare($0, $1) < 0 }) ?? .zero
-      startedAt = startTime
-      writers.forEach { $0.writer.startSession(atSourceTime: startTime) }
-    }
+    let startTime = videoSamples
+      .map(CMSampleBufferGetPresentationTimeStamp)
+      .min(by: { CMTimeCompare($0, $1) < 0 }) ?? .zero
+    beginIfNeeded(at: startTime)
 
     for (writer, sample) in zip(writers, videoSamples) {
       if writer.videoInput.isReadyForMoreMediaData {
@@ -121,10 +118,39 @@ final class CaptureRecordingWriter: @unchecked Sendable {
       let audioOutput,
       let synchronizedAudio = collection.synchronizedData(for: audioOutput)
         as? AVCaptureSynchronizedSampleBufferData,
-      !synchronizedAudio.sampleBufferWasDropped,
+      !synchronizedAudio.sampleBufferWasDropped
+    else {
+      return
+    }
+
+    appendAudio(synchronizedAudio.sampleBuffer)
+  }
+
+  func appendVideo(
+    _ sampleBuffer: CMSampleBuffer,
+    from output: AVCaptureVideoDataOutput
+  ) {
+    guard let writer = writers.first(where: { $0.output === output }) else {
+      return
+    }
+
+    let time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+    beginIfNeeded(at: time)
+
+    if writer.videoInput.isReadyForMoreMediaData {
+      writer.videoInput.append(sampleBuffer)
+    }
+    if lastVideoTime == nil || CMTimeCompare(time, lastVideoTime!) > 0 {
+      lastVideoTime = time
+    }
+  }
+
+  func appendAudio(_ sampleBuffer: CMSampleBuffer) {
+    guard
+      audioOutput != nil,
       let startedAt,
       CMTimeCompare(
-        CMSampleBufferGetPresentationTimeStamp(synchronizedAudio.sampleBuffer),
+        CMSampleBufferGetPresentationTimeStamp(sampleBuffer),
         startedAt
       ) >= 0
     else {
@@ -133,10 +159,19 @@ final class CaptureRecordingWriter: @unchecked Sendable {
 
     for writer in writers {
       if writer.audioInput?.isReadyForMoreMediaData == true {
-        writer.audioInput?.append(synchronizedAudio.sampleBuffer)
+        writer.audioInput?.append(sampleBuffer)
         hasWrittenAudio = true
       }
     }
+  }
+
+  private func beginIfNeeded(at startTime: CMTime) {
+    guard startedAt == nil else {
+      return
+    }
+
+    startedAt = startTime
+    writers.forEach { $0.writer.startSession(atSourceTime: startTime) }
   }
 
   func finish() async -> Result<CaptureWriterResult, CaptureFailure> {

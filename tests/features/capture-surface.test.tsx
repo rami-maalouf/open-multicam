@@ -1,5 +1,6 @@
-import { fireEvent, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
+import { AppState } from "react-native";
 
 import { CaptureScreen } from "@/screens/shell/app-shell-screens";
 import { render } from "@/testing/render";
@@ -12,22 +13,20 @@ const mockRequestMicrophonePermission = jest.fn();
 const mockStartRecording = jest.fn();
 const mockStopRecording = jest.fn();
 const mockOpenSettings = jest.fn();
+let mockModuleEventListener: ((event: unknown) => void) | null = null;
 
 jest.mock("../../modules/multicam-capture", () => {
   const React = require("react");
   const { View } = require("react-native");
 
   return {
-    CaptureSurfaceView: ({
-      children,
-      onCaptureEvent,
-      ...props
-    }: {
-      children?: ReactNode;
-      onCaptureEvent?: (event: unknown) => void;
-    }) => React.createElement(View, { ...props, onCaptureEvent }, children),
+    CaptureSurfaceView: ({ children, ...props }: { children?: ReactNode }) =>
+      React.createElement(View, props, children),
     multicamCaptureModule: {
-      addListener: () => ({ remove: jest.fn() }),
+      addListener: (_eventName: string, listener: (event: unknown) => void) => {
+        mockModuleEventListener = listener;
+        return { remove: jest.fn() };
+      },
       configure: (...args: unknown[]) => mockConfigure(...args),
       discoverCapabilities: (...args: unknown[]) =>
         mockDiscoverCapabilities(...args),
@@ -108,6 +107,7 @@ const simcamCapabilities = {
 
 describe("native capture surface", () => {
   beforeEach(() => {
+    mockModuleEventListener = null;
     mockDiscoverCapabilities.mockReset();
     mockDiscoverCapabilities.mockResolvedValue(simulatorCapabilities);
     mockGetPermissionStatus.mockReset();
@@ -159,7 +159,6 @@ describe("native capture surface", () => {
 
   it("accepts only newer documented state events", async () => {
     const screen = render(<CaptureScreen />);
-    const surface = screen.getByTestId("native-capture-surface");
 
     await waitFor(() => {
       expect(
@@ -169,8 +168,8 @@ describe("native capture surface", () => {
       ).toBeTruthy();
     });
 
-    fireEvent(surface, "captureEvent", {
-      nativeEvent: {
+    act(() => {
+      mockModuleEventListener?.({
         kind: "state-changed",
         sequence: 2,
         state: {
@@ -183,17 +182,17 @@ describe("native capture surface", () => {
             recoveryAction: "retry",
           },
         },
-      },
+      });
     });
 
     expect(screen.getByLabelText(/Native state failed/)).toBeTruthy();
 
-    fireEvent(surface, "captureEvent", {
-      nativeEvent: {
+    act(() => {
+      mockModuleEventListener?.({
         kind: "state-changed",
         sequence: 1,
         state: { kind: "idle" },
-      },
+      });
     });
 
     expect(screen.getByLabelText(/Native state failed/)).toBeTruthy();
@@ -265,6 +264,42 @@ describe("native capture surface", () => {
       expect(mockStopRecording).toHaveBeenCalledTimes(1);
       expect(mockConfigure).toHaveBeenCalledTimes(2);
       expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
+    });
+  });
+
+  it("refreshes capture after an interrupted take finalizes natively", async () => {
+    mockDiscoverCapabilities.mockResolvedValue(simcamCapabilities);
+    const screen = render(<CaptureScreen />);
+
+    const recordButton = await screen.findByRole("button", { name: "Record" });
+    await waitFor(() => expect(recordButton).toBeEnabled());
+    fireEvent.press(recordButton);
+    await screen.findByRole("button", { name: "Stop recording" });
+
+    const previousAppState = AppState.currentState;
+    Object.defineProperty(AppState, "currentState", {
+      configurable: true,
+      value: "active",
+    });
+    act(() => {
+      mockModuleEventListener?.({
+        kind: "state-changed",
+        sequence: 1,
+        state: {
+          kind: "completed",
+          recordingSetId: "take-1",
+          durationMs: 2_000,
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(mockDiscoverCapabilities).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
+    });
+    Object.defineProperty(AppState, "currentState", {
+      configurable: true,
+      value: previousAppState,
     });
   });
 

@@ -207,7 +207,11 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
         guard session.canAddInput(input) else {
           throw CaptureFailure.sessionConfigurationFailed
         }
-        session.addInputWithNoConnections(input)
+        if preset.mode == .single {
+          session.addInput(input)
+        } else {
+          session.addInputWithNoConnections(input)
+        }
       }
 
       videoOutputs = try devices.map { device in
@@ -229,18 +233,39 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
         guard session.canAddOutput(output) else {
           throw CaptureFailure.sessionConfigurationFailed
         }
-        session.addOutputWithNoConnections(output)
-        let connection = AVCaptureConnection(inputPorts: [port], output: output)
-        applyVideoProperties(connection, preset: preset, position: device.position)
-        guard session.canAddConnection(connection) else {
-          throw CaptureFailure.sessionConfigurationFailed
+        if preset.mode == .single {
+          session.addOutput(output)
+          guard let connection = output.connection(with: .video) else {
+            throw CaptureFailure.sessionConfigurationFailed
+          }
+          applyVideoProperties(connection, preset: preset, position: device.position)
+        } else {
+          session.addOutputWithNoConnections(output)
+          let connection = AVCaptureConnection(inputPorts: [port], output: output)
+          applyVideoProperties(connection, preset: preset, position: device.position)
+          guard session.canAddConnection(connection) else {
+            throw CaptureFailure.sessionConfigurationFailed
+          }
+          session.addConnection(connection)
         }
-        session.addConnection(connection)
         return output
       }
 
       audioOutput = try configureAudioIfAuthorized(session: session)
 
+      session.commitConfiguration()
+    } catch {
+      session.commitConfiguration()
+      throw error
+    }
+
+    if preset.mode == .single {
+      videoOutputs.forEach {
+        $0.setSampleBufferDelegate(self, queue: sessionQueue)
+      }
+      audioOutput?.setSampleBufferDelegate(self, queue: sessionQueue)
+      dataSynchronizer = nil
+    } else {
       let synchronizedOutputs: [AVCaptureOutput] =
         videoOutputs.map { $0 as AVCaptureOutput } +
         (audioOutput.map { [$0 as AVCaptureOutput] } ?? [])
@@ -249,11 +274,6 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
       )
       synchronizer.setDelegate(self, queue: sessionQueue)
       dataSynchronizer = synchronizer
-
-      session.commitConfiguration()
-    } catch {
-      session.commitConfiguration()
-      throw error
     }
 
     captureSession = session
@@ -276,7 +296,12 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
     guard session.canAddInput(input) else {
       return nil
     }
-    session.addInputWithNoConnections(input)
+    let requiresManualConnections = session is AVCaptureMultiCamSession
+    if requiresManualConnections {
+      session.addInputWithNoConnections(input)
+    } else {
+      session.addInput(input)
+    }
 
     guard let port = input.ports.first(where: { $0.mediaType == .audio }) else {
       return nil
@@ -285,6 +310,11 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
     guard session.canAddOutput(output) else {
       return nil
     }
+    if !requiresManualConnections {
+      session.addOutput(output)
+      return output
+    }
+
     session.addOutputWithNoConnections(output)
     let connection = AVCaptureConnection(inputPorts: [port], output: output)
     guard session.canAddConnection(connection) else {
@@ -341,6 +371,14 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
       }
 
       let layer = previewLayers[index]
+      if preset.mode == .single {
+        layer.session = captureSession
+        if let connection = layer.connection {
+          applyVideoProperties(connection, preset: preset, position: input.device.position)
+        }
+        continue
+      }
+
       layer.setSessionWithNoConnection(captureSession)
       let connection = AVCaptureConnection(inputPort: port, videoPreviewLayer: layer)
       applyVideoProperties(connection, preset: preset, position: input.device.position)
@@ -427,5 +465,22 @@ extension CaptureSessionService: AVCaptureDataOutputSynchronizerDelegate {
     didOutput synchronizedDataCollection: AVCaptureSynchronizedDataCollection
   ) {
     recordingWriter?.append(synchronizedDataCollection)
+  }
+}
+
+extension CaptureSessionService:
+  AVCaptureVideoDataOutputSampleBufferDelegate,
+  AVCaptureAudioDataOutputSampleBufferDelegate
+{
+  func captureOutput(
+    _ output: AVCaptureOutput,
+    didOutput sampleBuffer: CMSampleBuffer,
+    from connection: AVCaptureConnection
+  ) {
+    if let videoOutput = output as? AVCaptureVideoDataOutput {
+      recordingWriter?.appendVideo(sampleBuffer, from: videoOutput)
+    } else if output is AVCaptureAudioDataOutput {
+      recordingWriter?.appendAudio(sampleBuffer)
+    }
   }
 }
