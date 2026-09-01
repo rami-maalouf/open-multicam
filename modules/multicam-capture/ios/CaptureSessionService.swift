@@ -69,7 +69,11 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
           continuation.resume(returning: .failure(error))
         case let .success(preset):
           do {
-            try self.configureSession(preset: preset, snapshot: snapshot)
+            try self.configureSession(
+              preset: preset,
+              snapshot: snapshot,
+              isSimulator: isSimulator
+            )
             continuation.resume(returning: .success(preset))
           } catch let error as CaptureFailure {
             continuation.resume(returning: .failure(error))
@@ -193,7 +197,8 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
 
   private func configureSession(
     preset: CapturePreset,
-    snapshot: CaptureCapabilitySnapshot
+    snapshot: CaptureCapabilitySnapshot,
+    isSimulator: Bool
   ) throws {
     let cameraIds = [preset.cameraAId, preset.cameraBId].compactMap { $0 }
     let devices = cameraIds.compactMap(snapshot.device(id:))
@@ -215,7 +220,8 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
         try configure(
           device: device,
           frameRate: preset.frameRate,
-          requiresMulticam: preset.mode != .single
+          requiresMulticam: preset.mode != .single,
+          allowsResolutionFallback: isSimulator
         )
 
         let input = try AVCaptureDeviceInput(device: device)
@@ -233,8 +239,7 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
         guard
           let input = session.inputs
             .compactMap({ $0 as? AVCaptureDeviceInput })
-            .first(where: { $0.device.uniqueID == device.uniqueID }),
-          let port = input.ports.first(where: { $0.mediaType == .video })
+            .first(where: { $0.device.uniqueID == device.uniqueID })
         else {
           throw CaptureFailure.sessionConfigurationFailed
         }
@@ -255,6 +260,9 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
           }
           applyVideoProperties(connection, preset: preset, position: device.position)
         } else {
+          guard let port = input.ports.first(where: { $0.mediaType == .video }) else {
+            throw CaptureFailure.sessionConfigurationFailed
+          }
           session.addOutputWithNoConnections(output)
           let connection = AVCaptureConnection(inputPorts: [port], output: output)
           applyVideoProperties(connection, preset: preset, position: device.position)
@@ -342,14 +350,20 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
   private func configure(
     device: AVCaptureDevice,
     frameRate: Int,
-    requiresMulticam: Bool
+    requiresMulticam: Bool,
+    allowsResolutionFallback: Bool
   ) throws {
     guard let format = CaptureDeviceDiscovery.format(
       for: device,
       frameRate: frameRate,
-      requiresMulticam: requiresMulticam
+      requiresMulticam: requiresMulticam,
+      allowsResolutionFallback: allowsResolutionFallback
     ) else {
       throw CaptureFailure.configurationUnavailable
+    }
+
+    guard !allowsResolutionFallback else {
+      return
     }
 
     try device.lockForConfiguration()

@@ -40,7 +40,12 @@ struct CaptureCapabilitySnapshot {
   var payload: [String: Any] {
     CaptureBoundaryPayloads.deviceCapabilities(
       discoveredAtMs: Date().timeIntervalSince1970 * 1_000,
-      cameras: devices.map(CaptureDeviceDiscovery.cameraDescriptor),
+      cameras: devices.map {
+        CaptureDeviceDiscovery.cameraDescriptor(
+          $0,
+          isSimulator: isSimulator
+        )
+      },
       configurations: configurations.map(\.payload),
       recommendedConfigurationId: recommendedConfigurationId,
       isMulticamSupported: isMulticamSupported,
@@ -157,46 +162,63 @@ enum CaptureDeviceDiscovery {
   static func format(
     for device: AVCaptureDevice,
     frameRate: Int,
-    requiresMulticam: Bool
+    requiresMulticam: Bool,
+    allowsResolutionFallback: Bool = false
   ) -> AVCaptureDevice.Format? {
-    device.formats
+    let supportedFormats = device.formats
       .filter { format in
-        let dimensions = CMVideoFormatDescriptionGetDimensions(
-          format.formatDescription
-        )
-        let is1080p =
-          (dimensions.width == 1_920 && dimensions.height == 1_080) ||
-          (dimensions.width == 1_080 && dimensions.height == 1_920)
         let supportsRate = format.videoSupportedFrameRateRanges.contains {
           $0.minFrameRate <= Double(frameRate) &&
             $0.maxFrameRate >= Double(frameRate)
         }
 
-        return is1080p &&
-          supportsRate &&
+        return supportsRate &&
           (!requiresMulticam || format.isMultiCamSupported)
       }
-      .sorted { lhs, rhs in
+
+    let preferredFormats = supportedFormats.filter { format in
+      let dimensions = CMVideoFormatDescriptionGetDimensions(
+        format.formatDescription
+      )
+      return
+        (dimensions.width == 1_920 && dimensions.height == 1_080) ||
+        (dimensions.width == 1_080 && dimensions.height == 1_920)
+    }
+
+    if let preferredFormat = preferredFormats.first {
+      return preferredFormat
+    }
+
+    guard allowsResolutionFallback else {
+      return nil
+    }
+
+    return supportedFormats.max { lhs, rhs in
         let left = CMVideoFormatDescriptionGetDimensions(lhs.formatDescription)
         let right = CMVideoFormatDescriptionGetDimensions(rhs.formatDescription)
         return left.width * left.height < right.width * right.height
       }
-      .first
   }
 
-  static func cameraDescriptor(_ device: AVCaptureDevice) -> [String: Any] {
-    let minimumZoom = finiteValue(
-      device.minAvailableVideoZoomFactor,
-      fallback: 1
-    )
-    let maximumZoom = finiteValue(
-      device.maxAvailableVideoZoomFactor,
-      fallback: minimumZoom
-    )
-    let fieldOfView = finiteValue(
-      CGFloat(device.activeFormat.videoFieldOfView),
-      fallback: 0
-    )
+  static func cameraDescriptor(
+    _ device: AVCaptureDevice,
+    isSimulator: Bool = false
+  ) -> [String: Any] {
+    let minimumZoom = isSimulator
+      ? 1
+      : finiteValue(device.minAvailableVideoZoomFactor, fallback: 1)
+    let maximumZoom = isSimulator
+      ? 1
+      : finiteValue(
+        device.maxAvailableVideoZoomFactor,
+        fallback: minimumZoom
+      )
+    let fieldOfView = isSimulator
+      ? 0
+      : finiteValue(
+        CGFloat(device.activeFormat.videoFieldOfView),
+        fallback: 0
+      )
 
     return [
       "id": device.uniqueID,
@@ -208,9 +230,13 @@ enum CaptureDeviceDiscovery {
         "minimum": minimumZoom,
         "maximum": max(minimumZoom, maximumZoom)
       ],
-      "supportsFocusPoint": device.isFocusPointOfInterestSupported,
-      "supportsExposurePoint": device.isExposurePointOfInterestSupported,
-      "supportsTorch": device.hasTorch
+      "supportsFocusPoint": isSimulator
+        ? false
+        : device.isFocusPointOfInterestSupported,
+      "supportsExposurePoint": isSimulator
+        ? false
+        : device.isExposurePointOfInterestSupported,
+      "supportsTorch": isSimulator ? false : device.hasTorch
     ]
   }
 
@@ -242,27 +268,42 @@ enum CaptureDeviceDiscovery {
   ) -> [AVCaptureDevice] {
     let devices = sortedDevices(discoveredDevices)
 
-    guard
-      isSimulator,
-      devices.isEmpty,
-      let defaultVideoDevice = AVCaptureDevice.default(for: .video)
-    else {
+    guard isSimulator, devices.isEmpty else {
       return devices
     }
 
-    return [defaultVideoDevice]
+    let simulatorDevices = [
+      AVCaptureDevice.default(
+        .builtInWideAngleCamera,
+        for: .video,
+        position: .back
+      ),
+      AVCaptureDevice.default(
+        .builtInWideAngleCamera,
+        for: .video,
+        position: .front
+      )
+    ].compactMap { $0 }
+
+    let uniqueDevices = Dictionary(
+      simulatorDevices.map { ($0.uniqueID, $0) },
+      uniquingKeysWith: { first, _ in first }
+    )
+
+    return sortedDevices(Array(uniqueDevices.values))
   }
 
   private static func singleConfiguration(
     for device: AVCaptureDevice,
     isSimulator: Bool
   ) -> CaptureConfigurationDescriptor? {
-    var frameRates = releaseFrameRates.filter {
-      format(for: device, frameRate: $0, requiresMulticam: false) != nil
-    }
-
-    if isSimulator && frameRates.isEmpty {
-      frameRates = [30]
+    let frameRates = releaseFrameRates.filter {
+      format(
+        for: device,
+        frameRate: $0,
+        requiresMulticam: false,
+        allowsResolutionFallback: isSimulator
+      ) != nil
     }
 
     guard !frameRates.isEmpty else {
