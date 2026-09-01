@@ -82,6 +82,12 @@ function RecordingRow({
   recording,
 }: Readonly<{ recording: RecordingLibraryEntry }>) {
   const isDual = recording.mode === "discrete";
+  const isPip = recording.mode === "pip";
+  const recordingKind = isDual
+    ? "Two-camera take"
+    : isPip
+      ? "Picture-in-picture take"
+      : recording.cameraA.label;
 
   return (
     <Link
@@ -95,7 +101,13 @@ function RecordingRow({
       >
         <View style={styles.recordingArtwork}>
           <Icon
-            name={isDual ? "rectangle.split.2x1.fill" : "video.fill"}
+            name={
+              isDual
+                ? "rectangle.split.2x1.fill"
+                : isPip
+                  ? "rectangle.inset.filled"
+                  : "video.fill"
+            }
             size="prominent"
             tone="accent"
           />
@@ -105,7 +117,7 @@ function RecordingRow({
             {recordingDisplayName(recording)}
           </AppText>
           <AppText numberOfLines={1} tone="secondary" variant="callout">
-            {isDual ? "Two-camera take" : recording.cameraA.label} · {" "}
+            {recordingKind} · {" "}
             {formatRecordingDuration(recordingDurationMs(recording))}
           </AppText>
         </View>

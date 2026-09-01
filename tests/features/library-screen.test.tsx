@@ -25,7 +25,10 @@ jest.mock("expo-router", () => {
 });
 
 function libraryEntry(
-  manifest: typeof recordingManifestFixtures.single | typeof recordingManifestFixtures.discrete,
+  manifest:
+    | typeof recordingManifestFixtures.single
+    | typeof recordingManifestFixtures.discrete
+    | typeof recordingManifestFixtures.pip,
 ): RecordingLibraryEntry {
   return {
     ...manifest,
@@ -52,8 +55,9 @@ describe("recording library", () => {
     expect(screen.getByRole("button", { name: "Open camera" })).toBeTruthy();
   });
 
-  it("renders single and grouped dual-camera takes", async () => {
+  it("renders single, discrete, and picture-in-picture takes", async () => {
     mockListRecordings.mockResolvedValue([
+      libraryEntry(recordingManifestFixtures.pip),
       libraryEntry(recordingManifestFixtures.discrete),
       libraryEntry(recordingManifestFixtures.single),
     ]);
@@ -61,9 +65,10 @@ describe("recording library", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Two-camera take/)).toBeTruthy();
+      expect(screen.getByText(/Picture-in-picture take/)).toBeTruthy();
       expect(screen.getByText(/Front/)).toBeTruthy();
     });
-    expect(screen.getAllByRole("button")).toHaveLength(2);
+    expect(screen.getAllByRole("button")).toHaveLength(3);
   });
 
   it("keeps capture navigation available when reading fails", async () => {

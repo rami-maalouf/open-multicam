@@ -33,6 +33,7 @@ struct CaptureWriterResult {
   let durationMs: Int
   let startedAtPtsSeconds: Double
   let hasAudio: Bool
+  let pipCorner: CapturePipCorner?
 }
 
 struct CaptureFinalizedRecording {
@@ -59,9 +60,15 @@ enum CaptureRecordingStorage {
       throw CaptureFailure.configurationUnavailable
     }
 
-    let roles = preset.mode == .single
-      ? [("single", "single.mp4")]
-      : [("cameraA", "camera-a.mp4"), ("cameraB", "camera-b.mp4")]
+    let roles: [(String, String)]
+    switch preset.mode {
+    case .single:
+      roles = [("single", "single.mp4")]
+    case .discrete:
+      roles = [("cameraA", "camera-a.mp4"), ("cameraB", "camera-b.mp4")]
+    case .pip, .split:
+      roles = [("composite", "composite.mp4")]
+    }
     let clips = roles.map { role, filename in
       CaptureRecordingClipPlan(
         id: "\(recordingSetId)-\(role)",
@@ -148,6 +155,30 @@ enum CaptureRecordingStorage {
 
     if let cameraB = context.cameraB {
       manifest["cameraB"] = cameraB.payload
+    }
+
+    if context.preset.mode == .pip {
+      let canvas = CGRect(
+        x: 0,
+        y: 0,
+        width: context.preset.width,
+        height: context.preset.height
+      )
+      let inset = CapturePipLayout.normalizedFrame(
+        in: canvas,
+        corner: writerResult.pipCorner ?? .topTrailing
+      )
+      manifest["composition"] = [
+        "kind": "pip",
+        "primaryCamera": "A",
+        "visible": true,
+        "inset": [
+          "x": inset.minX,
+          "y": inset.minY,
+          "width": inset.width,
+          "height": inset.height
+        ]
+      ]
     }
 
     let manifestURL = context.stagingURL.appendingPathComponent("manifest.json")

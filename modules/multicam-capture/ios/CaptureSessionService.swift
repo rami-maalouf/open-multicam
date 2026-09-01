@@ -11,12 +11,14 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
   private var captureSession: AVCaptureSession?
   private var preset: CapturePreset?
   private var previewLayers: [AVCaptureVideoPreviewLayer] = []
+  private weak var previewSurface: CaptureSurfaceView?
   private var previewConnections: [AVCaptureConnection] = []
   private var mountedSurfaceCount = 0
   private var wantsPreview = false
   private var videoOutputs: [AVCaptureVideoDataOutput] = []
   private var audioOutput: AVCaptureAudioDataOutput?
   private var dataSynchronizer: AVCaptureDataOutputSynchronizer?
+  private var pipCorner: CapturePipCorner = .topTrailing
   private var recordingContext: CaptureRecordingContext?
   private var recordingWriter: CaptureRecordingWriter?
 
@@ -24,10 +26,14 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
     super.init()
   }
 
-  func attachPreviewLayers(_ layers: [AVCaptureVideoPreviewLayer]) {
+  func attachPreviewLayers(
+    _ layers: [AVCaptureVideoPreviewLayer],
+    surface: CaptureSurfaceView
+  ) {
     sessionQueue.async {
       self.mountedSurfaceCount += 1
       self.previewLayers = layers
+      self.previewSurface = surface
       self.wantsPreview = true
       self.connectPreviewLayers()
       self.startSessionIfNeeded()
@@ -45,6 +51,7 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
       self.wantsPreview = false
       self.disconnectPreviewLayers()
       self.previewLayers = []
+      self.previewSurface = nil
       self.stopAndTearDownSession()
     }
   }
@@ -96,6 +103,13 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
     }
   }
 
+  func updatePipCorner(_ corner: CapturePipCorner) {
+    sessionQueue.async {
+      self.pipCorner = corner
+      self.recordingWriter?.updatePipCorner(corner)
+    }
+  }
+
   func prepareRecording(
     recordingSetId: String
   ) async -> Result<String, CaptureFailure> {
@@ -127,7 +141,8 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
           self.recordingWriter = try CaptureRecordingWriter(
             context: context,
             videoOutputs: self.videoOutputs,
-            audioOutput: self.audioOutput
+            audioOutput: self.audioOutput,
+            pipCorner: self.pipCorner
           )
           self.recordingContext = context
           continuation.resume(returning: .success(context.recordingSetId))
@@ -225,7 +240,7 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
         }
 
         let output = AVCaptureVideoDataOutput()
-        output.alwaysDiscardsLateVideoFrames = false
+        output.alwaysDiscardsLateVideoFrames = preset.mode == .pip
         output.videoSettings = [
           kCVPixelBufferPixelFormatTypeKey as String:
             kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
@@ -410,10 +425,13 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
   }
 
   private func updateLayerVisibility(for cameraCount: Int) {
+    let mode = preset?.mode ?? .single
+    let corner = pipCorner
     DispatchQueue.main.async {
       for (index, layer) in self.previewLayers.enumerated() {
         layer.isHidden = index >= cameraCount
       }
+      self.previewSurface?.applyPreviewLayout(mode: mode, corner: corner)
     }
   }
 

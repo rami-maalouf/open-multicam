@@ -143,6 +143,7 @@ async function createTestPackage(packageRoot) {
   const sourceFiles = [
     "CaptureBoundary.swift",
     "CaptureModels.swift",
+    "CapturePipLayout.swift",
     "CaptureStateMachine.swift",
   ];
   await Promise.all(
