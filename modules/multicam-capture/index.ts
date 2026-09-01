@@ -11,6 +11,7 @@ import type {
   ResolvedCapturePreset,
 } from "@/core/capture/types";
 import type { RecordingSetManifestV1 } from "@/core/library/manifest";
+import type { RecordingLibraryEntry } from "@/core/library/entry";
 
 export type RecordingStart = Readonly<{
   recordingSetId: string;
@@ -31,6 +32,12 @@ export declare class MulticamCaptureModule extends NativeModule<MulticamCaptureM
   ): Promise<CaptureResult<ResolvedCapturePreset>>;
   startRecording(): Promise<CaptureResult<RecordingStart>>;
   stopRecording(): Promise<CaptureResult<RecordingSetManifestV1>>;
+  listRecordings(): Promise<readonly RecordingLibraryEntry[]>;
+  deleteRecording(recordingSetId: string): Promise<boolean>;
+  renameRecording(
+    recordingSetId: string,
+    name: string,
+  ): Promise<RecordingSetManifestV1>;
 }
 
 export type CaptureSurfaceProps = ViewProps &
