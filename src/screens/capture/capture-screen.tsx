@@ -156,12 +156,7 @@ export function CaptureScreen() {
 
   const configurationLabel = useCallback(
     (configuration: SupportedCaptureConfiguration) => {
-      const cameras = configuration.cameraIds.map(
-        (cameraId) =>
-          capabilities?.cameras.find((camera) => camera.id === cameraId)?.label ??
-          "Camera",
-      );
-      return cameras.join(" + ");
+      return configuration.cameraLabels.join(" + ");
     },
     [capabilities],
   );
