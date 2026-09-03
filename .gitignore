@@ -23,7 +23,9 @@ expo-env.d.ts
 
 # local environments and eas state
 .env*
-.eas/
+.eas/*
+!.eas/workflows/
+!.eas/workflows/**
 
 # local tooling
 .metro-health-check*

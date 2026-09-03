@@ -1,0 +1,49 @@
+# Bridge: GitHub issue label -> EAS workflow dispatch.
+#
+# EAS Workflows has no "issue labeled" trigger today, so this thin GitHub
+# Action forwards the event. All real work (simulator, agent, evidence)
+# happens on EAS in .eas/workflows/agent-fix.yml.
+#
+# Same pipeline as rami-maalouf/habit-tracker's agent-repro-dispatch.yml,
+# itself adapted from github.com/SchroederNathan/clarity.
+#
+# Required repository secret:
+#   EXPO_TOKEN - robot access token for this project
+#                (https://expo.dev/settings/access-tokens)
+name: Dispatch agent repro
+
+on:
+  issues:
+    types: [labeled]
+
+# The default GITHUB_TOKEN is read-only in this repo; the ack comment needs
+# issue write access.
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  dispatch:
+    if: github.event.label.name == 'repro'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        # eas workflow:run refuses to run outside a checked-out project
+        # directory ("Run this command inside a project directory.") -
+        # learned the hard way on habit-tracker's first dry run. Doesn't
+        # need node_modules (app.json is static, no app.config.ts to
+        # evaluate), just the checked-out files.
+      - name: Acknowledge on the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" \
+            --repo "${{ github.repository }}" \
+            --body "Fix agent dispatched. It will reproduce this on an EAS Simulator, then open a verified fix PR with the smallest useful evidence."
+      - name: Run agent-fix on EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          npx eas-cli@latest workflow:run .eas/workflows/agent-fix.yml \
+            -F issue_number="${{ github.event.issue.number }}" \
+            --non-interactive
