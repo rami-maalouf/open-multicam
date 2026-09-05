@@ -64,6 +64,7 @@ final class CaptureRecordingWriter: @unchecked Sendable {
   private let preset: CapturePreset
   private let compositorContext: CIContext?
   private var pipCorner: CapturePipCorner
+  private var isPipSwapped: Bool
   private var startedAt: CMTime?
   private var lastVideoTime: CMTime?
   private var hasWrittenAudio = false
@@ -75,7 +76,8 @@ final class CaptureRecordingWriter: @unchecked Sendable {
     context: CaptureRecordingContext,
     videoOutputs: [AVCaptureVideoDataOutput],
     audioOutput: AVCaptureAudioDataOutput?,
-    pipCorner: CapturePipCorner
+    pipCorner: CapturePipCorner,
+    isPipSwapped: Bool
   ) throws {
     let isPip = context.preset.mode == .pip
     guard isPip
@@ -89,6 +91,7 @@ final class CaptureRecordingWriter: @unchecked Sendable {
     self.videoOutputs = videoOutputs
     self.audioOutput = audioOutput
     self.pipCorner = pipCorner
+    self.isPipSwapped = isPipSwapped
     compositorContext = isPip
       ? CIContext(options: [.cacheIntermediates: false])
       : nil
@@ -118,6 +121,10 @@ final class CaptureRecordingWriter: @unchecked Sendable {
 
   func updatePipCorner(_ corner: CapturePipCorner) {
     pipCorner = corner
+  }
+
+  func updatePipSwapped(_ isSwapped: Bool) {
+    isPipSwapped = isSwapped
   }
 
   func append(_ collection: AVCaptureSynchronizedDataCollection) {
@@ -232,7 +239,8 @@ final class CaptureRecordingWriter: @unchecked Sendable {
         durationMs: max(1, Int(durationSeconds * 1_000)),
         startedAtPtsSeconds: CMTimeGetSeconds(startedAt),
         hasAudio: hasWrittenAudio,
-        pipCorner: preset.mode == .pip ? pipCorner : nil
+        pipCorner: preset.mode == .pip ? pipCorner : nil,
+        isPipSwapped: preset.mode == .pip && isPipSwapped
       )
     )
   }
@@ -413,8 +421,12 @@ final class CaptureRecordingWriter: @unchecked Sendable {
         width: preset.width,
         height: preset.height
       )
-      let primaryImage = aspectFilled(
-        CIImage(cvPixelBuffer: primaryBuffer),
+      // The tap-to-swap flag only changes which camera fills the canvas; the
+      // frame pacing stays driven by the first video output either way.
+      let assignment = CapturePipAssignment.resolve(isSwapped: isPipSwapped)
+      let buffers = [primaryBuffer, secondaryBuffer]
+      let backgroundImage = aspectFilled(
+        CIImage(cvPixelBuffer: buffers[assignment.fullScreenIndex]),
         into: canvas
       )
       let insetFromTop = CapturePipLayout.frame(in: canvas, corner: pipCorner)
@@ -424,13 +436,13 @@ final class CaptureRecordingWriter: @unchecked Sendable {
         width: insetFromTop.width,
         height: insetFromTop.height
       )
-      let secondaryImage = aspectFilled(
-        CIImage(cvPixelBuffer: secondaryBuffer),
+      let insetImage = aspectFilled(
+        CIImage(cvPixelBuffer: buffers[assignment.insetIndex]),
         into: inset
       )
       let composite = roundedComposite(
-        secondaryImage,
-        over: primaryImage,
+        insetImage,
+        over: backgroundImage,
         inset: inset
       )
 

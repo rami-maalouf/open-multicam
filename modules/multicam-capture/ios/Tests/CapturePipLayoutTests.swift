@@ -33,6 +33,38 @@ final class CapturePipLayoutTests: XCTestCase {
     XCTAssertEqual(bottomTrailing.maxY, 828.4, accuracy: 0.001)
   }
 
+  func testAssignsCameraAToTheFullScreenUntilTheViewerSwaps() {
+    let unswapped = CapturePipAssignment.resolve(isSwapped: false)
+
+    XCTAssertEqual(unswapped.fullScreenIndex, 0)
+    XCTAssertEqual(unswapped.insetIndex, 1)
+    XCTAssertEqual(unswapped.primaryCameraLabel, "A")
+  }
+
+  func testPromotesCameraBToTheFullScreenWhenSwapped() {
+    let swapped = CapturePipAssignment.resolve(isSwapped: true)
+
+    XCTAssertEqual(swapped.fullScreenIndex, 1)
+    XCTAssertEqual(swapped.insetIndex, 0)
+    XCTAssertEqual(swapped.primaryCameraLabel, "B")
+  }
+
+  func testKeepsBothCameraSlotsCoveredInEitherSwapState() {
+    for isSwapped in [false, true] {
+      let assignment = CapturePipAssignment.resolve(isSwapped: isSwapped)
+
+      XCTAssertNotEqual(
+        assignment.fullScreenIndex,
+        assignment.insetIndex,
+        "a camera must not fill both roles"
+      )
+      XCTAssertEqual(
+        Set([assignment.fullScreenIndex, assignment.insetIndex]),
+        Set([0, 1])
+      )
+    }
+  }
+
   func testClampsDraggedInsetInsideSafeMargins() {
     let size = CGSize(width: 140, height: 248)
     let upperLeft = CapturePipLayout.clampedCenter(

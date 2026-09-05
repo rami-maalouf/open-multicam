@@ -8,6 +8,29 @@ enum CapturePipCorner: String, CaseIterable, Equatable {
   case bottomTrailing = "bottom-trailing"
 }
 
+/// Resolves which of the two camera slots fills the frame and which renders
+/// as the inset, so the view, the recording compositor, and the manifest all
+/// agree after the viewer taps to swap them.
+struct CapturePipAssignment: Equatable {
+  let fullScreenIndex: Int
+  let insetIndex: Int
+  let primaryCameraLabel: String
+
+  static func resolve(isSwapped: Bool) -> CapturePipAssignment {
+    isSwapped
+      ? CapturePipAssignment(
+        fullScreenIndex: 1,
+        insetIndex: 0,
+        primaryCameraLabel: "B"
+      )
+      : CapturePipAssignment(
+        fullScreenIndex: 0,
+        insetIndex: 1,
+        primaryCameraLabel: "A"
+      )
+  }
+}
+
 struct CapturePipLayout {
   static func frame(
     in bounds: CGRect,

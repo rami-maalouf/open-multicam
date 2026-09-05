@@ -34,6 +34,7 @@ struct CaptureWriterResult {
   let startedAtPtsSeconds: Double
   let hasAudio: Bool
   let pipCorner: CapturePipCorner?
+  let isPipSwapped: Bool
 }
 
 struct CaptureFinalizedRecording {
@@ -170,7 +171,9 @@ enum CaptureRecordingStorage {
       )
       manifest["composition"] = [
         "kind": "pip",
-        "primaryCamera": "A",
+        "primaryCamera": CapturePipAssignment
+          .resolve(isSwapped: writerResult.isPipSwapped)
+          .primaryCameraLabel,
         "visible": true,
         "inset": [
           "x": inset.minX,

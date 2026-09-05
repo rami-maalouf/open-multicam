@@ -19,6 +19,7 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
   private var audioOutput: AVCaptureAudioDataOutput?
   private var dataSynchronizer: AVCaptureDataOutputSynchronizer?
   private var pipCorner: CapturePipCorner = .topTrailing
+  private var isPipSwapped = false
   private var recordingContext: CaptureRecordingContext?
   private var recordingWriter: CaptureRecordingWriter?
 
@@ -114,6 +115,13 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
     }
   }
 
+  func updatePipSwapped(_ isSwapped: Bool) {
+    sessionQueue.async {
+      self.isPipSwapped = isSwapped
+      self.recordingWriter?.updatePipSwapped(isSwapped)
+    }
+  }
+
   func prepareRecording(
     recordingSetId: String
   ) async -> Result<String, CaptureFailure> {
@@ -146,7 +154,8 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
             context: context,
             videoOutputs: self.videoOutputs,
             audioOutput: self.audioOutput,
-            pipCorner: self.pipCorner
+            pipCorner: self.pipCorner,
+            isPipSwapped: self.isPipSwapped
           )
           self.recordingContext = context
           continuation.resume(returning: .success(context.recordingSetId))
@@ -208,6 +217,7 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
     }
 
     stopAndTearDownSession()
+    isPipSwapped = false
 
     let session: AVCaptureSession = preset.mode == .single
       ? AVCaptureSession()
@@ -441,11 +451,16 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
   private func updateLayerVisibility(for cameraCount: Int) {
     let mode = preset?.mode ?? .single
     let corner = pipCorner
+    let isSwapped = isPipSwapped
     DispatchQueue.main.async {
       for (index, layer) in self.previewLayers.enumerated() {
         layer.isHidden = index >= cameraCount
       }
-      self.previewSurface?.applyPreviewLayout(mode: mode, corner: corner)
+      self.previewSurface?.applyPreviewLayout(
+        mode: mode,
+        corner: corner,
+        isSwapped: isSwapped
+      )
     }
   }
 
