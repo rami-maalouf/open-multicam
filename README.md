@@ -1,6 +1,6 @@
 # OpenMulticam
 
-An open, professional multicamera video app for iPhone. Record two cameras at the same time: two synchronized files, a live picture-in-picture composite, or a 50/50 split. Built with [Expo](https://expo.dev) and [Claude Code](https://claude.com/claude-code).
+An open, professional multicamera video app for iPhone. Record two cameras at the same time: two synchronized files, a live picture-in-picture composite, or a 50/50 split. Built with [Expo](https://expo.dev).
 
 This repo demonstrates two things:
 
