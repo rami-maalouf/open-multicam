@@ -57,6 +57,14 @@ export default function RootLayout() {
             options={{ headerLargeTitle: true, title: "Settings" }}
           />
           <Stack.Screen
+            name="support"
+            options={{ title: "Support OpenMulticam" }}
+          />
+          <Stack.Screen
+            name="privacy"
+            options={{ title: "Privacy policy" }}
+          />
+          <Stack.Screen
             name="dev-foundation"
             options={{ title: "Foundation Preview" }}
           />

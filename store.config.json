@@ -1,0 +1,67 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "version": "1.0.0",
+    "release": {
+      "automaticRelease": true
+    },
+    "info": {
+      "en-US": {
+        "title": "OpenMulticam",
+        "subtitle": "Record two cameras together",
+        "description": "Capture two perspectives with one iPhone. OpenMulticam records from two supported cameras at the same time, so you can capture a conversation, a demonstration, or both sides of a moment.\n\nCHOOSE YOUR VIEW\nRecord separate camera files, picture-in-picture, or a split view. Choose from the camera combinations your iPhone supports. Single-camera recording is also available.\n\nKEEP YOUR TAKES CLOSE\nReview recordings in the local library, rename your takes, and export videos to Photos or share them with Files and other apps.\n\nPRIVATE BY DESIGN\nNo account, advertising, or analytics. Camera and microphone input stays on your iPhone. You choose when to export or share a recording.\n\nFREE, WITH OPTIONAL SUPPORT\nEvery camera feature is free. An optional one-time donation supports continued development. There is no subscription and no feature paywall.\n\nRecords 1080p H.264 at supported frame rates of 24, 25, or 30 fps. Requires iOS 18.6 or later. Available camera pairs depend on your iPhone hardware.",
+        "keywords": [
+          "video",
+          "dual",
+          "front",
+          "rear",
+          "picture",
+          "pip",
+          "split",
+          "vlog",
+          "interview",
+          "creator",
+          "filming",
+          "recorder"
+        ],
+        "promoText": "Two perspectives, one iPhone. Record separate files, picture-in-picture, or split view. All camera features are free, with optional support.",
+        "privacyPolicyUrl": "https://github.com/rami-maalouf/open-multicam/blob/main/docs/privacy.md",
+        "supportUrl": "https://github.com/rami-maalouf/open-multicam/blob/main/docs/support.md",
+        "marketingUrl": "https://github.com/rami-maalouf/open-multicam"
+      }
+    },
+    "advisory": {
+      "ageRatingOverride": "NONE",
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gambling": false,
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "kidsAgeBand": null,
+      "koreaAgeRatingOverride": "NONE",
+      "lootBox": false,
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "unrestrictedWebAccess": false,
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "advertising": false,
+      "ageAssurance": false,
+      "ageRatingOverrideV2": "NONE",
+      "developerAgeRatingInfoUrl": null,
+      "gunsOrOtherWeapons": "NONE",
+      "healthOrWellnessTopics": false,
+      "messagingAndChat": false,
+      "parentalControls": false,
+      "userGeneratedContent": false
+    },
+    "copyright": "2026 Rami Maalouf",
+    "categories": [
+      "PHOTO_AND_VIDEO"
+    ]
+  }
+}

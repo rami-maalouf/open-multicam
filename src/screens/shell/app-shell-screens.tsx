@@ -1,119 +1,38 @@
-import { Link } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Host, List, ListItem, Text } from "@expo/ui";
+import * as Application from "expo-application";
+import { router } from "expo-router";
 
-import { AppText } from "@/components/app-text";
-import { Icon } from "@/components/icon";
-import { colors, radii, spacing } from "@/theme";
+import { colors } from "@/theme";
 
 export { CaptureScreen } from "@/screens/capture/capture-screen";
 export { LibraryScreen } from "@/screens/library/library-screen";
 
 export function SettingsScreen() {
   return (
-    <ScrollView
-      contentContainerStyle={styles.scrollContent}
-      contentInsetAdjustmentBehavior="automatic"
-      style={styles.standardScreen}
-    >
-      <AppText style={styles.sectionLabel} tone="secondary" variant="caption">
-        MVP CAPTURE
-      </AppText>
-      <View style={styles.settingsGroup}>
-        <View accessible style={styles.settingsRow}>
-          <Icon name="iphone" size="regular" tone="accent" />
-          <View style={styles.settingsText}>
-            <AppText variant="headline">iPhone capture</AppText>
-            <AppText tone="secondary" variant="callout">
-              Native single and supported dual-camera pipeline
-            </AppText>
-          </View>
-        </View>
-        <View style={styles.separator} />
-        <View accessible style={styles.settingsRow}>
-          <Icon name="video.fill" size="regular" tone="accentSecondary" />
-          <View style={styles.settingsText}>
-            <AppText variant="headline">Recording quality</AppText>
-            <AppText tone="secondary" variant="callout">
-              1080p H.264 · 24, 25, or 30 fps
-            </AppText>
-          </View>
-        </View>
-        <View style={styles.separator} />
-        <View accessible style={styles.settingsRow}>
-          <Icon name="lock.shield.fill" size="regular" tone="success" />
-          <View style={styles.settingsText}>
-            <AppText variant="headline">Private by default</AppText>
-            <AppText tone="secondary" variant="callout">
-              No account, network, or analytics
-            </AppText>
-          </View>
-        </View>
-      </View>
-
-      <Link href="/" asChild>
-        <Pressable accessibilityRole="button" style={styles.primaryAction}>
-          <Icon name="viewfinder" size="regular" tone="previewLabel" />
-          <AppText tone="previewLabel" variant="headline">
-            Return to capture
-          </AppText>
-        </Pressable>
-      </Link>
-      <Link href="/library" asChild>
-        <Pressable accessibilityRole="button" style={styles.secondaryAction}>
-          <AppText tone="accent" variant="headline">
-            Open library
-          </AppText>
-          <Icon name="chevron.right" size="compact" tone="accent" />
-        </Pressable>
-      </Link>
-    </ScrollView>
+    <Host style={{ flex: 1 }} seedColor={colors.accent} useViewportSizeMeasurement>
+      <List>
+        <ListItem supportingText="Single camera and supported camera pairs">
+          <Text>iPhone capture</Text>
+        </ListItem>
+        <ListItem supportingText="1080p H.264 at 24, 25, or 30 fps">
+          <Text>Recording quality</Text>
+        </ListItem>
+        <ListItem supportingText="Your recordings stay on your iPhone until you share them" onPress={() => router.push("/privacy")} testID="privacy-settings-row">
+          <Text>Privacy policy</Text>
+        </ListItem>
+        <ListItem supportingText="Optional one-time donation, help, and feedback" onPress={() => router.push("/support")} testID="support-settings-row">
+          <Text>Support OpenMulticam</Text>
+        </ListItem>
+        <ListItem supportingText={Application.nativeApplicationVersion ?? "1.0.0"}>
+          <Text>Version</Text>
+        </ListItem>
+        <ListItem onPress={() => router.push("/library")}>
+          <Text>Open library</Text>
+        </ListItem>
+        <ListItem onPress={() => router.dismissTo("/")}>
+          <Text>Return to capture</Text>
+        </ListItem>
+      </List>
+    </Host>
   );
 }
-
-const styles = StyleSheet.create({
-  standardScreen: { backgroundColor: colors.background, flex: 1 },
-  scrollContent: {
-    gap: spacing.control,
-    padding: spacing.control,
-    paddingBottom: spacing.spacious,
-  },
-  sectionLabel: { marginLeft: spacing.regular, marginTop: spacing.small },
-  settingsGroup: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.card,
-    overflow: "hidden",
-  },
-  settingsRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.regular,
-    minHeight: 72,
-    paddingHorizontal: spacing.control,
-    paddingVertical: spacing.regular,
-  },
-  settingsText: { flex: 1, gap: spacing.compact },
-  separator: {
-    backgroundColor: colors.separator,
-    height: StyleSheet.hairlineWidth,
-    marginLeft: 52,
-  },
-  primaryAction: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radii.control,
-    flexDirection: "row",
-    gap: spacing.small,
-    justifyContent: "center",
-    minHeight: 52,
-    paddingHorizontal: spacing.control,
-  },
-  secondaryAction: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: radii.control,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: 52,
-    paddingHorizontal: spacing.control,
-  },
-});

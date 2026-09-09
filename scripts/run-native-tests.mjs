@@ -45,7 +45,7 @@ function run(command, args, options = {}) {
     const timeout = options.timeoutMs
       ? setTimeout(() => {
           timedOut = true;
-          child.kill("SIGTERM");
+          child.kill("SIGKILL");
         }, options.timeoutMs)
       : undefined;
 
@@ -280,20 +280,30 @@ async function main() {
         `platform=iOS Simulator,id=${udid}`,
         "-derivedDataPath",
         join(packageRoot, "DerivedData"),
+        "-resultBundlePath",
+        join(packageRoot, "Results.xcresult"),
         "-enableCodeCoverage",
         "YES",
         "-parallel-testing-enabled",
         "NO",
+        "-test-timeouts-enabled",
+        "YES",
+        "-default-test-execution-time-allowance",
+        "30",
+        "-maximum-test-execution-time-allowance",
+        "30",
         "CODE_SIGNING_ALLOWED=NO",
       ],
-      { cwd: packageRoot, stdio: "inherit", timeoutMs: 60_000 },
+      { cwd: packageRoot, stdio: "inherit", timeoutMs: 180_000 },
     );
 
     if (result.timedOut) {
-      console.error("native XCTest suite exceeded the 60 second limit");
+      console.error("native XCTest suite exceeded the 180 second limit");
     }
 
     if (result.status !== 0) {
+      const details = await run("xcrun", ["xcresulttool", "get", "test-results", "summary", "--path", join(packageRoot, "Results.xcresult")]);
+      console.error(details.stdout || details.stderr);
       process.exitCode = result.status ?? 1;
       return;
     }

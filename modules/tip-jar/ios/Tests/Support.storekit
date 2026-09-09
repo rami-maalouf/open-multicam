@@ -1,0 +1,24 @@
+{
+  "identifier": "OPENMULTICAM-TIP",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "1.99",
+      "familyShareable": false,
+      "internalID": "OPENMULTICAM-SUPPORT",
+      "localizations": [
+        {
+          "description": "A one-time donation to support OpenMulticam development. All camera features remain free.",
+          "displayName": "Support OpenMulticam",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.ramimaalouf.openmulticam.tip.developer.support",
+      "referenceName": "Support OpenMulticam",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": { "_failTransactionsEnabled": false, "_locale": "en_US", "_storefront": "USA" },
+  "subscriptionGroups": [],
+  "version": { "major": 4, "minor": 0 }
+}
