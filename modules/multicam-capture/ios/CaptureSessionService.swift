@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreGraphics
 import Foundation
 
 final class CaptureSessionService: NSObject, @unchecked Sendable {
@@ -20,6 +21,9 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
   private var dataSynchronizer: AVCaptureDataOutputSynchronizer?
   private var pipCorner: CapturePipCorner = .topTrailing
   private var isPipSwapped = false
+  // cached so the pinch can read a start value without touching the device
+  private var zoomFactors: [CGFloat] = [1, 1]
+  private let zoomCacheLock = NSLock()
   private var recordingContext: CaptureRecordingContext?
   private var recordingWriter: CaptureRecordingWriter?
 
@@ -122,6 +126,61 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
     }
   }
 
+  /// Last zoom applied to a camera slot. Read on the main thread by the pinch
+  /// gesture, so it comes from the cache rather than the device.
+  func zoomFactor(forSlot slot: Int) -> CGFloat {
+    zoomCacheLock.lock()
+    defer { zoomCacheLock.unlock() }
+    return zoomFactors.indices.contains(slot) ? zoomFactors[slot] : 1
+  }
+
+  /// Applies a digital zoom to one camera slot. The device clamps the range,
+  /// and because the zoom lives on the device both the preview and the
+  /// recorded frames carry it.
+  func setZoomFactor(_ factor: CGFloat, forSlot slot: Int) {
+    sessionQueue.async {
+      guard
+        let cameraId = self.cameraId(forSlot: slot),
+        let device = self.captureSession?.inputs
+          .compactMap({ $0 as? AVCaptureDeviceInput })
+          .first(where: { $0.device.uniqueID == cameraId })?.device
+      else {
+        return
+      }
+
+      let clamped = min(
+        max(factor, device.minAvailableVideoZoomFactor),
+        device.maxAvailableVideoZoomFactor
+      )
+
+      do {
+        try device.lockForConfiguration()
+        device.videoZoomFactor = clamped
+        device.unlockForConfiguration()
+      } catch {
+        return
+      }
+
+      self.writeZoomCache(clamped, forSlot: slot)
+    }
+  }
+
+  private func cameraId(forSlot slot: Int) -> String? {
+    guard let preset else {
+      return nil
+    }
+    let ids = [preset.cameraAId, preset.cameraBId].compactMap { $0 }
+    return ids.indices.contains(slot) ? ids[slot] : nil
+  }
+
+  private func writeZoomCache(_ factor: CGFloat, forSlot slot: Int) {
+    zoomCacheLock.lock()
+    defer { zoomCacheLock.unlock() }
+    if zoomFactors.indices.contains(slot) {
+      zoomFactors[slot] = factor
+    }
+  }
+
   func prepareRecording(
     recordingSetId: String
   ) async -> Result<String, CaptureFailure> {
@@ -216,13 +275,36 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
       throw CaptureFailure.configurationUnavailable
     }
 
-    stopAndTearDownSession()
-    isPipSwapped = false
+    // changing lenses only swaps inputs and connections, so a session of the
+    // right class can be re-dressed in place. tearing it down instead costs a
+    // stop/start and shows the viewer a black frame between takes.
+    let needsMulticam = preset.mode != .single
+    let reusable = reusableSession(needsMulticam: needsMulticam)
 
-    let session: AVCaptureSession = preset.mode == .single
-      ? AVCaptureSession()
-      : AVCaptureMultiCamSession()
+    if reusable == nil {
+      stopAndTearDownSession()
+    } else {
+      // keep the running session, but drop everything keyed to the old devices
+      disconnectPreviewLayers()
+      recordingContext = nil
+      recordingWriter = nil
+      dataSynchronizer = nil
+      videoOutputs = []
+      audioOutput = nil
+    }
+
+    isPipSwapped = false
+    writeZoomCache(1, forSlot: 0)
+    writeZoomCache(1, forSlot: 1)
+
+    let session: AVCaptureSession = reusable
+      ?? (needsMulticam ? AVCaptureMultiCamSession() : AVCaptureSession())
     session.beginConfiguration()
+    if let reusable {
+      // snapshot first: removing mutates the collections being walked
+      Array(reusable.inputs).forEach(reusable.removeInput)
+      Array(reusable.outputs).forEach(reusable.removeOutput)
+    }
     session.sessionPreset = .inputPriority
 
     do {
@@ -489,6 +571,19 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
     }
 
     captureSession.startRunning()
+  }
+
+  /// A live session worth keeping: right class, not mid-recording, and
+  /// already attached to the preview layers the surface is showing.
+  private func reusableSession(needsMulticam: Bool) -> AVCaptureSession? {
+    guard
+      let captureSession,
+      recordingWriter == nil,
+      (captureSession is AVCaptureMultiCamSession) == needsMulticam
+    else {
+      return nil
+    }
+    return captureSession
   }
 
   private func stopAndTearDownSession() {

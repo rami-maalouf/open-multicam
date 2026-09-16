@@ -79,8 +79,10 @@ final class CaptureRecordingWriter: @unchecked Sendable {
     pipCorner: CapturePipCorner,
     isPipSwapped: Bool
   ) throws {
-    let isPip = context.preset.mode == .pip
-    guard isPip
+    // pip and split both render two feeds into one clip, so they share the
+    // compositor and the single-writer shape
+    let isComposite = context.preset.mode == .pip || context.preset.mode == .split
+    guard isComposite
       ? context.clips.count == 1 && videoOutputs.count == 2
       : context.clips.count == videoOutputs.count
     else {
@@ -92,11 +94,11 @@ final class CaptureRecordingWriter: @unchecked Sendable {
     self.audioOutput = audioOutput
     self.pipCorner = pipCorner
     self.isPipSwapped = isPipSwapped
-    compositorContext = isPip
+    compositorContext = isComposite
       ? CIContext(options: [.cacheIntermediates: false])
       : nil
 
-    if isPip {
+    if isComposite {
       writers = [
         try Self.makeWriter(
           clip: context.clips[0],
@@ -128,8 +130,8 @@ final class CaptureRecordingWriter: @unchecked Sendable {
   }
 
   func append(_ collection: AVCaptureSynchronizedDataCollection) {
-    if preset.mode == .pip {
-      appendPip(collection)
+    if preset.mode == .pip || preset.mode == .split {
+      appendComposite(collection)
       appendSynchronizedAudio(collection)
       return
     }
@@ -240,7 +242,8 @@ final class CaptureRecordingWriter: @unchecked Sendable {
         startedAtPtsSeconds: CMTimeGetSeconds(startedAt),
         hasAudio: hasWrittenAudio,
         pipCorner: preset.mode == .pip ? pipCorner : nil,
-        isPipSwapped: preset.mode == .pip && isPipSwapped
+        isPipSwapped:
+          (preset.mode == .pip || preset.mode == .split) && isPipSwapped
       )
     )
   }
@@ -344,7 +347,7 @@ final class CaptureRecordingWriter: @unchecked Sendable {
     )
   }
 
-  private func appendPip(_ collection: AVCaptureSynchronizedDataCollection) {
+  private func appendComposite(_ collection: AVCaptureSynchronizedDataCollection) {
     pipDiagnostics.synchronizedCollections += 1
     guard
       videoOutputs.count == 2,
@@ -421,30 +424,35 @@ final class CaptureRecordingWriter: @unchecked Sendable {
         width: preset.width,
         height: preset.height
       )
-      // The tap-to-swap flag only changes which camera fills the canvas; the
-      // frame pacing stays driven by the first video output either way.
+      // The tap-to-swap flag only changes which camera takes the leading
+      // slot; the frame pacing stays driven by the first video output either
+      // way. pip reads that slot as the full screen, split as the top pane.
       let assignment = CapturePipAssignment.resolve(isSwapped: isPipSwapped)
       let buffers = [primaryBuffer, secondaryBuffer]
-      let backgroundImage = aspectFilled(
-        CIImage(cvPixelBuffer: buffers[assignment.fullScreenIndex]),
-        into: canvas
-      )
-      let insetFromTop = CapturePipLayout.frame(in: canvas, corner: pipCorner)
-      let inset = CGRect(
-        x: insetFromTop.minX,
-        y: canvas.height - insetFromTop.maxY,
-        width: insetFromTop.width,
-        height: insetFromTop.height
-      )
-      let insetImage = aspectFilled(
-        CIImage(cvPixelBuffer: buffers[assignment.insetIndex]),
-        into: inset
-      )
-      let composite = roundedComposite(
-        insetImage,
-        over: backgroundImage,
-        inset: inset
-      )
+      let leading = CIImage(cvPixelBuffer: buffers[assignment.fullScreenIndex])
+      let trailing = CIImage(cvPixelBuffer: buffers[assignment.insetIndex])
+      let composite: CIImage
+
+      if preset.mode == .split {
+        // core image measures from the bottom left, so the top pane is the
+        // half with the greater y
+        let panes = CaptureSplitLayout.panes(in: canvas)
+        composite = aspectFilled(leading, into: panes.top)
+          .composited(over: aspectFilled(trailing, into: panes.bottom))
+      } else {
+        let insetFromTop = CapturePipLayout.frame(in: canvas, corner: pipCorner)
+        let inset = CGRect(
+          x: insetFromTop.minX,
+          y: canvas.height - insetFromTop.maxY,
+          width: insetFromTop.width,
+          height: insetFromTop.height
+        )
+        composite = roundedComposite(
+          aspectFilled(trailing, into: inset),
+          over: aspectFilled(leading, into: canvas),
+          inset: inset
+        )
+      }
 
       compositorContext.render(
         composite,

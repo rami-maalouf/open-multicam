@@ -11,20 +11,20 @@ const writerSource = readFileSync(
 
 describe("PiP recording writer lifecycle", () => {
   it("starts the asset-writer session before checking input readiness and its pixel pool", () => {
-    const appendPipStart = writerSource.indexOf(
-      "private func appendPip(",
+    const appendCompositeStart = writerSource.indexOf(
+      "private func appendComposite(",
     );
-    const appendPipEnd = writerSource.indexOf(
+    const appendCompositeEnd = writerSource.indexOf(
       "private func appendSynchronizedAudio(",
-      appendPipStart,
+      appendCompositeStart,
     );
-    const appendPip = writerSource.slice(appendPipStart, appendPipEnd);
+    const appendComposite = writerSource.slice(appendCompositeStart, appendCompositeEnd);
 
-    const beginIndex = appendPip.indexOf("beginIfNeeded(at: time)");
-    const readinessIndex = appendPip.indexOf(
+    const beginIndex = appendComposite.indexOf("beginIfNeeded(at: time)");
+    const readinessIndex = appendComposite.indexOf(
       "writer.videoInput.isReadyForMoreMediaData",
     );
-    const poolIndex = appendPip.indexOf(
+    const poolIndex = appendComposite.indexOf(
       "let pool = writer.compositePixelBufferPool",
     );
 
@@ -36,31 +36,31 @@ describe("PiP recording writer lifecycle", () => {
   it("allocates composite frames from an owned pool instead of the adaptor's optional pool", () => {
     expect(writerSource).toContain("let compositePixelBufferPool: CVPixelBufferPool?");
 
-    const appendPipStart = writerSource.indexOf("private func appendPip(");
-    const appendPipEnd = writerSource.indexOf(
+    const appendCompositeStart = writerSource.indexOf("private func appendComposite(");
+    const appendCompositeEnd = writerSource.indexOf(
       "private func appendSynchronizedAudio(",
-      appendPipStart,
+      appendCompositeStart,
     );
-    const appendPip = writerSource.slice(appendPipStart, appendPipEnd);
+    const appendComposite = writerSource.slice(appendCompositeStart, appendCompositeEnd);
 
-    expect(appendPip).toContain("let pool = writer.compositePixelBufferPool");
-    expect(appendPip).not.toContain("adaptor.pixelBufferPool");
+    expect(appendComposite).toContain("let pool = writer.compositePixelBufferPool");
+    expect(appendComposite).not.toContain("adaptor.pixelBufferPool");
   });
 
   it("caches each PiP camera independently and composites on the primary camera clock", () => {
-    const appendPipStart = writerSource.indexOf("private func appendPip(");
-    const appendPipEnd = writerSource.indexOf(
+    const appendCompositeStart = writerSource.indexOf("private func appendComposite(");
+    const appendCompositeEnd = writerSource.indexOf(
       "private func appendSynchronizedAudio(",
-      appendPipStart,
+      appendCompositeStart,
     );
-    const appendPip = writerSource.slice(appendPipStart, appendPipEnd);
+    const appendComposite = writerSource.slice(appendCompositeStart, appendCompositeEnd);
 
     expect(writerSource).toContain("private var latestPipPrimaryBuffer: CVPixelBuffer?");
     expect(writerSource).toContain("private var latestPipSecondaryBuffer: CVPixelBuffer?");
-    expect(appendPip).toContain("latestPipSecondaryBuffer = secondaryBuffer");
-    expect(appendPip).toContain("latestPipPrimaryBuffer = primaryBuffer");
-    expect(appendPip).toContain("guard let primarySample else");
-    expect(appendPip).toContain("let secondaryBuffer = latestPipSecondaryBuffer");
+    expect(appendComposite).toContain("latestPipSecondaryBuffer = secondaryBuffer");
+    expect(appendComposite).toContain("latestPipPrimaryBuffer = primaryBuffer");
+    expect(appendComposite).toContain("guard let primarySample else");
+    expect(appendComposite).toContain("let secondaryBuffer = latestPipSecondaryBuffer");
   });
 
   it("returns content-free PiP writer diagnostics when no frame is accepted", () => {

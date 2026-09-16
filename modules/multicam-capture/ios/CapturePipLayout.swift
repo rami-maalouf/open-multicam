@@ -31,6 +31,49 @@ struct CapturePipAssignment: Equatable {
   }
 }
 
+/// Geometry for split mode: two equal panes stacked along the short axis, so
+/// the recorded composite matches the two pane preview.
+enum CaptureSplitLayout {
+  /// Panes in a bottom left origin space (core image). `top` is the pane the
+  /// viewer sees above the divider.
+  static func panes(in canvas: CGRect) -> (top: CGRect, bottom: CGRect) {
+    let paneHeight = canvas.height / 2
+    return (
+      top: CGRect(
+        x: canvas.minX,
+        y: canvas.minY + paneHeight,
+        width: canvas.width,
+        height: canvas.height - paneHeight
+      ),
+      bottom: CGRect(
+        x: canvas.minX,
+        y: canvas.minY,
+        width: canvas.width,
+        height: paneHeight
+      )
+    )
+  }
+
+  /// Panes in a top left origin space (uikit), for the preview surface.
+  static func viewPanes(in bounds: CGRect) -> (top: CGRect, bottom: CGRect) {
+    let paneHeight = bounds.height / 2
+    return (
+      top: CGRect(
+        x: bounds.minX,
+        y: bounds.minY,
+        width: bounds.width,
+        height: paneHeight
+      ),
+      bottom: CGRect(
+        x: bounds.minX,
+        y: bounds.minY + paneHeight,
+        width: bounds.width,
+        height: bounds.height - paneHeight
+      )
+    )
+  }
+}
+
 struct CapturePipLayout {
   static func frame(
     in bounds: CGRect,

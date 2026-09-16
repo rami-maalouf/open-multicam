@@ -158,6 +158,15 @@ enum CaptureRecordingStorage {
       manifest["cameraB"] = cameraB.payload
     }
 
+    if context.preset.mode == .split {
+      // the leading slot is the top pane; a swap moves camera A below it
+      manifest["composition"] = [
+        "kind": "split",
+        "division": "horizontal",
+        "cameraAPlacement": writerResult.isPipSwapped ? "trailing" : "leading"
+      ]
+    }
+
     if context.preset.mode == .pip {
       let canvas = CGRect(
         x: 0,

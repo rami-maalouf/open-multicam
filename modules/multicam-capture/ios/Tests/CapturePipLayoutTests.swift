@@ -65,6 +65,30 @@ final class CapturePipLayoutTests: XCTestCase {
     }
   }
 
+  func testSplitsTheCanvasIntoTwoEqualPanes() {
+    let panes = CaptureSplitLayout.panes(in: portraitBounds)
+
+    XCTAssertEqual(panes.top.height, panes.bottom.height, accuracy: 0.001)
+    XCTAssertEqual(
+      panes.top.height + panes.bottom.height,
+      portraitBounds.height,
+      accuracy: 0.001
+    )
+    XCTAssertEqual(panes.top.width, portraitBounds.width, accuracy: 0.001)
+    XCTAssertFalse(panes.top.intersects(panes.bottom))
+  }
+
+  func testSplitPanesFlipWithTheCoordinateOrigin() {
+    // core image measures from the bottom left, uikit from the top left, so
+    // the top pane sits at opposite ends of the two spaces
+    let imagePanes = CaptureSplitLayout.panes(in: portraitBounds)
+    let viewPanes = CaptureSplitLayout.viewPanes(in: portraitBounds)
+
+    XCTAssertEqual(imagePanes.top.minY, portraitBounds.height / 2, accuracy: 0.001)
+    XCTAssertEqual(viewPanes.top.minY, 0, accuracy: 0.001)
+    XCTAssertEqual(viewPanes.bottom.minY, portraitBounds.height / 2, accuracy: 0.001)
+  }
+
   func testClampsDraggedInsetInsideSafeMargins() {
     let size = CGSize(width: 140, height: 248)
     let upperLeft = CapturePipLayout.clampedCenter(

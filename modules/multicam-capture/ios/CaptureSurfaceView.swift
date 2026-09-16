@@ -9,11 +9,14 @@ final class CaptureSurfaceView: ExpoView {
   private let secondaryPreviewHost = UIView()
   private let panGesture = UIPanGestureRecognizer()
   private let swapTapGesture = UITapGestureRecognizer()
+  private let zoomPinchGesture = UIPinchGestureRecognizer()
   private var captureMode: CaptureMode = .single
   private var pipCorner: CapturePipCorner = .topTrailing
   private var isPipSwapped = false
   private var dragOrigin = CGPoint.zero
   private var isDraggingPip = false
+  private var pinchSlot: Int?
+  private var zoomStartFactor: CGFloat = 1
   private var isAttached = false
   private var isObservingLifecycle = false
 
@@ -36,24 +39,33 @@ final class CaptureSurfaceView: ExpoView {
     addGestureRecognizer(panGesture)
     swapTapGesture.addTarget(self, action: #selector(handleSwapTap))
     addGestureRecognizer(swapTapGesture)
+    zoomPinchGesture.addTarget(self, action: #selector(handleZoomPinch))
+    addGestureRecognizer(zoomPinchGesture)
     updateAccessibilityActions()
   }
 
-  /// The host currently drawn as the small inset. Follows the swap so the pan
-  /// gesture and the corner layout always act on whichever camera is small.
-  private var pipHost: UIView {
+  /// The host in the secondary slot: the inset in pip, the lower pane in
+  /// split. Follows the swap so the drag and the corner layout always act on
+  /// whichever camera is currently the small one.
+  private var trailingHost: UIView {
     isPipSwapped ? primaryPreviewHost : secondaryPreviewHost
   }
 
-  private var fullScreenHost: UIView {
+  /// True while the viewer is allowed to swap the two slots: both composite
+  /// modes qualify, discrete draws equal panes from fixed files.
+  private var allowsSwap: Bool {
+    captureMode == .pip || captureMode == .split
+  }
+
+  private var leadingHost: UIView {
     isPipSwapped ? secondaryPreviewHost : primaryPreviewHost
   }
 
-  private var pipPreviewLayer: AVCaptureVideoPreviewLayer {
+  private var trailingPreviewLayer: AVCaptureVideoPreviewLayer {
     isPipSwapped ? primaryPreviewLayer : secondaryPreviewLayer
   }
 
-  private var fullScreenPreviewLayer: AVCaptureVideoPreviewLayer {
+  private var leadingPreviewLayer: AVCaptureVideoPreviewLayer {
     isPipSwapped ? secondaryPreviewLayer : primaryPreviewLayer
   }
 
@@ -68,33 +80,25 @@ final class CaptureSurfaceView: ExpoView {
     }
 
     if captureMode == .pip {
-      fullScreenHost.frame = bounds
-      fullScreenPreviewLayer.frame = fullScreenHost.bounds
+      leadingHost.frame = bounds
+      leadingPreviewLayer.frame = leadingHost.bounds
       if !isDraggingPip {
-        pipHost.frame = CapturePipLayout.frame(
+        trailingHost.frame = CapturePipLayout.frame(
           in: bounds,
           corner: pipCorner
         )
       }
-      pipPreviewLayer.frame = pipHost.bounds
+      trailingPreviewLayer.frame = trailingHost.bounds
       return
     }
 
-    let paneHeight = bounds.height / 2
-    primaryPreviewHost.frame = CGRect(
-      x: 0,
-      y: 0,
-      width: bounds.width,
-      height: paneHeight
-    )
-    primaryPreviewLayer.frame = primaryPreviewHost.bounds
-    secondaryPreviewHost.frame = CGRect(
-      x: 0,
-      y: paneHeight,
-      width: bounds.width,
-      height: bounds.height - paneHeight
-    )
-    secondaryPreviewLayer.frame = secondaryPreviewHost.bounds
+    // discrete and split both show two panes; only split lets the viewer
+    // swap which camera sits on top
+    let panes = CaptureSplitLayout.viewPanes(in: bounds)
+    leadingHost.frame = panes.top
+    leadingPreviewLayer.frame = leadingHost.bounds
+    trailingHost.frame = panes.bottom
+    trailingPreviewLayer.frame = trailingHost.bounds
   }
 
   override func didMoveToWindow() {
@@ -170,7 +174,7 @@ final class CaptureSurfaceView: ExpoView {
   ) {
     captureMode = mode
     pipCorner = corner
-    isPipSwapped = mode == .pip && isSwapped
+    isPipSwapped = (mode == .pip || mode == .split) && isSwapped
     let showsSecondary = mode != .single
     secondaryPreviewHost.isHidden = !showsSecondary
     secondaryPreviewLayer.isHidden = !showsSecondary
@@ -184,10 +188,10 @@ final class CaptureSurfaceView: ExpoView {
   /// from the one behind it. Called again after every swap.
   private func applyPipStyling() {
     let isPip = captureMode == .pip
-    let inset = pipHost
-    let insetLayer = pipPreviewLayer
-    let background = fullScreenHost
-    let backgroundLayer = fullScreenPreviewLayer
+    let inset = trailingHost
+    let insetLayer = trailingPreviewLayer
+    let background = leadingHost
+    let backgroundLayer = leadingPreviewLayer
 
     if isPip {
       bringSubviewToFront(inset)
@@ -229,30 +233,76 @@ final class CaptureSurfaceView: ExpoView {
   override func gestureRecognizerShouldBegin(
     _ gestureRecognizer: UIGestureRecognizer
   ) -> Bool {
+    // The pinch zooms whichever camera is under the fingers, so it works in
+    // every mode that shows a preview at all.
+    if gestureRecognizer === zoomPinchGesture {
+      return true
+    }
+
+    // The tap swaps the two slots from anywhere in the preview; the drag only
+    // starts on the inset itself, and only pip has one to drag.
+    if gestureRecognizer === swapTapGesture {
+      return allowsSwap
+    }
+
     guard captureMode == .pip else {
       return false
     }
 
-    // The tap swaps the two cameras from anywhere in the preview; the pan only
-    // starts on the inset itself so the full screen camera stays put.
-    if gestureRecognizer === swapTapGesture {
-      return true
-    }
-
-    return pipHost.frame.contains(gestureRecognizer.location(in: self))
+    return trailingHost.frame.contains(gestureRecognizer.location(in: self))
   }
 
   @objc private func handleSwapTap(_ gesture: UITapGestureRecognizer) {
     // A pan cancels the tap once the finger passes the slop threshold, but a
     // drag that settles back under it would still fire here.
-    guard captureMode == .pip, !isDraggingPip else {
+    guard allowsSwap, !isDraggingPip else {
       return
     }
     setPipSwapped(!isPipSwapped, animated: true)
   }
 
+  /// Pinching zooms the camera under the fingers. A physical lens cannot go
+  /// below 1.0, so this only ever crops in; reaching wider is a lens change.
+  @objc private func handleZoomPinch(_ gesture: UIPinchGestureRecognizer) {
+    switch gesture.state {
+    case .began:
+      let slot = pinchTargetSlot(of: gesture)
+      pinchSlot = slot
+      zoomStartFactor = CaptureSessionService.shared.zoomFactor(forSlot: slot)
+    case .changed:
+      guard let pinchSlot else {
+        return
+      }
+      CaptureSessionService.shared.setZoomFactor(
+        zoomStartFactor * gesture.scale,
+        forSlot: pinchSlot
+      )
+    case .ended, .cancelled, .failed:
+      pinchSlot = nil
+    default:
+      break
+    }
+  }
+
+  /// Slot 0 is the leading camera, slot 1 the trailing one. In pip a pinch
+  /// that starts on the inset zooms the inset; everywhere else it zooms the
+  /// camera filling that part of the screen.
+  private func pinchTargetSlot(of gesture: UIPinchGestureRecognizer) -> Int {
+    let assignment = CapturePipAssignment.resolve(isSwapped: isPipSwapped)
+
+    guard captureMode != .single, !secondaryPreviewHost.isHidden else {
+      return 0
+    }
+
+    // the trailing host is the inset in pip and the lower pane in split, so
+    // one hit test covers both
+    let isOnTrailing = trailingHost.frame.contains(gesture.location(in: self))
+
+    return isOnTrailing ? assignment.insetIndex : assignment.fullScreenIndex
+  }
+
   private func setPipSwapped(_ swapped: Bool, animated: Bool) {
-    guard captureMode == .pip, swapped != isPipSwapped else {
+    guard allowsSwap, swapped != isPipSwapped else {
       return
     }
 
@@ -262,21 +312,23 @@ final class CaptureSurfaceView: ExpoView {
     updateAccessibilityActions()
     UIImpactFeedbackGenerator(style: .soft).impactOccurred()
 
-    let insetTarget = CapturePipLayout.frame(in: bounds, corner: pipCorner)
-    let inset = pipHost
-    let insetLayer = pipPreviewLayer
-    let background = fullScreenHost
-    let backgroundLayer = fullScreenPreviewLayer
+    let panes = CaptureSplitLayout.viewPanes(in: bounds)
+    let backgroundTarget = captureMode == .split ? panes.top : bounds
+    let insetTarget = captureMode == .split
+      ? panes.bottom
+      : CapturePipLayout.frame(in: bounds, corner: pipCorner)
+    let inset = trailingHost
+    let insetLayer = trailingPreviewLayer
+    let background = leadingHost
+    let backgroundLayer = leadingPreviewLayer
 
     guard animated, !UIAccessibility.isReduceMotionEnabled else {
-      background.frame = bounds
+      background.frame = backgroundTarget
       backgroundLayer.frame = background.bounds
       inset.frame = insetTarget
       insetLayer.frame = inset.bounds
       return
     }
-
-    let backgroundTarget = bounds
     let animator = UIViewPropertyAnimator(
       duration: 0.36,
       timingParameters: UISpringTimingParameters(dampingRatio: 0.85)
@@ -294,18 +346,18 @@ final class CaptureSurfaceView: ExpoView {
     switch gesture.state {
     case .began:
       isDraggingPip = true
-      dragOrigin = pipHost.center
+      dragOrigin = trailingHost.center
       UIImpactFeedbackGenerator(style: .soft).prepare()
     case .changed:
       let translation = gesture.translation(in: self)
-      pipHost.center = CapturePipLayout.clampedCenter(
+      trailingHost.center = CapturePipLayout.clampedCenter(
         CGPoint(x: dragOrigin.x + translation.x, y: dragOrigin.y + translation.y),
-        itemSize: pipHost.bounds.size,
+        itemSize: trailingHost.bounds.size,
         in: bounds
       )
     case .ended, .cancelled, .failed:
       let corner = CapturePipLayout.nearestCorner(
-        to: pipHost.center,
+        to: trailingHost.center,
         velocity: gesture.velocity(in: self),
         in: bounds
       )
@@ -327,8 +379,8 @@ final class CaptureSurfaceView: ExpoView {
     isDraggingPip = false
     pipCorner = corner
     let target = CapturePipLayout.frame(in: bounds, corner: corner)
-    let inset = pipHost
-    let insetLayer = pipPreviewLayer
+    let inset = trailingHost
+    let insetLayer = trailingPreviewLayer
     CaptureSessionService.shared.updatePipCorner(corner)
     updateAccessibilityActions()
     UIImpactFeedbackGenerator(style: .soft).impactOccurred()
@@ -366,8 +418,8 @@ final class CaptureSurfaceView: ExpoView {
       return
     }
 
-    let inset = pipHost
-    fullScreenHost.accessibilityCustomActions = nil
+    let inset = trailingHost
+    leadingHost.accessibilityCustomActions = nil
     inset.accessibilityValue = pipCorner.accessibilityName
 
     var actions: [UIAccessibilityCustomAction] = CapturePipCorner.allCases.map { corner in

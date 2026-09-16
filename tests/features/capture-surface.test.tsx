@@ -446,6 +446,14 @@ describe("native capture surface", () => {
         },
         {
           ...simcamCapabilities.configurations[0],
+          id: "split:back:front",
+          mode: "split",
+          output: "composite-file",
+          cameraIds: ["back", "front"],
+          frameRates: [24, 25, 30],
+        },
+        {
+          ...simcamCapabilities.configurations[0],
           id: "single:back",
           cameraIds: ["back"],
         },
@@ -469,13 +477,39 @@ describe("native capture surface", () => {
       );
     });
     fireEvent.press(pickerButton);
-    expect(screen.getByText("Picture in picture")).toBeTruthy();
-    expect(screen.getByText("Two separate videos")).toBeTruthy();
-    fireEvent.press(screen.getByText("Single camera"));
+
+    // the sheet lists only the styles this device reported
+    expect(screen.getByTestId("camera-sheet-style-pip")).toBeTruthy();
+    expect(screen.getByTestId("camera-sheet-style-split")).toBeTruthy();
+    expect(screen.getByTestId("camera-sheet-style-discrete")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("camera-sheet-style-split"));
 
     await waitFor(() => {
-      expect(mockConfigure).toHaveBeenCalledTimes(2);
-      expect(screen.getByText("Wide")).toBeTruthy();
+      expect(mockConfigure).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          mode: "split",
+          output: "composite-file",
+          cameraAId: "back",
+          cameraBId: "front",
+        }),
+      );
+    });
+
+    // tapping slot two promotes it, which reverses the pair without
+    // changing the configuration
+    fireEvent.press(screen.getByTestId("camera-tile-front"));
+
+    await waitFor(() => {
+      expect(mockConfigure).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          mode: "split",
+          cameraAId: "front",
+          cameraBId: "back",
+        }),
+      );
     });
   });
 

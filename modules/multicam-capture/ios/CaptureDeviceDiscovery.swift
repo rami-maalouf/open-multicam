@@ -346,6 +346,18 @@ enum CaptureDeviceDiscovery {
       let isFrontBack = Set(devices.map(\.position)) == Set([.front, .back])
 
       var configurations = [
+        // split suits any supported pair: two back lenses stacked read as one
+        // framing of the same scene, not just a reaction shot
+        CaptureConfigurationDescriptor(
+          id: "split:\(ids.joined(separator: ":"))",
+          mode: .split,
+          output: .compositeFile,
+          cameraIds: ids,
+          frameRates: frameRates,
+          availability: isFrontBack ? "available" : "recommended",
+          bitrate: 16_000_000,
+          estimatedHardwareCost: 0.84
+        ),
         CaptureConfigurationDescriptor(
           id: "discrete:\(ids.joined(separator: ":"))",
           mode: .discrete,

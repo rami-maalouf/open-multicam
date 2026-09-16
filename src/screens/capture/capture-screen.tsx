@@ -2,7 +2,6 @@ import { Link, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AppState,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { BottomSheet } from "@expo/ui";
 
 import {
   CaptureSurfaceView,
@@ -19,9 +19,19 @@ import { AdaptiveMaterial } from "@/components/adaptive-material";
 import { AppText } from "@/components/app-text";
 import { Icon } from "@/components/icon";
 import { validateCaptureRequest } from "@/core/capture/contracts";
+import {
+  availableModes,
+  camerasFor,
+  partnersFor,
+  resolveSelection,
+  selectCamera,
+  type CameraSlotSelection,
+} from "@/core/capture/selection";
 import type {
+  CameraDescriptor,
+  CameraDeviceType,
   CaptureBridgeEvent,
-  CaptureConfigurationCapability,
+  CaptureMode,
   CapturePermissionStatus,
   CaptureRequest,
   CaptureState,
@@ -56,7 +66,8 @@ function supportedConfigurations(
       configuration.kind === "supported" &&
       (configuration.mode === "single" ||
         configuration.mode === "discrete" ||
-        configuration.mode === "pip"),
+        configuration.mode === "pip" ||
+        configuration.mode === "split"),
   );
 }
 
@@ -69,9 +80,26 @@ function preferredFrameRate(
   return configuration.frameRates[0] ?? 30;
 }
 
+// resolves slot one first, so the partner is always the *other* camera and
+// never collapses onto the same id
+function orderedPair(
+  configuration: SupportedCaptureConfiguration,
+  leadingCameraId: string | undefined,
+): readonly [string, string] {
+  const ids: readonly string[] = configuration.cameraIds;
+  const first = ids[0] ?? "";
+  const leading =
+    leadingCameraId !== undefined && ids.includes(leadingCameraId)
+      ? leadingCameraId
+      : first;
+  return [leading, ids.find((id) => id !== leading) ?? ids[1] ?? first];
+}
+
 function createRequest(
   configuration: SupportedCaptureConfiguration,
   orientation: "portrait" | "landscape",
+  // the camera the viewer put in slot one: full screen in pip, top in split
+  leadingCameraId?: string,
 ): CaptureRequest {
   const common = {
     configurationId: configuration.id,
@@ -88,23 +116,81 @@ function createRequest(
     } as CaptureRequest;
   }
 
-  if (configuration.mode === "pip") {
+  if (configuration.mode === "pip" || configuration.mode === "split") {
+    const [cameraAId, cameraBId] = orderedPair(configuration, leadingCameraId);
     return {
       ...common,
-      mode: "pip",
+      mode: configuration.mode,
       output: "composite-file",
-      cameraAId: configuration.cameraIds[0],
-      cameraBId: configuration.cameraIds[1],
+      cameraAId,
+      cameraBId,
     } as CaptureRequest;
   }
 
+  const [cameraAId, cameraBId] = orderedPair(configuration, leadingCameraId);
   return {
     ...common,
     mode: "discrete",
     output: "dual-files",
-    cameraAId: configuration.cameraIds[0],
-    cameraBId: configuration.cameraIds[1],
+    cameraAId,
+    cameraBId,
   } as CaptureRequest;
+}
+
+// the sheet reads as a zoom ladder even though each tile is a separate
+// sensor: 0.5x, 1x, 3x is how people already think about these lenses
+const zoomLabelByDeviceType: Partial<Record<CameraDeviceType, string>> = {
+  "ultra-wide": "0.5\u00d7",
+  wide: "1\u00d7",
+  telephoto: "3\u00d7",
+};
+
+function cameraTileLabel(camera: CameraDescriptor): string {
+  if (camera.position === "front") {
+    return "Selfie";
+  }
+  return zoomLabelByDeviceType[camera.deviceType] ?? camera.label;
+}
+
+function cameraTileCaption(camera: CameraDescriptor): string {
+  switch (camera.deviceType) {
+    case "ultra-wide":
+      return "Ultra Wide";
+    case "wide":
+      return "Wide";
+    case "telephoto":
+      return "Telephoto";
+    case "true-depth":
+      return "Front";
+    default:
+      return camera.label;
+  }
+}
+
+function modeTitle(mode: CaptureMode): string {
+  switch (mode) {
+    case "pip":
+      return "Picture in picture";
+    case "split":
+      return "Split";
+    case "discrete":
+      return "Two files";
+    default:
+      return "Single";
+  }
+}
+
+function modeIcon(mode: CaptureMode): string {
+  switch (mode) {
+    case "pip":
+      return "rectangle.inset.filled";
+    case "split":
+      return "rectangle.split.1x2";
+    case "discrete":
+      return "square.on.square";
+    default:
+      return "camera.fill";
+  }
 }
 
 function formatElapsed(elapsedMs: number): string {
@@ -136,6 +222,8 @@ export function CaptureScreen() {
   const [surfaceState, setSurfaceState] =
     useState<CaptureState["kind"]>("idle");
   const [isPickerVisible, setPickerVisible] = useState(false);
+  // the camera the viewer put in slot one, so the sheet can badge it
+  const [leadingCameraId, setLeadingCameraId] = useState<string | null>(null);
   const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(
     null,
   );
@@ -170,6 +258,7 @@ export function CaptureScreen() {
     async (
       discoveredCapabilities: DeviceCapabilities,
       configurationId?: string,
+      leadingCameraId?: string,
     ) => {
       const available = supportedConfigurations(discoveredCapabilities);
       const preferredId =
@@ -192,7 +281,7 @@ export function CaptureScreen() {
 
       setPhase("configuring");
       setMessage("Preparing cameras…");
-      const request = createRequest(configuration, orientation);
+      const request = createRequest(configuration, orientation, leadingCameraId);
       const validated = validateCaptureRequest(request, discoveredCapabilities);
 
       if (!validated.ok) {
@@ -211,11 +300,12 @@ export function CaptureScreen() {
 
       currentConfigurationId.current = configuration.id;
       setSelectedConfigurationId(configuration.id);
+      setLeadingCameraId(validated.value.cameraAId);
       setPhase("ready");
       setMessage(
-        configuration.mode === "discrete" || configuration.mode === "pip"
-          ? "Both cameras are ready."
-          : "Camera is ready.",
+        configuration.mode === "single"
+          ? "Camera is ready."
+          : "Both cameras are ready.",
       );
       await playHaptic("captureReady");
     },
@@ -369,14 +459,34 @@ export function CaptureScreen() {
     await refresh();
   }, [refresh]);
 
-  const selectConfiguration = useCallback(
-    async (configurationId: string) => {
+  // the sheet edits a slot selection rather than a configuration id, so the
+  // same tap can mean "swap the two" or "switch to a different lens"
+  const selection = useMemo<CameraSlotSelection | null>(() => {
+    if (selectedConfiguration === undefined) {
+      return null;
+    }
+    const ids = selectedConfiguration.cameraIds;
+    const leading =
+      leadingCameraId !== null && ids.includes(leadingCameraId)
+        ? leadingCameraId
+        : ids[0];
+    return {
+      configurationId: selectedConfiguration.id,
+      mode: selectedConfiguration.mode,
+      leadingCameraId: leading,
+      trailingCameraId: ids.find((id) => id !== leading),
+    };
+  }, [leadingCameraId, selectedConfiguration]);
+
+  const sheetMode = selection?.mode ?? "pip";
+
+  const applySelection = useCallback(
+    async (next: CameraSlotSelection) => {
       if (capabilities === null) {
         return;
       }
-      setPickerVisible(false);
       await playHaptic("selection");
-      await configure(capabilities, configurationId);
+      await configure(capabilities, next.configurationId, next.leadingCameraId);
     },
     [capabilities, configure],
   );
@@ -608,110 +718,156 @@ export function CaptureScreen() {
         </AppText>
       </View>
 
-      <ConfigurationPicker
+      <CameraSheet
         capabilities={capabilities}
         configurations={configurations}
         isVisible={isPickerVisible}
+        mode={sheetMode}
         onClose={() => setPickerVisible(false)}
-        onSelect={selectConfiguration}
-        selectedId={selectedConfigurationId}
+        onSelect={applySelection}
+        selection={selection}
       />
     </SafeAreaView>
   );
 }
 
-function ConfigurationPicker({
+function CameraSheet({
   capabilities,
   configurations,
   isVisible,
   onClose,
   onSelect,
-  selectedId,
+  mode,
+  selection,
 }: Readonly<{
   capabilities: DeviceCapabilities | null;
   configurations: readonly SupportedCaptureConfiguration[];
   isVisible: boolean;
   onClose: () => void;
-  onSelect: (configurationId: string) => Promise<void>;
-  selectedId: string | null;
+  onSelect: (
+    next: CameraSlotSelection,
+  ) => Promise<void>;
+  mode: CaptureMode;
+  selection: CameraSlotSelection | null;
 }>) {
-  const cameraLabel = (configuration: CaptureConfigurationCapability) =>
-    configuration.cameraIds
-      .map(
-        (cameraId) =>
-          capabilities?.cameras.find((camera) => camera.id === cameraId)?.label ??
-          "Camera",
-      )
-      .join(" + ");
+  const modes = availableModes(configurations);
+  const usableCameras = camerasFor(configurations, mode);
+  const partners = partnersFor(
+    configurations,
+    mode,
+    selection?.leadingCameraId ?? null,
+  );
+  const cameras = (capabilities?.cameras ?? []).filter((camera) =>
+    usableCameras.has(camera.id),
+  );
+
+  const slotFor = (cameraId: string): 1 | 2 | null => {
+    if (selection?.leadingCameraId === cameraId) {
+      return 1;
+    }
+    return selection?.trailingCameraId === cameraId ? 2 : null;
+  };
 
   return (
-    <Modal
-      animationType="slide"
-      onRequestClose={onClose}
-      presentationStyle="pageSheet"
-      visible={isVisible}
+    <BottomSheet
+      isPresented={isVisible}
+      onDismiss={onClose}
+      snapPoints={["half", "full"]}
+      testID="camera-sheet"
     >
-      <SafeAreaView style={styles.pickerScreen}>
-        <View style={styles.pickerHeader}>
-          <AppText variant="title">Choose cameras</AppText>
-          <Pressable
-            accessibilityLabel="Close camera picker"
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={onClose}
-          >
-            <Icon name="xmark.circle.fill" size="prominent" tone="secondary" />
-          </Pressable>
-        </View>
-        <AppText style={styles.pickerCopy} tone="secondary">
-          OpenMulticam only shows combinations your iPhone can record reliably at
-          1080p.
+      <View style={styles.sheet}>
+        <AppText variant="title">Cameras</AppText>
+        <AppText tone="secondary" variant="callout">
+          Tap a camera to make it the second one. Tap it again to make it the
+          main one.
         </AppText>
-        <ScrollView contentContainerStyle={styles.pickerList}>
-          {configurations.map((configuration) => (
+
+        <View style={styles.styleRow}>
+          {modes.map((candidate) => (
             <Pressable
+              accessibilityLabel={`${modeTitle(candidate)} style`}
               accessibilityRole="button"
-              key={configuration.id}
-              onPress={() => void onSelect(configuration.id)}
-              style={styles.configurationRow}
-            >
-              <View style={styles.configurationIcon}>
-                <Icon
-                  name={
-                    configuration.mode === "pip"
-                      ? "rectangle.inset.filled"
-                      : configuration.mode === "discrete"
-                      ? "rectangle.split.2x1"
-                      : "camera.fill"
-                  }
-                  tone="accent"
-                />
-              </View>
-              <View style={styles.configurationText}>
-                <AppText variant="headline">
-                  {configuration.mode === "pip"
-                    ? "Picture in picture"
-                    : configuration.mode === "discrete"
-                      ? "Two separate videos"
-                      : "Single camera"}
-                </AppText>
-                <AppText tone="secondary" variant="callout">
-                  {cameraLabel(configuration)} · {configuration.frameRates.join(", ")} fps
-                </AppText>
-              </View>
-              <Icon
-                name={
-                  selectedId === configuration.id
-                    ? "checkmark.circle.fill"
-                    : "circle"
+              accessibilityState={{ selected: candidate === mode }}
+              key={candidate}
+              onPress={() => {
+                const next = resolveSelection(
+                  configurations,
+                  candidate,
+                  selection?.leadingCameraId ?? null,
+                  selection?.trailingCameraId ?? null,
+                );
+                if (next !== null) {
+                  void onSelect(next);
                 }
-                tone={selectedId === configuration.id ? "accent" : "secondary"}
-              />
+              }}
+              style={[
+                styles.styleChip,
+                candidate === mode && styles.styleChipSelected,
+              ]}
+              testID={`camera-sheet-style-${candidate}`}
+            >
+              <Icon name={modeIcon(candidate)} size="compact" tone="accent" />
+              <AppText variant="caption">{modeTitle(candidate)}</AppText>
             </Pressable>
           ))}
+        </View>
+
+        <ScrollView contentContainerStyle={styles.tileGrid}>
+          {cameras.map((camera) => {
+            const slot = slotFor(camera.id);
+            const isPairable =
+              slot !== null ||
+              mode === "single" ||
+              partners.has(camera.id) ||
+              selection === null;
+
+            return (
+              <Pressable
+                accessibilityLabel={`${cameraTileCaption(camera)} camera${
+                  slot === null ? "" : `, slot ${slot}`
+                }`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: slot !== null }}
+                key={camera.id}
+                onPress={() => {
+                  const next = selectCamera(
+                    configurations,
+                    mode,
+                    selection,
+                    camera.id,
+                  );
+                  if (next !== null) {
+                    void onSelect(next);
+                  }
+                }}
+                style={[
+                  styles.cameraTile,
+                  slot !== null && styles.cameraTileSelected,
+                  !isPairable && styles.cameraTileDimmed,
+                ]}
+                testID={`camera-tile-${camera.id}`}
+              >
+                <View style={styles.cameraTileHeader}>
+                  <AppText variant="headline">
+                    {cameraTileLabel(camera)}
+                  </AppText>
+                  {slot === null ? null : (
+                    <View style={styles.slotBadge}>
+                      <AppText style={styles.slotBadgeText} variant="caption">
+                        {slot}
+                      </AppText>
+                    </View>
+                  )}
+                </View>
+                <AppText tone="secondary" variant="caption">
+                  {cameraTileCaption(camera)}
+                </AppText>
+              </Pressable>
+            );
+          })}
         </ScrollView>
-      </SafeAreaView>
-    </Modal>
+      </View>
+    </BottomSheet>
   );
 }
 
@@ -811,31 +967,52 @@ const styles = StyleSheet.create({
     width: 60,
   },
   stopControlInner: { borderRadius: radii.small, height: 34, width: 34 },
-  pickerScreen: { backgroundColor: colors.background, flex: 1 },
-  pickerHeader: {
+  sheet: { gap: spacing.regular, paddingBottom: spacing.control },
+  styleRow: { flexDirection: "row", gap: spacing.small },
+  styleChip: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: "transparent",
+    borderRadius: radii.control,
+    borderWidth: 1.5,
+    flex: 1,
+    gap: spacing.compact,
+    paddingHorizontal: spacing.small,
+    paddingVertical: spacing.small,
+  },
+  styleChipSelected: {
+    backgroundColor: colors.raisedSurface,
+    borderColor: colors.accent,
+  },
+  tileGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.small,
+    paddingBottom: spacing.control,
+  },
+  cameraTile: {
+    backgroundColor: colors.surface,
+    borderColor: "transparent",
+    borderRadius: radii.card,
+    borderWidth: 2,
+    gap: spacing.compact,
+    minWidth: 150,
+    padding: spacing.regular,
+  },
+  cameraTileSelected: { borderColor: colors.accent },
+  cameraTileDimmed: { opacity: 0.4 },
+  cameraTileHeader: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: spacing.control,
   },
-  pickerCopy: { paddingHorizontal: spacing.control },
-  pickerList: { gap: spacing.small, padding: spacing.control },
-  configurationRow: {
+  slotBadge: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: radii.card,
-    flexDirection: "row",
-    gap: spacing.regular,
-    minHeight: 76,
-    padding: spacing.regular,
-  },
-  configurationIcon: {
-    alignItems: "center",
-    backgroundColor: colors.raisedSurface,
-    borderRadius: radii.control,
-    height: 48,
+    backgroundColor: colors.accent,
+    borderRadius: radii.capsule,
+    height: 24,
     justifyContent: "center",
-    width: 48,
+    width: 24,
   },
-  configurationText: { flex: 1, gap: spacing.compact },
+  slotBadgeText: { color: colors.previewChrome },
 });
