@@ -68,7 +68,7 @@ fi
 
 ## Original asset provenance
 
-The icon and launch artwork were generated with the built-in image-generation tool. No starter or reference-app asset was supplied to the generator.
+The original icon and launch artwork were generated with the built-in image-generation tool. No starter or reference-app asset was supplied to the generator. The replacement artwork and its prompts are documented in [brand-assets.md](brand-assets.md).
 
 Final icon prompt:
 
@@ -92,4 +92,4 @@ Invariants: preserve the coral left bracket, pale-cyan right bracket, intentiona
 Constraints: opaque full-bleed square background; absolutely no checkerboard; no transparency; no texture; no vignette; no speckles; no shadow; no glow; no text; no watermark; no redesign; no extra elements
 ```
 
-Both project files are opaque 1024 by 1024 RGB PNGs. The original generator outputs remain outside the repository.
+Both original files were opaque 1024 by 1024 RGB PNGs. The original generator outputs remain outside the repository.
