@@ -2,6 +2,7 @@ import { Link, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AppState,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,7 +10,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BottomSheet } from "@expo/ui";
 
 import {
   CaptureSurfaceView,
@@ -485,6 +485,9 @@ export function CaptureScreen() {
       if (capabilities === null) {
         return;
       }
+      // close first: reconfiguring behind an open sheet looks like nothing
+      // happened, because the sheet covers the preview it changes
+      setPickerVisible(false);
       await playHaptic("selection");
       await configure(capabilities, next.configurationId, next.leadingCameraId);
     },
@@ -769,105 +772,122 @@ function CameraSheet({
   };
 
   return (
-    <BottomSheet
-      isPresented={isVisible}
-      onDismiss={onClose}
-      snapPoints={["half", "full"]}
+    <Modal
+      animationType="slide"
+      onRequestClose={onClose}
+      presentationStyle="pageSheet"
       testID="camera-sheet"
+      visible={isVisible}
     >
-      <View style={styles.sheet}>
-        <AppText variant="title">Cameras</AppText>
-        <AppText tone="secondary" variant="callout">
-          Tap a camera to make it the second one. Tap it again to make it the
-          main one.
-        </AppText>
-
-        <View style={styles.styleRow}>
-          {modes.map((candidate) => (
+      <SafeAreaView style={styles.sheetScreen}>
+        <View style={styles.sheet}>
+          <View style={styles.sheetHeader}>
+            <AppText variant="title">Cameras</AppText>
             <Pressable
-              accessibilityLabel={`${modeTitle(candidate)} style`}
+              accessibilityLabel="Close camera picker"
               accessibilityRole="button"
-              accessibilityState={{ selected: candidate === mode }}
-              key={candidate}
-              onPress={() => {
-                const next = resolveSelection(
-                  configurations,
-                  candidate,
-                  selection?.leadingCameraId ?? null,
-                  selection?.trailingCameraId ?? null,
-                );
-                if (next !== null) {
-                  void onSelect(next);
-                }
-              }}
-              style={[
-                styles.styleChip,
-                candidate === mode && styles.styleChipSelected,
-              ]}
-              testID={`camera-sheet-style-${candidate}`}
+              hitSlop={8}
+              onPress={onClose}
             >
-              <Icon name={modeIcon(candidate)} size="compact" tone="accent" />
-              <AppText variant="caption">{modeTitle(candidate)}</AppText>
+              <Icon
+                name="xmark.circle.fill"
+                size="prominent"
+                tone="secondary"
+              />
             </Pressable>
-          ))}
-        </View>
+          </View>
+          <AppText tone="secondary" variant="callout">
+            Tap a camera to make it the second one. Tap it again to make it the
+            main one.
+          </AppText>
 
-        <ScrollView contentContainerStyle={styles.tileGrid}>
-          {cameras.map((camera) => {
-            const slot = slotFor(camera.id);
-            const isPairable =
-              slot !== null ||
-              mode === "single" ||
-              partners.has(camera.id) ||
-              selection === null;
-
-            return (
+          <View style={styles.styleRow}>
+            {modes.map((candidate) => (
               <Pressable
-                accessibilityLabel={`${cameraTileCaption(camera)} camera${
-                  slot === null ? "" : `, slot ${slot}`
-                }`}
+                accessibilityLabel={`${modeTitle(candidate)} style`}
                 accessibilityRole="button"
-                accessibilityState={{ selected: slot !== null }}
-                key={camera.id}
+                accessibilityState={{ selected: candidate === mode }}
+                key={candidate}
                 onPress={() => {
-                  const next = selectCamera(
+                  const next = resolveSelection(
                     configurations,
-                    mode,
-                    selection,
-                    camera.id,
+                    candidate,
+                    selection?.leadingCameraId ?? null,
+                    selection?.trailingCameraId ?? null,
                   );
                   if (next !== null) {
                     void onSelect(next);
                   }
                 }}
                 style={[
-                  styles.cameraTile,
-                  slot !== null && styles.cameraTileSelected,
-                  !isPairable && styles.cameraTileDimmed,
+                  styles.styleChip,
+                  candidate === mode && styles.styleChipSelected,
                 ]}
-                testID={`camera-tile-${camera.id}`}
+                testID={`camera-sheet-style-${candidate}`}
               >
-                <View style={styles.cameraTileHeader}>
-                  <AppText variant="headline">
-                    {cameraTileLabel(camera)}
-                  </AppText>
-                  {slot === null ? null : (
-                    <View style={styles.slotBadge}>
-                      <AppText style={styles.slotBadgeText} variant="caption">
-                        {slot}
-                      </AppText>
-                    </View>
-                  )}
-                </View>
-                <AppText tone="secondary" variant="caption">
-                  {cameraTileCaption(camera)}
-                </AppText>
+                <Icon name={modeIcon(candidate)} size="compact" tone="accent" />
+                <AppText variant="caption">{modeTitle(candidate)}</AppText>
               </Pressable>
+            ))}
+          </View>
+
+          <ScrollView contentContainerStyle={styles.tileGrid}>
+            {cameras.map((camera) => {
+              const slot = slotFor(camera.id);
+              const isPairable =
+                slot !== null ||
+                mode === "single" ||
+                partners.has(camera.id) ||
+                selection === null;
+
+              return (
+                <Pressable
+                  accessibilityLabel={`${cameraTileCaption(camera)} camera${
+                    slot === null ? "" : `, slot ${slot}`
+                  }`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: slot !== null }}
+                  key={camera.id}
+                  onPress={() => {
+                    const next = selectCamera(
+                      configurations,
+                      mode,
+                      selection,
+                      camera.id,
+                    );
+                    if (next !== null) {
+                      void onSelect(next);
+                    }
+                  }}
+                  style={[
+                    styles.cameraTile,
+                    slot !== null && styles.cameraTileSelected,
+                    !isPairable && styles.cameraTileDimmed,
+                  ]}
+                  testID={`camera-tile-${camera.id}`}
+                >
+                  <View style={styles.cameraTileHeader}>
+                    <AppText variant="headline">
+                      {cameraTileLabel(camera)}
+                    </AppText>
+                    {slot === null ? null : (
+                      <View style={styles.slotBadge}>
+                        <AppText style={styles.slotBadgeText} variant="caption">
+                          {slot}
+                        </AppText>
+                      </View>
+                    )}
+                  </View>
+                  <AppText tone="secondary" variant="caption">
+                    {cameraTileCaption(camera)}
+                  </AppText>
+                </Pressable>
             );
           })}
-        </ScrollView>
-      </View>
-    </BottomSheet>
+          </ScrollView>
+        </View>
+      </SafeAreaView>
+    </Modal>
   );
 }
 
@@ -967,7 +987,13 @@ const styles = StyleSheet.create({
     width: 60,
   },
   stopControlInner: { borderRadius: radii.small, height: 34, width: 34 },
-  sheet: { gap: spacing.regular, paddingBottom: spacing.control },
+  sheetScreen: { backgroundColor: colors.background, flex: 1 },
+  sheet: { flex: 1, gap: spacing.regular, padding: spacing.control },
+  sheetHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
   styleRow: { flexDirection: "row", gap: spacing.small },
   styleChip: {
     alignItems: "center",

@@ -497,6 +497,14 @@ describe("native capture surface", () => {
       );
     });
 
+    // choosing closes the sheet, so reopen it before the next tap
+    await waitFor(() => {
+      expect(screen.queryByTestId("camera-tile-front")).toBeNull();
+    });
+    fireEvent.press(
+      await screen.findByRole("button", { name: "Cameras: Wide + Front" }),
+    );
+
     // tapping slot two promotes it, which reverses the pair without
     // changing the configuration
     fireEvent.press(screen.getByTestId("camera-tile-front"));
