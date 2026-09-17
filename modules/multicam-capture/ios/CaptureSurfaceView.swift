@@ -28,9 +28,14 @@ final class CaptureSurfaceView: ExpoView {
     primaryPreviewLayer.videoGravity = .resizeAspectFill
     secondaryPreviewLayer.videoGravity = .resizeAspectFill
     secondaryPreviewLayer.isHidden = true
+    // aspect fill makes each preview layer larger than its pane, so a host
+    // that does not clip lets one camera spill over the other. the secondary
+    // host is added last, so its overflow would cover the primary pane.
+    primaryPreviewHost.clipsToBounds = true
     primaryPreviewHost.backgroundColor = .black
     primaryPreviewHost.layer.addSublayer(primaryPreviewLayer)
     addSubview(primaryPreviewHost)
+    secondaryPreviewHost.clipsToBounds = true
     secondaryPreviewHost.backgroundColor = .black
     secondaryPreviewHost.isHidden = true
     secondaryPreviewHost.layer.addSublayer(secondaryPreviewLayer)
