@@ -139,12 +139,7 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
   /// recorded frames carry it.
   func setZoomFactor(_ factor: CGFloat, forSlot slot: Int) {
     sessionQueue.async {
-      guard
-        let cameraId = self.cameraId(forSlot: slot),
-        let device = self.captureSession?.inputs
-          .compactMap({ $0 as? AVCaptureDeviceInput })
-          .first(where: { $0.device.uniqueID == cameraId })?.device
-      else {
+      guard let device = self.device(forSlot: slot) else {
         return
       }
 
@@ -163,6 +158,48 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
 
       self.writeZoomCache(clamped, forSlot: slot)
     }
+  }
+
+  /// Points one camera's focus and exposure at a spot the viewer tapped.
+  /// `devicePoint` is already in the device's normalised space, converted by
+  /// the preview layer that showed the tap.
+  func focus(at devicePoint: CGPoint, slot: Int) {
+    sessionQueue.async {
+      guard let device = self.device(forSlot: slot) else {
+        return
+      }
+
+      do {
+        try device.lockForConfiguration()
+      } catch {
+        return
+      }
+      defer { device.unlockForConfiguration() }
+
+      if device.isFocusPointOfInterestSupported {
+        device.focusPointOfInterest = devicePoint
+      }
+      // a tap is a one shot request, so autoFocus rather than continuous
+      if device.isFocusModeSupported(.autoFocus) {
+        device.focusMode = .autoFocus
+      }
+      if device.isExposurePointOfInterestSupported {
+        device.exposurePointOfInterest = devicePoint
+      }
+      if device.isExposureModeSupported(.autoExpose) {
+        device.exposureMode = .autoExpose
+      }
+    }
+  }
+
+  private func device(forSlot slot: Int) -> AVCaptureDevice? {
+    guard let cameraId = cameraId(forSlot: slot) else {
+      return nil
+    }
+    return captureSession?.inputs
+      .compactMap { $0 as? AVCaptureDeviceInput }
+      .first { $0.device.uniqueID == cameraId }?
+      .device
   }
 
   private func cameraId(forSlot slot: Int) -> String? {

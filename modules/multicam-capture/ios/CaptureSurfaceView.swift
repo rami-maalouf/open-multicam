@@ -8,7 +8,7 @@ final class CaptureSurfaceView: ExpoView {
   private let primaryPreviewHost = UIView()
   private let secondaryPreviewHost = UIView()
   private let panGesture = UIPanGestureRecognizer()
-  private let swapTapGesture = UITapGestureRecognizer()
+  private let previewTapGesture = UITapGestureRecognizer()
   private let zoomPinchGesture = UIPinchGestureRecognizer()
   private var captureMode: CaptureMode = .single
   private var pipCorner: CapturePipCorner = .topTrailing
@@ -17,6 +17,7 @@ final class CaptureSurfaceView: ExpoView {
   private var isDraggingPip = false
   private var pinchSlot: Int?
   private var zoomStartFactor: CGFloat = 1
+  private weak var focusReticle: UIView?
   private var isAttached = false
   private var isObservingLifecycle = false
 
@@ -37,8 +38,8 @@ final class CaptureSurfaceView: ExpoView {
 
     panGesture.addTarget(self, action: #selector(handlePipPan))
     addGestureRecognizer(panGesture)
-    swapTapGesture.addTarget(self, action: #selector(handleSwapTap))
-    addGestureRecognizer(swapTapGesture)
+    previewTapGesture.addTarget(self, action: #selector(handlePreviewTap))
+    addGestureRecognizer(previewTapGesture)
     zoomPinchGesture.addTarget(self, action: #selector(handleZoomPinch))
     addGestureRecognizer(zoomPinchGesture)
     updateAccessibilityActions()
@@ -239,10 +240,10 @@ final class CaptureSurfaceView: ExpoView {
       return true
     }
 
-    // The tap swaps the two slots from anywhere in the preview; the drag only
-    // starts on the inset itself, and only pip has one to drag.
-    if gestureRecognizer === swapTapGesture {
-      return allowsSwap
+    // The tap either promotes the inset or points focus at whatever the
+    // viewer touched, so it begins everywhere.
+    if gestureRecognizer === previewTapGesture {
+      return true
     }
 
     guard captureMode == .pip else {
@@ -252,13 +253,86 @@ final class CaptureSurfaceView: ExpoView {
     return trailingHost.frame.contains(gestureRecognizer.location(in: self))
   }
 
-  @objc private func handleSwapTap(_ gesture: UITapGestureRecognizer) {
+  @objc private func handlePreviewTap(_ gesture: UITapGestureRecognizer) {
     // A pan cancels the tap once the finger passes the slop threshold, but a
     // drag that settles back under it would still fire here.
-    guard allowsSwap, !isDraggingPip else {
+    guard !isDraggingPip else {
       return
     }
-    setPipSwapped(!isPipSwapped, animated: true)
+
+    let point = gesture.location(in: self)
+
+    // Only the inset promotes. The large preview stays a focus target, which
+    // is the one place a tap has an obvious camera meaning.
+    if captureMode == .pip, trailingHost.frame.contains(point) {
+      setPipSwapped(!isPipSwapped, animated: true)
+      return
+    }
+
+    focus(at: point)
+  }
+
+  /// Points the tapped camera's focus and exposure at that spot, and shows a
+  /// reticle so the viewer can see the request landed.
+  private func focus(at point: CGPoint) {
+    let assignment = CapturePipAssignment.resolve(isSwapped: isPipSwapped)
+    let isOnTrailing = !secondaryPreviewHost.isHidden &&
+      trailingHost.frame.contains(point)
+    let host = isOnTrailing ? trailingHost : leadingHost
+    let previewLayer = isOnTrailing ? trailingPreviewLayer : leadingPreviewLayer
+    let slot = isOnTrailing ? assignment.insetIndex : assignment.fullScreenIndex
+    let pointInHost = convert(point, to: host)
+
+    guard host.bounds.contains(pointInHost) else {
+      return
+    }
+
+    // the service drops the request if that camera cannot be pointed, so the
+    // reticle is only feedback that the tap was heard
+    CaptureSessionService.shared.focus(
+      at: previewLayer.captureDevicePointConverted(fromLayerPoint: pointInHost),
+      slot: slot
+    )
+    showFocusReticle(at: point)
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+  }
+
+  private func showFocusReticle(at point: CGPoint) {
+    focusReticle?.removeFromSuperview()
+
+    let reticle = UIView(frame: CGRect(x: 0, y: 0, width: 78, height: 78))
+    reticle.center = point
+    reticle.isUserInteractionEnabled = false
+    reticle.layer.borderColor = UIColor.systemYellow.cgColor
+    reticle.layer.borderWidth = 1.5
+    reticle.layer.cornerCurve = .continuous
+    reticle.layer.cornerRadius = 6
+    addSubview(reticle)
+    focusReticle = reticle
+
+    guard !UIAccessibility.isReduceMotionEnabled else {
+      fadeOutFocusReticle(reticle, after: 0.6)
+      return
+    }
+
+    reticle.transform = CGAffineTransform(scaleX: 1.35, y: 1.35)
+    UIViewPropertyAnimator(duration: 0.25, dampingRatio: 0.7) {
+      reticle.transform = .identity
+    }.startAnimation()
+    fadeOutFocusReticle(reticle, after: 0.9)
+  }
+
+  private func fadeOutFocusReticle(_ reticle: UIView, after delay: TimeInterval) {
+    let animator = UIViewPropertyAnimator(duration: 0.3, curve: .easeOut) {
+      reticle.alpha = 0
+    }
+    animator.addCompletion { [weak self, weak reticle] _ in
+      reticle?.removeFromSuperview()
+      if self?.focusReticle === reticle {
+        self?.focusReticle = nil
+      }
+    }
+    animator.startAnimation(afterDelay: delay)
   }
 
   /// Pinching zooms the camera under the fingers. A physical lens cannot go
