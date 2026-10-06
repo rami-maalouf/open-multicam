@@ -1,0 +1,62 @@
+name: Native E2E
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'modules/**'
+      - 'e2e/**'
+      - 'e2e.config.ts'
+      - 'scripts/*e2e*'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/native-e2e.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    runs-on: xcode-27
+    timeout-minutes: 45
+    env:
+      E2E_TELEMETRY_DISABLED: '1'
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26.5.0'
+      - run: bun install --frozen-lockfile
+      - run: brew install ffmpeg
+      - name: Create an isolated simulator
+        run: echo "OPENMULTICAM_SIMULATOR_UDID=$(bun scripts/create-e2e-simulator.ts)" >> "$GITHUB_ENV"
+      - run: bunx expo prebuild --platform ios --no-install
+      - run: pod install
+        working-directory: ios
+      - run: bun run build:e2e:sim
+      - run: bun run typecheck:e2e
+      - run: bun run test:e2e:sim -- --repeat-each 2
+      - name: Upload native evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-e2e-evidence
+          path: |
+            .artifacts/e2e
+            .artifacts/agent-device/sessions
+            .artifacts/native-build/Build/Products/Release-iphonesimulator/OpenMulticam.app/e2e-build.json
+          if-no-files-found: warn
+      - name: Release the owned simulator
+        if: always() && env.OPENMULTICAM_SIMULATOR_UDID != ''
+        run: |
+          xcrun simctl shutdown "$OPENMULTICAM_SIMULATOR_UDID"
+          xcrun simctl delete "$OPENMULTICAM_SIMULATOR_UDID"

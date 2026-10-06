@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": [
+      "node"
+    ],
+    "module": "preserve",
+    "moduleResolution": "bundler"
+  },
+  "include": [
+    "../e2e.config.ts",
+    "../e2e.hardware.config.ts",
+    "mobile/**/*.ts",
+    "hardware/**/*.ts",
+    "../scripts/*e2e*.ts"
+  ]
+}

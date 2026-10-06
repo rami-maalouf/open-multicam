@@ -11,12 +11,16 @@
     "test": "jest --runInBand",
     "test:coverage": "jest --runInBand --coverage",
     "test:native": "bun scripts/check-repository.mjs --native-tests",
-    "test:e2e:sim": "bun e2e/simulator/runner.ts",
-    "test:e2e:device": "bun e2e/device/runner.ts",
+    "test:e2e:sim": "E2E_TELEMETRY_DISABLED=1 bunx --no-install e2e run",
+    "test:e2e:device": "E2E_TELEMETRY_DISABLED=1 bunx --no-install e2e run --config e2e.hardware.config.ts",
     "check:repository": "bun scripts/check-repository.mjs",
     "doctor": "bunx expo-doctor",
     "validate": "bun run check:repository && bun run lint && bun run typecheck && bun run test:coverage && bun run doctor",
-    "test:storekit": "bun scripts/run-storekit-tests.mjs"
+    "test:storekit": "bun scripts/run-storekit-tests.mjs",
+    "test:e2e:list": "E2E_TELEMETRY_DISABLED=1 bunx --no-install e2e list",
+    "typecheck:e2e": "tsc --noEmit --project e2e/tsconfig.json",
+    "build:e2e:sim": "bun scripts/build-e2e-simulator.ts",
+    "prepare:e2e:device": "bun scripts/prepare-e2e-hardware.ts"
   },
   "dependencies": {
     "@expo/ui": "~57.0.17",
@@ -51,9 +55,11 @@
     "tuft-telemetry": "0.1.0"
   },
   "devDependencies": {
+    "@e2e-dev/mobile": "0.9.2",
     "@testing-library/react-native": "^13",
     "@types/jest": "29.5.14",
     "@types/react": "~19.2.2",
+    "e2e": "0.17.0",
     "eslint": "^9",
     "eslint-config-expo": "~57.0.2",
     "jest": "~29.7.0",
