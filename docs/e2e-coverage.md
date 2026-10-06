@@ -49,7 +49,7 @@ The former `e2e/simulator` runner only checked source text with Jest. It has bee
 
 Use a distinct developer bundle and URL scheme so installing the harness cannot replace the personal production app. Obtain a signing team/provision for the paired device, enable Developer Mode, and unlock/trust it. Record only user-directed safe framing. Create and delete only new harness takes; avoid personal app data, live donations, external messages, and Photos export until explicitly included in the hardware run. Keep hardware results separate from simulator fixtures.
 
-The combined baseline report is `.artifacts/e2e-foundation-complete/report.json` (11/12 passed). Its rename test initially swiped over AVKit and missed the lower actions; the corrected gesture passed in `.artifacts/e2e-rename/report.json`. A complete repeat and independent review are required before the stack is ready. Source validation separately fails the existing 90% branch threshold at 88.06%; this remains a required repair.
+The combined baseline report is `.artifacts/e2e-foundation-complete/report.json` (11/12 passed). Its rename test initially swiped over AVKit and missed the lower actions; the corrected gesture passed in `.artifacts/e2e-rename/report.json`. A complete repeat and independent review are required before the stack is ready. The source-coverage repair layer raises the existing 90% branch threshold result from88.06% to90.03% with170 passing behavior tests across18 suites. Repository boundary, lint and TypeScript pass. Full validate still reports SDK57 patch dependency mismatches in Expo doctor; that dependency repair is a separate layer.
 
 ## Isolated physical acceptance commands
 
