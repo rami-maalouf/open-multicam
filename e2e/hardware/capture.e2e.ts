@@ -1,5 +1,6 @@
 import { test } from "@e2e-dev/mobile";
 import { expect } from "e2e";
+import { recordingProof } from "./recording-proof";
 
 const modes = ["single", "discrete", "pip", "split"] as const;
 
@@ -42,6 +43,15 @@ for (const mode of modes) {
     await expect(screen.getByLabel("Video")).toBeVisible();
     await expect(screen.getByText(/1080 × 1920|1920 × 1080/)).toBeVisible();
     await app.screenshot(`hardware-${mode}-finalized`);
+    const proof = recordingProof(mode);
+    expect(proof.manifest.clips.length).toBe(mode === "discrete" ? 2 : 1);
+    for (const clip of proof.clips) {
+      const video = clip.streams.find((stream: { codec_type: string }) => stream.codec_type === "video");
+      expect(video.codec_name).toBe("h264");
+      expect(Math.min(video.width, video.height)).toBe(1080);
+      expect(Math.max(video.width, video.height)).toBe(1920);
+      expect(Number(clip.format.duration)).toBeGreaterThanOrEqual(2);
+    }
     const heading = await screen.getByRole("button", { name: "Rename take" }).boundingBox();
     if (!heading) throw new Error("new take actions are not visible");
     await screen.swipe({ from: { x: heading.x, y: heading.y + heading.height }, to: { x: heading.x, y: 220 } });
