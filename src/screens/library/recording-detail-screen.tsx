@@ -113,11 +113,15 @@ export function RecordingDetailScreen() {
       );
       return;
     }
-    for (const clip of entry.clipUris) {
-      await MediaLibrary.saveToLibraryAsync(clip.uri);
+    try {
+      for (const clip of entry.clipUris) {
+        await MediaLibrary.Asset.create(clip.uri);
+      }
+      await playHaptic("success");
+      Alert.alert("Saved to Photos", "Every video in this take was saved.");
+    } catch {
+      Alert.alert("Could not save to Photos", "Your take is still in OpenMulticam. Try saving again when Photos is available.");
     }
-    await playHaptic("success");
-    Alert.alert("Saved to Photos", "Every video in this take was saved.");
   }, [entry]);
 
   const confirmDelete = useCallback(() => {
