@@ -15,11 +15,7 @@ test("reduce motion retains capture, settings and library navigation", async ({ 
   await settings();
   const toggle = screen.getByRole("switch", { name: "Reduce Motion" });
   const changed = await device.locator("id=REDUCE_MOTION role=Switch value=0").count() === 1;
-  const tapSwitch = async () => {
-    const box = await toggle.boundingBox();
-    if (!box) throw new Error("native motion switch is not visible");
-    await toggle.tap({ position: { x: box.x + box.width * 0.85, y: box.y + box.height / 2 } });
-  };
+  const tapSwitch = async () => screen.getByRole("switch").nth(1).tap();
   if (changed) await tapSwitch();
   await expect(toggle).toBeChecked();
   try {

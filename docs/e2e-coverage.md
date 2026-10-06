@@ -56,7 +56,7 @@ The combined baseline report is `.artifacts/e2e-foundation-complete/report.json`
 `bun run prepare:e2e:device` prepares an independent generated native project under `.artifacts/hardware-source`; its verified scheme is `OpenMulticamE2E`, bundle is `com.ramimaalouf.openmulticam.e2e`, and URL scheme is `openmulticam-e2e`. The configured Apple team is `3V2UU7RRK9`. Preparation does not install or record anything. The developer signing identity, matching device provisioning and Developer Mode must be available; the host must have sufficient free build space.
 
 ```sh
-OPENMULTICAM_E2E_DEVICE_UDID=<paired-device-udid> bun run build:e2e:device
+OPENMULTICAM_E2E_DEVICE_UDID='<paired-device-udid>' bun run build:e2e:device
 ```
 
 This command regenerates the isolated project, installs pods and builds/signs the isolated app without installing it. Build and signing outcomes are unverified until this command succeeds. Keep the successful simulator app and evidence. After a user confirms the phone is unlocked and framed safely, use its uniquely identified paired device name:

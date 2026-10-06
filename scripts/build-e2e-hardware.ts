@@ -21,5 +21,9 @@ for (const [command, args, cwd] of [
 const appPath = resolve(".artifacts/hardware-build/Build/Products/Release-iphoneos/OpenMulticamE2E.app");
 const identifier = execFileSync("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleIdentifier", join(appPath, "Info.plist")], { encoding: "utf8" }).trim();
 if (identifier !== "com.ramimaalouf.openmulticam.e2e") throw new Error("built hardware identity differs from the isolated identity");
+const profile = resolve(".artifacts/hardware-provisioning.plist");
+writeFileSync(profile, execFileSync("security", ["cms", "-D", "-i", join(appPath, "embedded.mobileprovision")]));
+const provisionedDevices = execFileSync("/usr/libexec/PlistBuddy", ["-c", "Print :ProvisionedDevices", profile], { encoding: "utf8" });
+if (!provisionedDevices.includes(device)) throw new Error("signed profile does not include the selected paired device");
 writeFileSync(join(appPath, "e2e-build.json"), JSON.stringify({ commit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), runtimeDigest: runtimeDigest(), bundleDigest: createHash("sha256").update(readFileSync(join(appPath, "main.jsbundle"))).digest("hex"), builtAt: new Date().toISOString(), bundleId: identifier, deviceUdid: device }, null, 2));
 console.log(`signed isolated hardware artifact prepared at ${appPath}; no phone was installed or recorded`);

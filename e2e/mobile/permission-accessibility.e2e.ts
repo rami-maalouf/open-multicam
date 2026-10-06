@@ -1,7 +1,8 @@
+import { execFileSync } from "node:child_process";
 import { test } from "@e2e-dev/mobile";
 import { expect } from "e2e";
 import { verifyBuild } from "./build-identity";
-import { bundleId } from "./library-fixtures";
+import { bundleId, fixtureRoot } from "./library-fixtures";
 
 test.beforeEach(async ({ device }) => { verifyBuild(); await device.installApp(); });
 
@@ -25,6 +26,8 @@ test("camera denial from the system prompt explains Settings recovery", async ({
   await expect(screen.getByRole("image", { name: /Camera access is off/ })).toBeVisible();
   await screen.getByRole("button", { name: "Open Settings" }).tap();
   await new Promise((resolve) => setTimeout(resolve, 1000));
+  fixtureRoot();
+  execFileSync("xcrun", ["simctl", "io", process.env.OPENMULTICAM_SIMULATOR_UDID!, "screenshot", ".artifacts/recovery-settings-foreground.png"]);
   await device.openApp("com.apple.Preferences");
   await expect(screen.getByText("OpenMulticam", { exact: true }).first()).toBeVisible();
   await app.screenshot("actual-settings-permission-recovery");
