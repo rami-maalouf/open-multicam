@@ -2,19 +2,14 @@ import { parseRecordingSetManifest } from "../../src/core/library/manifest-schem
 import { execFileSync } from "node:child_process";
 import { mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { requireOwnedSimulator } from "./simulator-ownership";
 
 export const fixtureId = "e2e00000-0000-4000-8000-000000000001";
 export const corruptId = "e2e00000-0000-4000-8000-000000000002";
 export const bundleId = "com.ramimaalouf.openmulticam";
 
 export function fixtureRoot() {
-  const udid = process.env.OPENMULTICAM_SIMULATOR_UDID;
-  if (!udid) throw new Error("an isolated simulator UDID is required");
-  const inventory = JSON.parse(execFileSync("xcrun", ["simctl", "list", "devices", "available", "--json"], { encoding: "utf8" }));
-  const devices = Object.values(inventory.devices).flat() as { udid: string; name: string }[];
-  if (!devices.some((device) => device.udid === udid && device.name.startsWith("OpenMulticam-TesterArmy"))) {
-    throw new Error("refusing fixture writes outside an isolated OpenMulticam-TesterArmy simulator");
-  }
+  const udid = requireOwnedSimulator();
   const container = execFileSync("xcrun", ["simctl", "get_app_container", udid, bundleId, "data"], { encoding: "utf8" }).trim();
   return join(container, "Documents/OpenMulticam/Recordings");
 }

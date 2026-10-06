@@ -1,17 +1,11 @@
 import { resolve } from "node:path";
-import { execFileSync } from "node:child_process";
+import { requireOwnedSimulator } from "./e2e/mobile/simulator-ownership";
 import { mobile } from "@e2e-dev/mobile";
 import type { E2EConfig } from "e2e";
 
 process.env.AGENT_DEVICE_STATE_DIR = resolve(".artifacts/agent-device");
 
-const device = process.env.OPENMULTICAM_SIMULATOR_UDID;
-if (!device) throw new Error("set OPENMULTICAM_SIMULATOR_UDID to an isolated OpenMulticam-TesterArmy simulator");
-const inventory = JSON.parse(execFileSync("xcrun", ["simctl", "list", "devices", "available", "--json"], { encoding: "utf8" }));
-const devices = Object.values(inventory.devices).flat() as { udid: string; name: string }[];
-if (!devices.some((entry) => entry.udid === device && entry.name.startsWith("OpenMulticam-TesterArmy"))) {
-  throw new Error("refusing to boot or install on a personal simulator; create an isolated OpenMulticam-TesterArmy simulator");
-}
+const device = requireOwnedSimulator();
 
 export default {
   targets: [{
