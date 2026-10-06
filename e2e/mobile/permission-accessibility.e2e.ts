@@ -24,8 +24,9 @@ test("camera denial from the system prompt explains Settings recovery", async ({
   await device.alert("dismiss");
   await expect(screen.getByRole("image", { name: /Camera access is off/ })).toBeVisible();
   await screen.getByRole("button", { name: "Open Settings" }).tap();
+  await new Promise((resolve) => setTimeout(resolve, 1000));
   await device.openApp("com.apple.Preferences");
-  await expect(screen.getByText("OpenMulticam", { exact: true })).toBeVisible();
+  await expect(screen.getByText("OpenMulticam", { exact: true }).first()).toBeVisible();
   await app.screenshot("actual-settings-permission-recovery");
   await device.openApp(bundleId, { relaunch: true, permissions: { camera: "grant", microphone: "grant" } });
   await expect(screen.getByRole("image", { name: /Camera access is off/ })).not.toBeVisible();
@@ -38,6 +39,6 @@ test("camera and microphone grants leave permission onboarding", async ({ app, d
   await device.alert("accept");
   await device.alert("accept");
   await expect(screen.getByRole("button", { name: "Continue" })).not.toBeVisible();
-  await expect(screen.getByRole("image", { name: /No supported 1080p/ })).toBeVisible();
+  await expect(screen.getByRole("image", { name: /No simulator camera source/ })).toBeVisible();
   await app.screenshot("actual-camera-microphone-grants");
 });

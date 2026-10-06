@@ -13,12 +13,15 @@ test("reduce motion retains capture, settings and library navigation", async ({ 
     await expect(screen.getByRole("switch", { name: "Reduce Motion" })).toBeVisible();
   };
   await settings();
-  const toggle = screen.getByRole("switch", { name: /^[01]$/ }).first();
-  const wasOff = await screen.getByRole("switch", { name: "0" }).first().boundingBox();
-  const first = await toggle.boundingBox();
-  const changed = !!(wasOff && first && wasOff.y === first.y);
-  if (changed) await toggle.tap();
-  await expect(toggle).toHaveText("1");
+  const toggle = screen.getByRole("switch", { name: "Reduce Motion" });
+  const changed = await device.locator("id=REDUCE_MOTION role=Switch value=0").count() === 1;
+  const tapSwitch = async () => {
+    const box = await toggle.boundingBox();
+    if (!box) throw new Error("native motion switch is not visible");
+    await toggle.tap({ position: { x: box.x + box.width * 0.85, y: box.y + box.height / 2 } });
+  };
+  if (changed) await tapSwitch();
+  await expect(toggle).toBeChecked();
   try {
     await app.open();
     await screen.getByLabel("Open settings").tap();
@@ -30,6 +33,6 @@ test("reduce motion retains capture, settings and library navigation", async ({ 
     await expect(screen.getByRole("button", { name: "Record" })).toBeVisible();
     await app.screenshot("reduce-motion-navigation");
   } finally {
-    if (changed) { await settings(); await toggle.tap(); await expect(toggle).toHaveText("0"); }
+    if (changed) { await settings(); await tapSwitch(); await expect(toggle).not.toBeChecked(); }
   }
 });
