@@ -554,7 +554,7 @@ export function CaptureScreen() {
               phase === "recording" && styles.recordingIndicator,
             ]}
           />
-          <AppText tone="previewLabel" variant="headline">
+          <AppText maxFontSizeMultiplier={1.3} numberOfLines={1} style={styles.brand} tone="previewLabel" variant="headline">
             {phase === "recording" ? formatElapsed(elapsedMs) : "OpenMulticam"}
           </AppText>
         </View>
@@ -613,11 +613,12 @@ export function CaptureScreen() {
         </View>
 
         {shouldShowBlockingOverlay ? (
-          <View style={styles.blockingOverlay}>
+          <ScrollView style={styles.blockingOverlay} contentContainerStyle={styles.blockingContent}>
             <View style={styles.previewMark}>
               <Icon name="viewfinder" size="prominent" tone="previewLabel" />
             </View>
             <AppText
+              maxFontSizeMultiplier={1.5}
               style={styles.overlayTitle}
               tone="previewLabel"
               variant="title"
@@ -660,7 +661,7 @@ export function CaptureScreen() {
                 </AppText>
               </Pressable>
             ) : null}
-          </View>
+          </ScrollView>
         ) : null}
 
         {selectedConfiguration !== undefined && !shouldShowBlockingOverlay ? (
@@ -902,7 +903,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.control,
     paddingTop: spacing.small,
   },
-  identity: { alignItems: "center", flexDirection: "row", gap: spacing.small },
+  identity: { alignItems: "center", flex: 1, minWidth: 0, flexDirection: "row", gap: spacing.small },
+  brand: { flexShrink: 1 },
   liveIndicator: {
     backgroundColor: colors.accent,
     borderRadius: radii.capsule,
@@ -910,7 +912,7 @@ const styles = StyleSheet.create({
     width: 8,
   },
   recordingIndicator: { backgroundColor: colors.recording },
-  navigation: { flexDirection: "row", gap: spacing.small },
+  navigation: { flexDirection: "row", flexShrink: 0, gap: spacing.small },
   navigationButton: { borderRadius: radii.capsule },
   navigationMaterial: {
     alignItems: "center",
@@ -920,17 +922,8 @@ const styles = StyleSheet.create({
     width: 44,
   },
   preview: { flex: 1, overflow: "hidden" },
-  blockingOverlay: {
-    alignItems: "center",
-    backgroundColor: "rgba(5, 9, 11, 0.82)",
-    bottom: 0,
-    justifyContent: "center",
-    left: 0,
-    paddingHorizontal: spacing.screen,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
+  blockingOverlay: { position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: "rgba(5, 9, 11, 0.82)" },
+  blockingContent: { alignItems: "center", flexGrow: 1, justifyContent: "center", padding: spacing.screen },
   previewMark: {
     alignItems: "center",
     borderColor: colors.previewSeparator,
