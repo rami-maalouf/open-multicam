@@ -1,6 +1,6 @@
 import { parseRecordingSetManifest } from "../../src/core/library/manifest-schema";
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export const fixtureId = "e2e00000-0000-4000-8000-000000000001";
@@ -35,8 +35,9 @@ export function seedTake(mode: "single" | "discrete" | "pip" | "split" = "single
   const durationMs = Math.round(Number(probe.format.duration) * 1000);
   const clips = [{ id: "clip-a", role: mode === "discrete" ? "cameraA" : mode === "single" ? "single" : "composite", relativePath: "single.mp4", status: "ready", media: { width: stream.width, height: stream.height, durationMs, fileSizeBytes: statSync(video).size, videoTrackCount: 1, audioTrackCount: 0, playable: true }, issue: null }];
   if (mode === "discrete") {
-    cpSync(video, join(root, "second.mp4"));
-    clips.push({ ...clips[0]!, id: "clip-b", role: "cameraB", relativePath: "second.mp4" });
+    const second = join(root, "second.mp4");
+    execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "color=c=blue:s=1080x1920:r=30:d=60", "-c:v", "libx264", "-pix_fmt", "yuv420p", second]);
+    clips.push({ ...clips[0]!, id: "clip-b", role: "cameraB", relativePath: "second.mp4", media: { ...clips[0]!.media, fileSizeBytes: statSync(second).size } });
   }
   const manifest = {
     kind: "recording-set-manifest", schemaVersion: 1, recordingSetId: fixtureId, name: "E2E synthetic take", createdAtUtcMs: 1788195600000, startedAtPtsSeconds: 0,

@@ -87,7 +87,7 @@ bun run typecheck
 bun run test             # jest suites
 bun run test:native      # native module tests
 bun run test:e2e:sim     # tester-army native tests, isolated simulator required
-bun run test:e2e:device  # device e2e runner
+bun run test:e2e:device  # isolated signed hardware acceptance, safe framing required
 bun run validate         # repository checks + lint + typecheck + coverage + expo-doctor
 ```
 

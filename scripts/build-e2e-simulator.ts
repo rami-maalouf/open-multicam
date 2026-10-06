@@ -1,14 +1,16 @@
 import { spawnSync, execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { runtimeDigest } from "../e2e/mobile/build-identity";
 
 const udid = process.env.OPENMULTICAM_SIMULATOR_UDID;
 if (!udid) throw new Error("set OPENMULTICAM_SIMULATOR_UDID to the isolated simulator");
-const result = spawnSync("xcodebuild", ["-workspace", "ios/OpenMulticam.xcworkspace", "-scheme", "OpenMulticam", "-configuration", "Release", "-sdk", "iphonesimulator", "-destination", `platform=iOS Simulator,id=${udid}`, "-derivedDataPath", ".artifacts/native-build", "CODE_SIGNING_ALLOWED=NO", "ARCHS=arm64", "ONLY_ACTIVE_ARCH=YES"], { stdio: "inherit" });
+const buildDirectory = resolve(process.env.OPENMULTICAM_E2E_BUILD_DIR ?? ".artifacts/native-build");
+if (!buildDirectory.startsWith(resolve(".artifacts") + "/")) throw new Error("build output must stay inside task-owned .artifacts");
+const result = spawnSync("xcodebuild", ["-workspace", "ios/OpenMulticam.xcworkspace", "-scheme", "OpenMulticam", "-configuration", "Release", "-sdk", "iphonesimulator", "-destination", `platform=iOS Simulator,id=${udid}`, "-derivedDataPath", buildDirectory, "CODE_SIGNING_ALLOWED=NO", `ARCHS=${process.arch === "arm64" ? "arm64" : "x86_64"}`, "ONLY_ACTIVE_ARCH=YES", "GCC_GENERATE_DEBUGGING_SYMBOLS=NO", "DEBUG_INFORMATION_FORMAT=dwarf", "SWIFT_SERIALIZE_DEBUGGING_OPTIONS=NO", "-jobs", "2"], { stdio: "inherit" });
 if (result.status !== 0) process.exit(result.status ?? 1);
-const appPath = ".artifacts/native-build/Build/Products/Release-iphonesimulator/OpenMulticam.app";
+const appPath = join(buildDirectory, "Build/Products/Release-iphonesimulator/OpenMulticam.app");
 writeFileSync(join(appPath, "e2e-build.json"), JSON.stringify({
   commit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
   runtimeDigest: runtimeDigest(),

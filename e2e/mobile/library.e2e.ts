@@ -1,5 +1,5 @@
 import { verifyBuild } from "./build-identity";
-import { playbackSample } from "./playback-proof";
+import { playbackSample, playbackColorSample } from "./playback-proof";
 import { test } from "@e2e-dev/mobile";
 import { expect } from "e2e";
 import { cleanFixtures, fixtureId, seedTake } from "./library-fixtures";
@@ -35,6 +35,11 @@ for (const mode of ["single", "discrete", "pip", "split"] as const) {
     if (mode === "discrete") {
       await screen.getByRole("button", { name: "Front" }).tap();
       await expect(screen.getByLabel("Video")).toBeVisible();
+      await expect.poll(async () => {
+        const [red, green, blue] = await playbackColorSample(video, application, "front-blue");
+        return blue! > 60 && red! < 40 && blue! > green! * 2;
+      }, { timeout: 15000, interval: 650 }).toBe(true);
+      await app.screenshot("front-track-blue");
     }
     await app.screenshot(`${mode}-detail`);
     await screen.swipe({ direction: "down" });
