@@ -19,7 +19,8 @@ process.env.AGENT_DEVICE_IOS_BUNDLE_ID = "com.ramimaalouf.openmulticam.e2e.runne
 const appPath = resolve(".artifacts/hardware-build/Build/Products/Release-iphoneos/OpenMulticamE2E.app");
 const identifier = execFileSync("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleIdentifier", join(appPath, "Info.plist")], { encoding: "utf8" }).trim();
 if (identifier !== "com.ramimaalouf.openmulticam.e2e") throw new Error("refusing to install a production bundle on the physical phone");
-const receipt = JSON.parse(readFileSync(join(appPath, "e2e-build.json"), "utf8"));
+execFileSync("codesign", ["--verify", "--deep", "--strict", appPath], { stdio: "inherit" });
+const receipt = JSON.parse(readFileSync(`${appPath}.e2e-build.json`, "utf8"));
 if (receipt.deviceUdid !== process.env.OPENMULTICAM_E2E_DEVICE_UDID) throw new Error("signed artifact was prepared for a different selected device");
 if (receipt.runtimeDigest !== runtimeDigest() || receipt.bundleDigest !== createHash("sha256").update(readFileSync(join(appPath, "main.jsbundle"))).digest("hex")) throw new Error("signed hardware build is stale; rebuild before installing");
 const acceptance = process.env.OPENMULTICAM_E2E_HARDWARE_SUITE ?? "capture";

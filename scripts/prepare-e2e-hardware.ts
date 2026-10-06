@@ -9,6 +9,7 @@ for (const path of ["src", "modules", "assets", "package.json", "bun.lock", "tsc
   if (existsSync(target)) rmSync(target, { recursive: true });
   if (existsSync(path)) cpSync(path, target, { recursive: true });
 }
+cpSync("e2e/hardware/metro.config.cjs", join(destination, "metro.config.js"));
 if (!existsSync(join(destination, "node_modules"))) symlinkSync(resolve("node_modules"), join(destination, "node_modules"), "dir");
 const config = JSON.parse(readFileSync("app.json", "utf8"));
 config.expo.name = "OpenMulticam E2E";
