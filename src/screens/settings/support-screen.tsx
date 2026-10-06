@@ -1,9 +1,9 @@
 import { Button, Column, Host } from "@expo/ui";
-import { Link } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, ScrollView, StyleSheet, View } from "react-native";
 
 import tipJar, { type TipJarStatus } from "../../../modules/tip-jar";
+import { AppLink } from "@/components/app-link";
 import { AppText } from "@/components/app-text";
 import { Icon } from "@/components/icon";
 import { supportUrl } from "@/core/privacy";
@@ -106,12 +106,8 @@ export function SupportScreen() {
         )}
         {message !== null && <AppText accessibilityLiveRegion="polite" tone="secondary" variant="callout">{message}</AppText>}
       </View>
-      <Link href={supportUrl} accessibilityRole="link">
-        <AppText tone="accent" variant="headline">Get help or report a problem</AppText>
-      </Link>
-      <Link href="/privacy" accessibilityRole="link">
-        <AppText tone="accent" variant="callout">Privacy policy</AppText>
-      </Link>
+      <AppLink href={supportUrl} variant="headline">Get help or report a problem</AppLink>
+      <AppLink href="/privacy" variant="callout">Privacy policy</AppLink>
     </ScrollView>
   );
 }

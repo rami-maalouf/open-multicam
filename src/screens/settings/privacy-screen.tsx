@@ -1,6 +1,6 @@
-import { Link } from "expo-router";
 import { ScrollView, StyleSheet, View } from "react-native";
 
+import { AppLink } from "@/components/app-link";
 import { AppText } from "@/components/app-text";
 import { privacySections, supportUrl } from "@/core/privacy";
 import { colors, spacing } from "@/theme";
@@ -14,9 +14,7 @@ export function PrivacyScreen() {
           <AppText tone="secondary" variant="body">{body}</AppText>
         </View>
       ))}
-      <Link href={supportUrl} accessibilityRole="link">
-        <AppText tone="accent" variant="headline">Contact support</AppText>
-      </Link>
+      <AppLink href={supportUrl} variant="headline">Contact support</AppLink>
     </ScrollView>
   );
 }
