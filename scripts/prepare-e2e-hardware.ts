@@ -1,11 +1,13 @@
-import { cpSync, mkdirSync, readFileSync, symlinkSync, writeFileSync, existsSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, symlinkSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const destination = resolve(".artifacts/hardware-source");
 mkdirSync(destination, { recursive: true });
 for (const path of ["src", "modules", "assets", "package.json", "bun.lock", "tsconfig.json", "babel.config.js", "metro.config.js"]) {
-  if (existsSync(path)) cpSync(path, join(destination, path), { recursive: true });
+  const target = join(destination, path);
+  if (existsSync(target)) rmSync(target, { recursive: true });
+  if (existsSync(path)) cpSync(path, target, { recursive: true });
 }
 if (!existsSync(join(destination, "node_modules"))) symlinkSync(resolve("node_modules"), join(destination, "node_modules"), "dir");
 const config = JSON.parse(readFileSync("app.json", "utf8"));
