@@ -220,17 +220,19 @@ enum CaptureRecordingStorage {
       options: [.skipsHiddenFiles]
     )
 
-    return try directories.compactMap { directory in
+    var unreadableCount = 0
+    let recordings = directories.compactMap { directory -> [String: Any]? in
       let manifestURL = directory.appendingPathComponent("manifest.json")
       guard FileManager.default.fileExists(atPath: manifestURL.path) else {
         return nil
       }
 
-      let data = try Data(contentsOf: manifestURL)
-      guard var manifest = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-        return nil
-      }
-      guard let clips = manifest["clips"] as? [[String: Any]] else {
+      guard
+        let data = try? Data(contentsOf: manifestURL),
+        var manifest = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+        let clips = manifest["clips"] as? [[String: Any]]
+      else {
+        unreadableCount += 1
         return nil
       }
 
@@ -249,7 +251,10 @@ enum CaptureRecordingStorage {
       }
       return manifest
     }
-    .sorted {
+    if recordings.isEmpty && unreadableCount > 0 {
+      throw CaptureFailure.recordingCorrupt
+    }
+    return recordings.sorted {
       ($0["createdAtUtcMs"] as? Int ?? 0) >
         ($1["createdAtUtcMs"] as? Int ?? 0)
     }

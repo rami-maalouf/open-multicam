@@ -31,6 +31,7 @@ export function RecordingDetailScreen() {
   const router = useRouter();
   const [entry, setEntry] = useState<RecordingLibraryEntry | null>(null);
   const [isLoading, setLoading] = useState(true);
+  const [readError, setReadError] = useState(false);
   const [selectedClipIndex, setSelectedClipIndex] = useState(0);
   const selectedUri = entry?.clipUris[selectedClipIndex]?.uri ?? null;
   const player = useVideoPlayer(selectedUri, (createdPlayer) => {
@@ -38,13 +39,16 @@ export function RecordingDetailScreen() {
   });
 
   const load = useCallback(async () => {
-    const recordings = await multicamCaptureModule.listRecordings();
-    setEntry(
-      recordings.find(
-        (recording) => recording.recordingSetId === recordingSetId,
-      ) ?? null,
-    );
-    setLoading(false);
+    setLoading(true);
+    setReadError(false);
+    try {
+      const recordings = await multicamCaptureModule.listRecordings();
+      setEntry(recordings.find((recording) => recording.recordingSetId === recordingSetId) ?? null);
+    } catch {
+      setReadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [recordingSetId]);
 
   useEffect(() => {
@@ -142,6 +146,18 @@ export function RecordingDetailScreen() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator color={colors.accent} size="large" />
+      </View>
+    );
+  }
+
+  if (readError) {
+    return (
+      <View style={styles.centered}>
+        <Icon name="exclamationmark.triangle" size="prominent" tone="critical" />
+        <AppText variant="headline">This take could not be read.</AppText>
+        <AppText tone="secondary">Your recordings have not been removed. Try again or return to the library.</AppText>
+        <Pressable accessibilityRole="button" onPress={() => void load()}><AppText tone="accent">Try Again</AppText></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => router.replace("/library")}><AppText tone="accent">Open library</AppText></Pressable>
       </View>
     );
   }
