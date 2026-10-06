@@ -20,7 +20,8 @@
     "test:e2e:list": "E2E_TELEMETRY_DISABLED=1 bunx --no-install e2e list",
     "typecheck:e2e": "tsc --noEmit --project e2e/tsconfig.json",
     "build:e2e:sim": "bun scripts/build-e2e-simulator.ts",
-    "prepare:e2e:device": "bun scripts/prepare-e2e-hardware.ts"
+    "prepare:e2e:device": "bun scripts/prepare-e2e-hardware.ts",
+    "build:e2e:device": "bun scripts/build-e2e-hardware.ts"
   },
   "dependencies": {
     "@expo/ui": "~57.0.17",

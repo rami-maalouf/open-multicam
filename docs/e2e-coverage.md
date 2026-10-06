@@ -50,3 +50,19 @@ The former `e2e/simulator` runner only checked source text with Jest. It has bee
 Use a distinct developer bundle and URL scheme so installing the harness cannot replace the personal production app. Obtain a signing team/provision for the paired device, enable Developer Mode, and unlock/trust it. Record only user-directed safe framing. Create and delete only new harness takes; avoid personal app data, live donations, external messages, and Photos export until explicitly included in the hardware run. Keep hardware results separate from simulator fixtures.
 
 The combined baseline report is `.artifacts/e2e-foundation-complete/report.json` (11/12 passed). Its rename test initially swiped over AVKit and missed the lower actions; the corrected gesture passed in `.artifacts/e2e-rename/report.json`. A complete repeat and independent review are required before the stack is ready. Source validation separately fails the existing 90% branch threshold at 88.06%; this remains a required repair.
+
+## Isolated physical acceptance commands
+
+`bun run prepare:e2e:device` prepares an independent generated native project under `.artifacts/hardware-source`; its verified scheme is `OpenMulticamE2E`, bundle is `com.ramimaalouf.openmulticam.e2e`, and URL scheme is `openmulticam-e2e`. The configured Apple team is `3V2UU7RRK9`. Preparation does not install or record anything. The developer signing identity, matching device provisioning and Developer Mode must be available; the host must have sufficient free build space.
+
+```sh
+OPENMULTICAM_E2E_DEVICE_UDID=<paired-device-udid> bun run build:e2e:device
+```
+
+This command regenerates the isolated project, installs pods and builds/signs the isolated app without installing it. Build and signing outcomes are unverified until this command succeeds. Keep the successful simulator app and evidence. After a user confirms the phone is unlocked and framed safely, use its uniquely identified paired device name:
+
+```sh
+OPENMULTICAM_HARDWARE_RECORDING_APPROVED=1 OPENMULTICAM_E2E_DEVICE_NAME='<paired device name>' bun run test:e2e:device --video off
+```
+
+The prepared hardware suite first requires an empty isolated library, exercises preview and four supported capture formats, stops/finalizes each three-second take, and deletes only its newly created take. It performs no Photos export or external sharing. The permission/control accessibility regressions must pass before this acceptance suite can be considered ready. Physical capture, focus/exposure, PiP gestures, audio metering and interruption recovery remain unverified gates, regardless of simulator fixture results.
