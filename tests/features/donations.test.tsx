@@ -1,3 +1,4 @@
+import { AppState, type AppStateStatus } from "react-native";
 import { fireEvent } from "@testing-library/react-native";
 
 import tipJar from "../../modules/tip-jar";
@@ -28,6 +29,7 @@ const available = { available: true, displayPrice: "$1.99", hasSupported: false 
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.spyOn(AppState, "addEventListener").mockReturnValue({ remove: jest.fn() });
   store.getStatus.mockResolvedValue(available);
   store.purchase.mockResolvedValue("purchased");
   store.restore.mockResolvedValue({ ...available, hasSupported: true });
@@ -114,4 +116,51 @@ it("renders the privacy policy offline", async () => {
   await waitFor(() => expect(screen.getByText("Your recordings stay with you")).toBeTruthy());
   expect(screen.getByText("Optional donations")).toBeTruthy();
   expect(screen.getByText("Contact support")).toBeTruthy();
+});
+
+it("refreshes after foregrounding and waits for an in-flight store operation", async () => {
+  let foreground: (state: AppStateStatus) => void = () => {};
+  const remove = jest.fn();
+  const listener = jest.spyOn(AppState, "addEventListener").mockImplementation((_event: unknown, handler: (state: AppStateStatus) => void) => {
+    foreground = handler;
+    return { remove };
+  });
+  let complete: (value: "cancelled") => void = () => {};
+  store.purchase.mockImplementation(() => new Promise((resolve) => { complete = resolve; }));
+  const screen = render(<SupportScreen />);
+  await screen.findByText("Donate $1.99");
+  await act(async () => foreground("background"));
+  expect(store.getStatus).toHaveBeenCalledTimes(1);
+  fireEvent.press(screen.getByTestId("donate-button"));
+  await act(async () => foreground("active"));
+  expect(store.getStatus).toHaveBeenCalledTimes(1);
+  await act(async () => complete("cancelled"));
+  await act(async () => foreground("active"));
+  expect(store.getStatus).toHaveBeenCalledTimes(2);
+  screen.unmount();
+  expect(remove).toHaveBeenCalledTimes(1);
+  listener.mockRestore();
+});
+
+it.each(["refresh", "purchase", "restore"] as const)("ignores %s completion after leaving the screen", async (operation) => {
+  let complete: (value: never) => void = () => {};
+  const pending = new Promise<never>((resolve) => { complete = resolve; });
+  if (operation === "refresh") store.getStatus.mockReturnValueOnce(pending);
+  if (operation === "purchase") store.purchase.mockReturnValueOnce(pending);
+  if (operation === "restore") store.restore.mockReturnValueOnce(pending);
+  const screen = render(<SupportScreen />);
+  if (operation !== "refresh") {
+    await screen.findByText("Donate $1.99");
+    fireEvent.press(screen.getByTestId(operation === "purchase" ? "donate-button" : "restore-donation-button"));
+  }
+  screen.unmount();
+  await act(async () => complete((operation === "purchase" ? "purchased" : available) as never));
+});
+
+it("ignores an offline refresh after leaving the screen", async () => {
+  let reject: (reason: Error) => void = () => {};
+  store.getStatus.mockReturnValueOnce(new Promise((_resolve, rejectPromise) => { reject = rejectPromise; }));
+  const screen = render(<SupportScreen />);
+  screen.unmount();
+  await act(async () => reject(new Error("offline")));
 });
