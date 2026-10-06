@@ -25,7 +25,13 @@ test("camera denial opens Settings and recovers after an OS permission grant", a
   await device.alert("dismiss");
   await expect(screen.getByRole("image", { name: /Camera access is off/ })).toBeVisible();
   fixtureRoot();
-  try { execFileSync("xcrun", ["simctl", "terminate", process.env.OPENMULTICAM_SIMULATOR_UDID!, "com.apple.Preferences"], { stdio: "pipe" }); } catch (error) { if (!String(error).includes("not running")) throw error; }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      execFileSync("xcrun", ["simctl", "terminate", process.env.OPENMULTICAM_SIMULATOR_UDID!, "com.apple.Preferences"], { stdio: "pipe" });
+    } catch (error) {
+      if (!/not running|found nothing to terminate/.test(String(error))) throw error;
+    }
+  }
   await screen.getByRole("button", { name: "Open Settings" }).tap();
   await new Promise((resolve) => setTimeout(resolve, 1000));
   fixtureRoot();
