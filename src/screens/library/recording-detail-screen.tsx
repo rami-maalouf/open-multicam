@@ -2,7 +2,7 @@ import * as MediaLibrary from "expo-media-library";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -33,6 +33,10 @@ export function RecordingDetailScreen() {
   const [isLoading, setLoading] = useState(true);
   const [readError, setReadError] = useState(false);
   const [selectedClipIndex, setSelectedClipIndex] = useState(0);
+  const photosBusy = useRef(false);
+  const completedPhotosClips = useRef(new Map<string, Set<string>>());
+  const [isSavingPhotos, setSavingPhotos] = useState(false);
+  const [photosProgress, setPhotosProgress] = useState<Record<string, number>>({});
   const selectedUri = entry?.clipUris[selectedClipIndex]?.uri ?? null;
   const player = useVideoPlayer(selectedUri, (createdPlayer) => {
     createdPlayer.loop = false;
@@ -102,25 +106,35 @@ export function RecordingDetailScreen() {
   }, [entry]);
 
   const saveToPhotos = useCallback(async () => {
-    if (entry === null) {
+    if (entry === null || photosBusy.current) {
       return;
     }
-    const permission = await MediaLibrary.requestPermissionsAsync(true);
-    if (!permission.granted) {
-      Alert.alert(
-        "Photos access is off",
-        "Allow Add Photos access in Settings to save this take.",
-      );
-      return;
-    }
+    const completed = completedPhotosClips.current.get(entry.recordingSetId) ?? new Set<string>();
+    completedPhotosClips.current.set(entry.recordingSetId, completed);
+    if (completed.size === entry.clipUris.length) return;
+    photosBusy.current = true;
+    setSavingPhotos(true);
     try {
+      const permission = await MediaLibrary.requestPermissionsAsync(true);
+      if (!permission.granted) {
+        Alert.alert("Photos access is off", "Allow Add Photos access in Settings to save this take.");
+        return;
+      }
       for (const clip of entry.clipUris) {
+        if (completed.has(clip.clipId)) continue;
         await MediaLibrary.Asset.create(clip.uri);
+        completed.add(clip.clipId);
+        setPhotosProgress((progress) => ({ ...progress, [entry.recordingSetId]: completed.size }));
       }
       await playHaptic("success");
       Alert.alert("Saved to Photos", "Every video in this take was saved.");
     } catch {
-      Alert.alert("Could not save to Photos", "Your take is still in OpenMulticam. Try saving again when Photos is available.");
+      Alert.alert("Could not save to Photos", completed.size > 0
+        ? `${completed.size} of ${entry.clipUris.length} videos were saved. Your take is still in OpenMulticam. Retry to save only the remaining videos.`
+        : "Your take is still in OpenMulticam. Try saving again when Photos is available.");
+    } finally {
+      photosBusy.current = false;
+      setSavingPhotos(false);
     }
   }, [entry]);
 
@@ -174,6 +188,11 @@ export function RecordingDetailScreen() {
       </View>
     );
   }
+
+  const savedPhotosCount = photosProgress[entry.recordingSetId] ?? 0;
+  const photosComplete = savedPhotosCount === entry.clipUris.length;
+  const photosLabel = isSavingPhotos ? "Saving to Photos" : photosComplete
+    ? "Saved to Photos" : savedPhotosCount > 0 ? "Retry saving to Photos" : "Save to Photos";
 
   return (
     <ScrollView
@@ -238,7 +257,10 @@ export function RecordingDetailScreen() {
 
       <View style={styles.actionGrid}>
         <ActionButton icon="square.and.arrow.up" label="Share" onPress={share} />
-        <ActionButton icon="photo.badge.arrow.down" label="Save to Photos" onPress={saveToPhotos} />
+        <ActionButton icon="photo.badge.arrow.down"
+          disabled={isSavingPhotos || photosComplete}
+          label={photosLabel}
+          onPress={saveToPhotos} />
       </View>
       <Pressable
         accessibilityRole="button"
@@ -255,10 +277,12 @@ export function RecordingDetailScreen() {
 }
 
 function ActionButton({
+  disabled = false,
   icon,
   label,
   onPress,
 }: Readonly<{
+  disabled?: boolean;
   icon: string;
   label: string;
   onPress: () => Promise<void>;
@@ -266,6 +290,8 @@ function ActionButton({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={() => void onPress()}
       style={styles.actionButton}
     >

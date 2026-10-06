@@ -163,6 +163,45 @@ describe("recording detail", () => {
     expect(mockRequestPhotosPermission).toHaveBeenCalledWith(true);
   });
 
+  it("retries only the failed clip after a partial Photos export", async () => {
+    mockSaveToLibrary.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("second clip missing"));
+    const screen = render(<RecordingDetailScreen />);
+    await waitFor(() => expect(screen.getByTestId("video-player")).toBeTruthy());
+    fireEvent.press(screen.getByRole("button", { name: "Save to Photos" }));
+    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith("Could not save to Photos", "1 of 2 videos were saved. Your take is still in OpenMulticam. Retry to save only the remaining videos."));
+    fireEvent.press(screen.getByRole("button", { name: "Retry saving to Photos" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Saved to Photos" })).toBeDisabled());
+    expect(mockSaveToLibrary.mock.calls).toEqual([[entry.clipUris[0]!.uri], [entry.clipUris[1]!.uri], [entry.clipUris[1]!.uri]]);
+    fireEvent.press(screen.getByRole("button", { name: "Saved to Photos" }));
+    expect(mockSaveToLibrary).toHaveBeenCalledTimes(3);
+    expect(mockDeleteRecording).not.toHaveBeenCalled();
+  });
+
+  it("blocks concurrent export attempts while permission is pending", async () => {
+    let grant: ((permission: { granted: boolean }) => void) | undefined;
+    mockRequestPhotosPermission.mockReturnValue(new Promise((resolve) => { grant = resolve; }));
+    const screen = render(<RecordingDetailScreen />);
+    await waitFor(() => expect(screen.getByTestId("video-player")).toBeTruthy());
+    const button = screen.getByRole("button", { name: "Save to Photos" });
+    fireEvent.press(button);
+    fireEvent.press(button);
+    expect(mockRequestPhotosPermission).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Saving to Photos" })).toBeDisabled();
+    grant?.({ granted: true });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Saved to Photos" })).toBeDisabled());
+    expect(mockSaveToLibrary).toHaveBeenCalledTimes(2);
+  });
+
+  it("makes a rejected Photos permission request retryable", async () => {
+    mockRequestPhotosPermission.mockRejectedValueOnce(new Error("Photos unavailable"));
+    const screen = render(<RecordingDetailScreen />);
+    await waitFor(() => expect(screen.getByTestId("video-player")).toBeTruthy());
+    fireEvent.press(screen.getByRole("button", { name: "Save to Photos" }));
+    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith("Could not save to Photos", "Your take is still in OpenMulticam. Try saving again when Photos is available."));
+    expect(screen.getByRole("button", { name: "Save to Photos" })).not.toBeDisabled();
+    expect(mockSaveToLibrary).not.toHaveBeenCalled();
+  });
+
   it("explains missing recordings", async () => {
     mockListRecordings.mockResolvedValue([]);
     const screen = render(<RecordingDetailScreen />);
