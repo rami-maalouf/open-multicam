@@ -58,5 +58,5 @@ jobs:
       - name: Release the owned simulator
         if: always() && env.OPENMULTICAM_SIMULATOR_UDID != ''
         run: |
-          xcrun simctl shutdown "$OPENMULTICAM_SIMULATOR_UDID"
+          xcrun simctl shutdown "$OPENMULTICAM_SIMULATOR_UDID" || true
           xcrun simctl delete "$OPENMULTICAM_SIMULATOR_UDID"
