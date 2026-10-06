@@ -598,17 +598,19 @@ export function CaptureScreen() {
         </View>
       </View>
 
-      <View
-        accessible
-        accessibilityLabel={`Camera preview. Native state ${surfaceState}. ${message}`}
-        accessibilityRole="image"
-        style={styles.preview}
-      >
-        <CaptureSurfaceView
-          accessible={false}
+      <View style={styles.preview}>
+        <View
+          accessible
+          accessibilityLabel={`Camera preview. Native state ${surfaceState}. ${message}`}
+          accessibilityRole="image"
           style={StyleSheet.absoluteFill}
-          testID="native-capture-surface"
-        />
+        >
+          <CaptureSurfaceView
+            accessible={false}
+            style={StyleSheet.absoluteFill}
+            testID="native-capture-surface"
+          />
+        </View>
 
         {shouldShowBlockingOverlay ? (
           <View style={styles.blockingOverlay}>
