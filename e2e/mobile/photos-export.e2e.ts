@@ -1,3 +1,4 @@
+import { writeFileSync } from "node:fs";
 import { test } from "@e2e-dev/mobile";
 import { expect } from "e2e";
 import { verifyBuild } from "./build-identity";
@@ -23,6 +24,7 @@ test("Photos export creates a playable synthetic video in isolated Photos storag
   const path = photosVideos().find((candidate) => !before.has(candidate));
   if (!path) throw new Error("the synthetic video is absent from Photos storage");
   const metadata = photoVideoMetadata(path);
+  writeFileSync(`.artifacts/photos-export-${Date.now()}.json`, JSON.stringify({ path, metadata }, null, 2));
   expect(metadata.streams[0]).toEqual({ codec_name: "h264", width: 1080, height: 1920 });
   expect(Number(metadata.format.duration)).toBe(60);
 });

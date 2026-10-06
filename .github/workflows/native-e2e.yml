@@ -52,6 +52,8 @@ jobs:
           name: native-e2e-evidence
           path: |
             .artifacts/e2e
+            .artifacts/photos-export-*.json
+            .artifacts/playback-frames
             .artifacts/agent-device/sessions
             .artifacts/native-build/Build/Products/Release-iphonesimulator/OpenMulticam.app/e2e-build.json
           if-no-files-found: warn

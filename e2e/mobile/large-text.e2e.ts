@@ -32,6 +32,7 @@ test("largest text can scroll permission copy to Continue and Settings recovery"
   ui("content_size", "accessibility-extra-extra-extra-large");
   await device.openApp("com.ramimaalouf.openmulticam", { relaunch: true, permissions: { camera: "reset", microphone: "grant" } });
   const continueButton = screen.getByRole("button", { name: "Continue" });
+  await expect(screen.getByRole("image", { name: /Camera preview/ })).toBeVisible();
   const preview = await screen.getByRole("image", { name: /Camera preview/ }).boundingBox();
   if (!preview) throw new Error("capture preview viewport is unavailable");
   const scrollCopy = async () => screen.swipe({ from: { x: preview.x + preview.width / 2, y: preview.y + preview.height * 0.8 }, to: { x: preview.x + preview.width / 2, y: preview.y + preview.height * 0.2 } });
