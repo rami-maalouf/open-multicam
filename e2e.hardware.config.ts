@@ -22,8 +22,10 @@ if (identifier !== "com.ramimaalouf.openmulticam.e2e") throw new Error("refusing
 const receipt = JSON.parse(readFileSync(join(appPath, "e2e-build.json"), "utf8"));
 if (receipt.deviceUdid !== process.env.OPENMULTICAM_E2E_DEVICE_UDID) throw new Error("signed artifact was prepared for a different selected device");
 if (receipt.runtimeDigest !== runtimeDigest() || receipt.bundleDigest !== createHash("sha256").update(readFileSync(join(appPath, "main.jsbundle"))).digest("hex")) throw new Error("signed hardware build is stale; rebuild before installing");
+const acceptance = process.env.OPENMULTICAM_E2E_HARDWARE_SUITE ?? "capture";
+if (acceptance !== "capture" && acceptance !== "permission-recovery") throw new Error("hardware suite must be capture or permission-recovery");
 export default {
   targets: [{ name: "iphone", engine: mobile({ platform: "ios", device, session: "openmulticam-hardware" }), app: { bundleId: identifier, appPath } }],
-  tests: ["e2e/hardware/**/*.e2e.ts"], workers: 1, retries: 0, timeout: 180_000, launchTimeout: 180_000,
+  tests: [`e2e/hardware/${acceptance}.e2e.ts`], workers: 1, retries: 0, timeout: 180_000, launchTimeout: 180_000,
   output: ".artifacts/e2e-hardware", reporters: ["list", "markdown", "junit"],
 } satisfies E2EConfig;
