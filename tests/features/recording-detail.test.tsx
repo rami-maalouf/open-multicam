@@ -37,7 +37,7 @@ jest.mock("expo-sharing", () => ({
 jest.mock("expo-media-library", () => ({
   requestPermissionsAsync: (...args: unknown[]) =>
     mockRequestPhotosPermission(...args),
-  saveToLibraryAsync: (...args: unknown[]) => mockSaveToLibrary(...args),
+  Asset: { create: (...args: unknown[]) => mockSaveToLibrary(...args) },
 }));
 
 jest.mock("expo-video", () => {
@@ -150,6 +150,17 @@ describe("recording detail", () => {
     fireEvent.press(screen.getByRole("button", { name: "Try Again" }));
     await waitFor(() => expect(screen.getByTestId("video-player")).toBeTruthy());
     expect(mockDeleteRecording).not.toHaveBeenCalled();
+  });
+
+  it("keeps the take available when Photos cannot save a video", async () => {
+    mockSaveToLibrary.mockRejectedValue(new Error("asset unavailable"));
+    const screen = render(<RecordingDetailScreen />);
+    await waitFor(() => expect(screen.getByTestId("video-player")).toBeTruthy());
+    fireEvent.press(screen.getByRole("button", { name: "Save to Photos" }));
+    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith("Could not save to Photos", "Your take is still in OpenMulticam. Try saving again when Photos is available."));
+    expect(screen.getByTestId("video-player")).toBeTruthy();
+    expect(mockDeleteRecording).not.toHaveBeenCalled();
+    expect(mockRequestPhotosPermission).toHaveBeenCalledWith(true);
   });
 
   it("explains missing recordings", async () => {
