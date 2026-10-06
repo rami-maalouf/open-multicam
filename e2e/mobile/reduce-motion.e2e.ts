@@ -8,8 +8,9 @@ test("reduce motion retains capture, settings and library navigation", async ({ 
   fixtureRoot();
   await device.installApp();
   const settings = async () => {
-    await device.openApp("com.apple.Preferences");
-    await device.openLink("App-prefs:ACCESSIBILITY&path=MOTION", { app: "com.apple.Preferences" });
+    await device.openApp("com.apple.Preferences", { relaunch: true });
+    await screen.getByRole("listitem", { name: "Accessibility" }).tap();
+    await screen.getByRole("listitem", { name: "Motion" }).tap();
     await expect(screen.getByRole("switch", { name: "Reduce Motion" })).toBeVisible();
   };
   await settings();
