@@ -22,10 +22,16 @@ for (const mode of ["single", "discrete", "pip", "split"] as const) {
     const video = screen.getByLabel("Video");
     const application = screen.getByLabel("OpenMulticam");
     const paused = await playbackSample(video, application, mode);
+    const play = screen.getByRole("button", { name: "Play" });
+    const pause = screen.getByRole("button", { name: "Pause" });
     await video.tap();
+    if (await play.count() === 1) await play.tap();
     await expect.poll(() => playbackSample(video, application, mode), { timeout: 10_000, interval: 650 }).not.toBe(paused);
     await app.screenshot(`${mode}-playing`);
     await video.tap();
+    await expect.poll(async () => await play.count() === 1 || await pause.count() === 1).toBe(true);
+    if (await pause.count() === 1) await pause.tap();
+    await expect(play).toBeVisible();
     const stopped = await playbackSample(video, application, mode);
     for (let sample = 0; sample < 3; sample++) {
       await new Promise((resolve) => setTimeout(resolve, 750));
