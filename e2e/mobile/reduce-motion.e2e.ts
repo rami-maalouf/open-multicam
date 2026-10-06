@@ -9,17 +9,17 @@ test("reduce motion retains capture, settings and library navigation", async ({ 
   await device.installApp();
   const settings = async () => {
     await device.openApp("com.apple.Preferences", { relaunch: true });
-    await screen.getByRole("listitem", { name: "Accessibility" }).tap();
-    await screen.getByRole("listitem", { name: "Motion" }).tap();
+    await screen.getByTestId("com.apple.settings.accessibility").first().tap();
+    await screen.getByTestId("MOTION_TITLE").first().tap();
     await expect(screen.getByRole("switch", { name: "Reduce Motion" })).toBeVisible();
   };
   await settings();
   const toggle = screen.getByRole("switch", { name: "Reduce Motion" });
   const changed = await device.locator("id=REDUCE_MOTION role=Switch value=0").count() === 1;
-  const tapSwitch = async () => screen.getByRole("switch").nth(1).tap();
-  if (changed) await tapSwitch();
-  await expect(toggle).toBeChecked();
+  const tapSwitch = async () => toggle.getByRole("switch").tap();
   try {
+    if (changed) await tapSwitch();
+    await expect(toggle).toBeChecked();
     await app.open();
     await screen.getByLabel("Open settings").tap();
     await expect(screen.getByText("Privacy policy")).toBeVisible();
@@ -30,6 +30,10 @@ test("reduce motion retains capture, settings and library navigation", async ({ 
     await expect(screen.getByRole("button", { name: "Record" })).toBeVisible();
     await app.screenshot("reduce-motion-navigation");
   } finally {
-    if (changed) { await settings(); await tapSwitch(); await expect(toggle).not.toBeChecked(); }
+    if (changed) {
+      await settings();
+      if (await device.locator("id=REDUCE_MOTION role=Switch value=1").count() === 1) await tapSwitch();
+      await expect(toggle).not.toBeChecked();
+    }
   }
 });
