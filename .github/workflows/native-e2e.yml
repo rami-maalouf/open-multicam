@@ -44,7 +44,7 @@ jobs:
         working-directory: ios
       - run: bun run build:e2e:sim
       - run: bun run typecheck:e2e
-      - run: bun run test:e2e:sim -- --repeat-each 2
+      - run: bun run test:e2e:sim --repeat-each 2 --video off
       - name: Upload native evidence
         if: always()
         uses: actions/upload-artifact@v4
