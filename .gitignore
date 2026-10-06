@@ -45,3 +45,6 @@ exports/
 *.mp4
 *.m4a
 *.caf
+
+# tester-army local sessions and replay cache
+.e2e/

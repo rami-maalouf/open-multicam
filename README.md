@@ -86,10 +86,12 @@ bun run lint             # zero warnings allowed
 bun run typecheck
 bun run test             # jest suites
 bun run test:native      # native module tests
-bun run test:e2e:sim     # simulator e2e runner
-bun run test:e2e:device  # device e2e runner
+bun run test:e2e:sim     # tester-army native tests, isolated simulator required
+bun run test:e2e:device  # isolated signed hardware acceptance, safe framing required
 bun run validate         # repository checks + lint + typecheck + coverage + expo-doctor
 ```
+
+The native suite, isolated build instructions, coverage matrix, and hardware gates are documented in [docs/e2e-coverage.md](docs/e2e-coverage.md). The Native E2E workflow rebuilds and repeats the suite for relevant pull requests, with downloadable reports and screenshots.
 
 Cloud builds use EAS with the profiles in [`eas.json`](eas.json): `development`, `simulator`, `preview-simulator` (what the fix agent uses), `preview`, and `production`.
 
