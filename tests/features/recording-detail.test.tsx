@@ -141,6 +141,17 @@ describe("recording detail", () => {
     });
   });
 
+  it("recovers a rejected library read without hiding an indefinite spinner", async () => {
+    mockListRecordings.mockRejectedValueOnce(new Error("manifest unreadable"));
+    const screen = render(<RecordingDetailScreen />);
+    await waitFor(() => expect(screen.getByText("This take could not be read.")).toBeTruthy());
+    fireEvent.press(screen.getByRole("button", { name: "Open library" }));
+    expect(mockReplace).toHaveBeenCalledWith("/library");
+    fireEvent.press(screen.getByRole("button", { name: "Try Again" }));
+    await waitFor(() => expect(screen.getByTestId("video-player")).toBeTruthy());
+    expect(mockDeleteRecording).not.toHaveBeenCalled();
+  });
+
   it("explains missing recordings", async () => {
     mockListRecordings.mockResolvedValue([]);
     const screen = render(<RecordingDetailScreen />);
