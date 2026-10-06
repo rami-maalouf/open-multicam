@@ -27,3 +27,18 @@ test("largest accessibility text and increased contrast retain capture and libra
   await expect(screen.getByLabel("Video")).toBeVisible();
   await app.screenshot("largest-text-contrast-detail");
 });
+
+test("largest text can scroll permission copy to Continue and Settings recovery", async ({ app, device, screen }) => {
+  ui("content_size", "accessibility-extra-extra-extra-large");
+  await device.openApp("com.ramimaalouf.openmulticam", { relaunch: true, permissions: { camera: "reset", microphone: "grant" } });
+  const continueButton = screen.getByRole("button", { name: "Continue" });
+  await screen.scrollUntilVisible(continueButton);
+  await expect(continueButton).toBeVisible();
+  await app.screenshot("largest-text-permission-action");
+  await continueButton.tap();
+  await device.alert("dismiss");
+  const settingsButton = screen.getByRole("button", { name: "Open Settings" });
+  await screen.scrollUntilVisible(settingsButton);
+  await expect(settingsButton).toBeVisible();
+  await app.screenshot("largest-text-settings-action");
+});
