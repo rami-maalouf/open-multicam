@@ -6,6 +6,11 @@ on:
     paths:
       - 'src/**'
       - 'modules/**'
+      - 'assets/**'
+      - 'app.json'
+      - 'babel.config.js'
+      - 'metro.config.js'
+      - 'tsconfig.json'
       - 'e2e/**'
       - 'e2e.config.ts'
       - 'scripts/*e2e*'
@@ -55,6 +60,7 @@ jobs:
             .artifacts/photos-export-*.json
             .artifacts/playback-frames
             .artifacts/agent-device/sessions
+            .artifacts/simulator-ownership
             .artifacts/native-build/Build/Products/Release-iphonesimulator/OpenMulticam.app/e2e-build.json
           if-no-files-found: warn
       - name: Release the owned simulator
