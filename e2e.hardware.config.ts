@@ -8,7 +8,7 @@ import type { E2EConfig } from "e2e";
 
 if (process.env.OPENMULTICAM_HARDWARE_RECORDING_APPROVED !== "1") throw new Error("hardware run requires an unlocked, safely framed phone and OPENMULTICAM_HARDWARE_RECORDING_APPROVED=1");
 const device = process.env.OPENMULTICAM_E2E_DEVICE_NAME;
-if (!device) throw new Error("set the uniquely named paired iPhone in OPENMULTICAM_E2E_DEVICE_NAME");
+if (!device || !process.env.OPENMULTICAM_E2E_DEVICE_UDID) throw new Error("set the uniquely named paired iPhone in OPENMULTICAM_E2E_DEVICE_NAME");
 execFileSync("xcrun", ["devicectl", "list", "devices", "--json-output", resolve(".artifacts/hardware-device-inventory.json")]);
 const inventory = JSON.parse(readFileSync(".artifacts/hardware-device-inventory.json", "utf8"));
 const matches = inventory.result.devices.filter((entry: { deviceProperties?: { name?: string }; hardwareProperties?: { udid?: string } }) => entry.deviceProperties?.name === device);
@@ -20,6 +20,7 @@ const appPath = resolve(".artifacts/hardware-build/Build/Products/Release-iphone
 const identifier = execFileSync("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleIdentifier", join(appPath, "Info.plist")], { encoding: "utf8" }).trim();
 if (identifier !== "com.ramimaalouf.openmulticam.e2e") throw new Error("refusing to install a production bundle on the physical phone");
 const receipt = JSON.parse(readFileSync(join(appPath, "e2e-build.json"), "utf8"));
+if (receipt.deviceUdid !== process.env.OPENMULTICAM_E2E_DEVICE_UDID) throw new Error("signed artifact was prepared for a different selected device");
 if (receipt.runtimeDigest !== runtimeDigest() || receipt.bundleDigest !== createHash("sha256").update(readFileSync(join(appPath, "main.jsbundle"))).digest("hex")) throw new Error("signed hardware build is stale; rebuild before installing");
 export default {
   targets: [{ name: "iphone", engine: mobile({ platform: "ios", device, session: "openmulticam-hardware" }), app: { bundleId: identifier, appPath } }],

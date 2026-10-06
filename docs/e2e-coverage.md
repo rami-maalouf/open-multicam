@@ -62,7 +62,7 @@ OPENMULTICAM_E2E_DEVICE_UDID=<paired-device-udid> bun run build:e2e:device
 This command regenerates the isolated project, installs pods and builds/signs the isolated app without installing it. Build and signing outcomes are unverified until this command succeeds. Keep the successful simulator app and evidence. After a user confirms the phone is unlocked and framed safely, use its uniquely identified paired device name:
 
 ```sh
-OPENMULTICAM_HARDWARE_RECORDING_APPROVED=1 OPENMULTICAM_E2E_DEVICE_NAME='<paired device name>' bun run test:e2e:device --video off
+OPENMULTICAM_HARDWARE_RECORDING_APPROVED=1 OPENMULTICAM_E2E_DEVICE_UDID='<paired-device-udid>' OPENMULTICAM_E2E_DEVICE_NAME='<paired device name>' bun run test:e2e:device --video off
 ```
 
 The prepared hardware suite first requires an empty isolated library, exercises preview and four supported capture formats, stops/finalizes each three-second take, and deletes only its newly created take. It performs no Photos export or external sharing. The permission/control accessibility regressions must pass before this acceptance suite can be considered ready. Physical capture, focus/exposure, PiP gestures, audio metering and interruption recovery remain unverified gates, regardless of simulator fixture results.
