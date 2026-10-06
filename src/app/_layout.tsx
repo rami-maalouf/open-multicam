@@ -11,6 +11,8 @@ import { AccessibilityPreferencesProvider } from "@/foundation/accessibility/pre
 import "@/core/telemetry";
 import { colors } from "@/theme";
 
+export const unstable_settings = { anchor: "index" };
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const navigationTheme = useMemo(() => {
