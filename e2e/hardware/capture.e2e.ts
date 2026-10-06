@@ -22,9 +22,13 @@ test("fresh isolated hardware app requests permissions and keeps library empty",
 
 for (const mode of modes) {
   test(`${mode} hardware capture finalizes a new take and deletes only that take`, async ({ app, screen }) => {
+    await app.open();
+    await screen.getByLabel("Open library").tap();
+    await expect(screen.getByText("Your takes stay on this iPhone")).toBeVisible();
+    await screen.getByLabel(/Open camera/).tap();
     await screen.getByRole("button", { name: /^Cameras:/ }).tap();
     await screen.getByTestId(`camera-sheet-style-${mode}`).tap();
-    await screen.getByRole("button", { name: "Close camera picker" }).tap();
+    await expect(screen.getByTestId("camera-sheet")).not.toBeVisible();
     await expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
     await screen.getByRole("button", { name: "Record" }).tap();
     await expect(screen.getByRole("button", { name: "Stop recording" })).toBeVisible();
