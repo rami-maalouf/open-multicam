@@ -81,13 +81,7 @@ export function LibraryScreen() {
 function RecordingRow({
   recording,
 }: Readonly<{ recording: RecordingLibraryEntry }>) {
-  const isDual = recording.mode === "discrete";
-  const isPip = recording.mode === "pip";
-  const recordingKind = isDual
-    ? "Two-camera take"
-    : isPip
-      ? "Picture-in-picture take"
-      : recording.cameraA.label;
+  const { kind: recordingKind, icon: recordingIcon } = recordingKindOf(recording);
 
   return (
     <Link
@@ -97,34 +91,44 @@ function RecordingRow({
       <Pressable
         accessibilityHint="Opens playback and recording actions"
         accessibilityRole="button"
-        style={({ pressed }) => [styles.recordingRow, pressed && styles.pressed]}
       >
-        <View style={styles.recordingArtwork}>
-          <Icon
-            name={
-              isDual
-                ? "rectangle.split.2x1.fill"
-                : isPip
-                  ? "rectangle.inset.filled"
-                  : "video.fill"
-            }
-            size="prominent"
-            tone="accent"
-          />
-        </View>
-        <View style={styles.recordingText}>
-          <AppText numberOfLines={1} variant="headline">
-            {recordingDisplayName(recording)}
-          </AppText>
-          <AppText numberOfLines={1} tone="secondary" variant="callout">
-            {recordingKind} · {" "}
-            {formatRecordingDuration(recordingDurationMs(recording))}
-          </AppText>
-        </View>
-        <Icon name="chevron.right" size="compact" tone="secondary" />
+        {/* Link's asChild merges style arrays and drops a style function,
+            so the pressed state styles an inner view instead */}
+        {({ pressed }) => (
+          <View style={[styles.recordingRow, pressed && styles.pressed]}>
+            <View style={styles.recordingArtwork}>
+              <Icon name={recordingIcon} size="prominent" tone="accent" />
+            </View>
+            <View style={styles.recordingText}>
+              <AppText numberOfLines={1} variant="headline">
+                {recordingDisplayName(recording)}
+              </AppText>
+              <AppText numberOfLines={1} tone="secondary" variant="callout">
+                {recordingKind} · {" "}
+                {formatRecordingDuration(recordingDurationMs(recording))}
+              </AppText>
+            </View>
+            <Icon name="chevron.right" size="compact" tone="secondary" />
+          </View>
+        )}
       </Pressable>
     </Link>
   );
+}
+
+function recordingKindOf(
+  recording: RecordingLibraryEntry,
+): Readonly<{ kind: string; icon: string }> {
+  switch (recording.mode) {
+    case "discrete":
+      return { kind: "Two-camera take", icon: "rectangle.split.2x1.fill" };
+    case "pip":
+      return { kind: "Picture-in-picture take", icon: "rectangle.inset.filled" };
+    case "split":
+      return { kind: "Split take", icon: "rectangle.split.1x2.fill" };
+    default:
+      return { kind: recording.cameraA.label, icon: "video.fill" };
+  }
 }
 
 function EmptyLibrary({ errorMessage }: Readonly<{ errorMessage: string | null }>) {
