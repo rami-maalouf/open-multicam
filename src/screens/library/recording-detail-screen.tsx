@@ -267,6 +267,8 @@ const styles = StyleSheet.create({
     padding: spacing.control,
   },
   videoCard: {
+    // the height cap narrows the card on tall phones, so keep it centered
+    alignSelf: "center",
     aspectRatio: 9 / 16,
     backgroundColor: colors.previewChrome,
     borderRadius: radii.card,
