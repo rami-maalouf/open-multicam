@@ -248,6 +248,50 @@ describe("native capture surface", () => {
     expect(screen.getByTestId("native-capture-surface")).toBeTruthy();
   });
 
+  it("keeps the camera picker and the permission button reachable by VoiceOver", async () => {
+    // iOS hides every descendant of an accessible view from VoiceOver, so
+    // above the control itself no ancestor may be one
+    type Node = {
+      props: { accessible?: boolean; accessibilityLabel?: string };
+      parent: Node | null;
+    };
+    const expectNoAccessibleAncestor = (element: Node) => {
+      let control: Node | null = element;
+      while (control && control.props.accessible !== true) {
+        control = control.parent;
+      }
+      // the control's composite and host views both carry its props
+      let ancestor = control?.parent ?? null;
+      while (
+        ancestor &&
+        ancestor.props.accessibilityLabel === control?.props.accessibilityLabel
+      ) {
+        ancestor = ancestor.parent;
+      }
+      while (ancestor) {
+        expect(ancestor.props.accessible).not.toBe(true);
+        ancestor = ancestor.parent;
+      }
+    };
+
+    mockDiscoverCapabilities.mockResolvedValue(simcamCapabilities);
+    const preview = render(<CaptureScreen />);
+    expectNoAccessibleAncestor(
+      await preview.findByRole("button", { name: /^Cameras:/ }),
+    );
+    preview.unmount();
+
+    mockGetPermissionStatus.mockResolvedValue({
+      kind: "capture-permissions",
+      camera: "not-determined",
+      microphone: "not-determined",
+    });
+    const permission = render(<CaptureScreen />);
+    expectNoAccessibleAncestor(
+      await permission.findByRole("button", { name: "Continue" }),
+    );
+  });
+
   it("asks before requesting camera and microphone access", async () => {
     mockGetPermissionStatus.mockResolvedValue({
       kind: "capture-permissions",

@@ -613,12 +613,18 @@ export function CaptureScreen() {
         </View>
       </View>
 
-      <View
-        accessible
-        accessibilityLabel={`Camera preview. Native state ${surfaceState}. ${message}`}
-        accessibilityRole="image"
-        style={styles.preview}
-      >
+      <View style={styles.preview}>
+        {/* an accessible container would hide the camera picker and the
+            overlay buttons from VoiceOver, so the description is its own
+            element, under the surface so the inset still answers touches */}
+        <View
+          accessible
+          accessibilityLabel={`Camera preview. Native state ${surfaceState}. ${message}`}
+          accessibilityRole="image"
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+          testID="camera-preview-description"
+        />
         <CaptureSurfaceView
           accessible={false}
           style={StyleSheet.absoluteFill}
