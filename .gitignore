@@ -45,3 +45,6 @@ exports/
 *.mp4
 *.m4a
 *.caf
+
+# goldie store assets, rebuilt by goldie capture and frame
+goldie/out/

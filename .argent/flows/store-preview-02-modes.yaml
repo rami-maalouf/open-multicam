@@ -1,0 +1,17 @@
+executionPrerequisite: >-
+  Capture screen in picture in picture, back camera full screen, front camera
+  in the inset.
+steps:
+  - tap: { text: "Cameras: Back Camera + Front Camera" }
+  - await: { visible: { id: camera-sheet-style-split } }
+  - await: { idle: true, timeout: 2000 }
+  - wait: 900
+  - tap: { id: camera-sheet-style-split }
+  - await: { hidden: { id: camera-sheet-style-split } }
+  - wait: 2400
+  - tap: { text: "Cameras: Back Camera + Front Camera" }
+  - await: { visible: { id: camera-sheet-style-pip } }
+  - await: { idle: true, timeout: 2000 }
+  - tap: { id: camera-sheet-style-pip }
+  - await: { hidden: { id: camera-sheet-style-pip } }
+  - wait: 900

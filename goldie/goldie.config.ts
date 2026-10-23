@@ -1,0 +1,115 @@
+import { resolve } from "node:path";
+
+import type { GoldieConfig } from "goldie";
+
+// store screenshots and the app preview, captured on the simulator with the
+// simulated cameras. before a capture:
+//   1. build the release simulator app:
+//      xcodebuild -workspace ios/OpenMulticam.xcworkspace -scheme OpenMulticam \
+//        -configuration Release -sdk iphonesimulator -derivedDataPath ios/build build
+//   2. point an "iPhone 17 Pro Max" simulator at two feeds:
+//      bun scripts/simulator-cameras.mjs set --back <video> --front <video> --device <udid>
+// goldie picks the newest iOS runtime that has an "iPhone 17 Pro Max". an expo
+// sdk 57 app built with the iOS 27 sdk stops at launch on iOS 27, so that
+// simulator has to run iOS 26 until the app moves to the scene life cycle.
+const APP_ROOT = resolve(import.meta.dirname, "..");
+
+const config: GoldieConfig = {
+  appRoot: APP_ROOT,
+  appPath: `${APP_ROOT}/ios/build/Build/Products/Release-iphonesimulator/OpenMulticam.app`,
+  bundleId: "com.ramimaalouf.openmulticam",
+
+  devices: ["iphone-6.9"],
+  locales: ["en-US"],
+  appearance: "light",
+
+  frame: { variant: "17-pro-orange" },
+
+  theme: {
+    background:
+      "linear-gradient(165deg, #0E4A50 0%, #0A2427 46%, #080D0F 100%)",
+    headlineColor: "#FFFFFF",
+    subheadColor: "#9ED8DD",
+    fontFamily: '-apple-system, "SF Pro Display", system-ui, sans-serif',
+    copyHeightRatio: 0.24,
+    deviceWidthRatio: 0.84,
+    template: "editorial",
+    layout: "classic",
+  },
+
+  store: {
+    name: "OpenMulticam",
+    subtitle: { "en-US": "Record two cameras together" },
+    developer: "Rami Maalouf",
+    category: "Photo & Video",
+    rating: 5,
+    ratingCount: "New",
+    ageRating: "4+",
+    price: "Free",
+    description: {
+      "en-US":
+        "Capture two perspectives with one iPhone. OpenMulticam records from two supported cameras at the same time, so you can capture a conversation, a demonstration, or both sides of a moment.\n\nRecord separate camera files, picture-in-picture, or a split view. Review takes in the local library, rename them, and export to Photos or share them.\n\nNo account, advertising, or analytics. Every camera feature is free.",
+    },
+  },
+
+  scenes: [
+    {
+      kind: "screenshot",
+      id: "pip",
+      flow: "store-01-pip",
+      headline: { "en-US": "Film both sides at once" },
+      subhead: { "en-US": "Back and selfie cameras, recording together." },
+      decorations: [
+        {
+          kind: "badge",
+          text: { "en-US": "Free, no paywall" },
+          position: "top-right",
+          background: "#4FC6D1",
+          color: "#062326",
+        },
+      ],
+    },
+    {
+      kind: "screenshot",
+      id: "recording",
+      flow: "store-02-recording",
+      headline: { "en-US": "One take. Two angles." },
+      subhead: { "en-US": "Picture in picture, saved as a single video." },
+    },
+    {
+      kind: "screenshot",
+      id: "cameras",
+      flow: "store-03-cameras",
+      headline: { "en-US": "Pair any two cameras" },
+      subhead: {
+        "en-US": "0.5×, 1×, 3× or selfie. Picture in picture, split, or two files.",
+      },
+    },
+    {
+      kind: "screenshot",
+      id: "take",
+      flow: "store-04-take",
+      headline: { "en-US": "Share it the moment you stop" },
+      subhead: { "en-US": "Save to Photos or send it anywhere." },
+    },
+    {
+      kind: "screenshot",
+      id: "library",
+      flow: "store-05-library",
+      headline: { "en-US": "Your takes stay on your iPhone" },
+      subhead: { "en-US": "No account. No ads. No analytics." },
+    },
+    {
+      kind: "preview",
+      id: "preview",
+      segments: [
+        { id: "open", flow: "store-preview-01-open" },
+        { id: "modes", flow: "store-preview-02-modes" },
+        { id: "record", flow: "store-preview-03-record" },
+        { id: "take", flow: "store-preview-04-take", holdSeconds: 1 },
+      ],
+    },
+  ],
+};
+
+export default config;

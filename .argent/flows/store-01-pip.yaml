@@ -1,0 +1,7 @@
+steps:
+  - echo: Simulated cameras must be set first (bun scripts/simulator-cameras.mjs set).
+  - launch: com.ramimaalouf.openmulticam
+  - await: { visible: { text: Inset camera preview } }
+  - await: { visible: { text: "Cameras: Back Camera + Front Camera" } }
+  - echo: The feeds are live video, so idle only waits out the layout.
+  - await: { idle: true, timeout: 1500 }

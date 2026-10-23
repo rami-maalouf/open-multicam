@@ -1,0 +1,10 @@
+executionPrerequisite: >-
+  Capture screen back in picture in picture after the camera sheet closed.
+steps:
+  - await: { visible: { text: Record } }
+  - tap: { text: Record }
+  - await: { visible: { text: Stop recording } }
+  - wait: 4200
+  - tap: { text: Stop recording }
+  - await: { visible: { text: Record } }
+  - wait: 900

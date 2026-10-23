@@ -1,0 +1,13 @@
+steps:
+  - launch: com.ramimaalouf.openmulticam
+  - await: { visible: { text: Inset camera preview } }
+  - tap: { text: Record }
+  - await: { visible: { text: Stop recording } }
+  - wait: 4500
+  - tap: { text: Stop recording }
+  - await: { visible: { text: Record } }
+  - tap: { text: Open library }
+  - await: { visible: { text: Picture-in-picture take } }
+  - tap: { text: Picture-in-picture take }
+  - await: { visible: { text: Save to Photos } }
+  - await: { idle: true, timeout: 3000 }

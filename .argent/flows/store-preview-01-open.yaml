@@ -1,0 +1,11 @@
+executionPrerequisite: >-
+  App freshly restarted by goldie, settled on the capture screen in picture in
+  picture, with simulated cameras set.
+steps:
+  - await: { visible: { text: Inset camera preview } }
+  - wait: 2200
+  - echo: Tapping the inset promotes it to full screen, then tapping again swaps back.
+  - tap: { text: Inset camera preview }
+  - wait: 2000
+  - tap: { text: Inset camera preview }
+  - wait: 1200

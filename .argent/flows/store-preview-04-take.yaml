@@ -1,0 +1,9 @@
+executionPrerequisite: >-
+  Capture screen with one picture-in-picture take just saved.
+steps:
+  - tap: { text: Open library }
+  - await: { visible: { text: Picture-in-picture take } }
+  - wait: 1400
+  - tap: { text: Picture-in-picture take }
+  - await: { visible: { text: Save to Photos } }
+  - wait: 2600
