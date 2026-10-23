@@ -72,6 +72,8 @@ final class CaptureRecordingWriter: @unchecked Sendable {
   private var latestPipPrimaryBuffer: CVPixelBuffer?
   private var latestPipSecondaryBuffer: CVPixelBuffer?
 
+  /// `videoOutputs` is empty when the frames arrive through `appendFrames`
+  /// instead of capture outputs, as the simulator's simulated cameras do.
   init(
     context: CaptureRecordingContext,
     videoOutputs: [AVCaptureVideoDataOutput],
@@ -82,9 +84,12 @@ final class CaptureRecordingWriter: @unchecked Sendable {
     // pip and split both render two feeds into one clip, so they share the
     // compositor and the single-writer shape
     let isComposite = context.preset.mode == .pip || context.preset.mode == .split
-    guard isComposite
-      ? context.clips.count == 1 && videoOutputs.count == 2
-      : context.clips.count == videoOutputs.count
+    let sourceCount = context.preset.cameraBId == nil ? 1 : 2
+    guard
+      videoOutputs.isEmpty || videoOutputs.count == sourceCount,
+      isComposite
+        ? context.clips.count == 1 && sourceCount == 2
+        : context.clips.count == sourceCount
     else {
       throw CaptureFailure.recordingPreparationFailed
     }
@@ -109,10 +114,10 @@ final class CaptureRecordingWriter: @unchecked Sendable {
         )
       ]
     } else {
-      writers = try zip(context.clips, videoOutputs).map { clip, output in
+      writers = try context.clips.enumerated().map { index, clip in
         try Self.makeWriter(
           clip: clip,
-          output: output,
+          output: videoOutputs.indices.contains(index) ? videoOutputs[index] : nil,
           context: context,
           isComposite: false,
           hasAudio: audioOutput != nil
@@ -200,6 +205,75 @@ final class CaptureRecordingWriter: @unchecked Sendable {
       writer.audioInput?.append(sampleBuffer)
       hasWrittenAudio = true
     }
+  }
+
+  /// One frame per camera, in slot order, already paired on one clock. For
+  /// sources with no capture outputs, such as the simulator's simulated
+  /// cameras.
+  func appendFrames(_ frames: [CVPixelBuffer], at time: CMTime) {
+    if preset.mode == .pip || preset.mode == .split {
+      guard frames.count == 2 else {
+        return
+      }
+      latestPipPrimaryBuffer = frames[0]
+      latestPipSecondaryBuffer = frames[1]
+      pipDiagnostics.primaryFramesSeen += 1
+      pipDiagnostics.secondaryFramesSeen += 1
+      composeLatestPair(at: time)
+      return
+    }
+
+    guard frames.count == writers.count else {
+      return
+    }
+
+    beginIfNeeded(at: time)
+    for (writer, frame) in zip(writers, frames) {
+      guard
+        writer.videoInput.isReadyForMoreMediaData,
+        let sample = Self.sampleBuffer(wrapping: frame, at: time)
+      else {
+        continue
+      }
+      writer.videoInput.append(sample)
+    }
+    updateLastVideoTime(time)
+  }
+
+  static func sampleBuffer(
+    wrapping pixelBuffer: CVPixelBuffer,
+    at time: CMTime
+  ) -> CMSampleBuffer? {
+    var format: CMVideoFormatDescription?
+    guard
+      CMVideoFormatDescriptionCreateForImageBuffer(
+        allocator: nil,
+        imageBuffer: pixelBuffer,
+        formatDescriptionOut: &format
+      ) == noErr,
+      let format
+    else {
+      return nil
+    }
+
+    var timing = CMSampleTimingInfo(
+      duration: .invalid,
+      presentationTimeStamp: time,
+      decodeTimeStamp: .invalid
+    )
+    var sample: CMSampleBuffer?
+    guard
+      CMSampleBufferCreateReadyWithImageBuffer(
+        allocator: nil,
+        imageBuffer: pixelBuffer,
+        formatDescription: format,
+        sampleTiming: &timing,
+        sampleBufferOut: &sample
+      ) == noErr
+    else {
+      return nil
+    }
+    return sample
   }
 
   func finish() async -> Result<CaptureWriterResult, CaptureFailure> {
@@ -349,12 +423,7 @@ final class CaptureRecordingWriter: @unchecked Sendable {
 
   private func appendComposite(_ collection: AVCaptureSynchronizedDataCollection) {
     pipDiagnostics.synchronizedCollections += 1
-    guard
-      videoOutputs.count == 2,
-      let writer = writers.first,
-      let adaptor = writer.pixelBufferAdaptor,
-      let compositorContext
-    else {
+    guard videoOutputs.count == 2 else {
       return
     }
 
@@ -384,6 +453,20 @@ final class CaptureRecordingWriter: @unchecked Sendable {
     latestPipPrimaryBuffer = primaryBuffer
     pipDiagnostics.primaryFramesSeen += 1
 
+    composeLatestPair(at: CMSampleBufferGetPresentationTimeStamp(primarySample))
+  }
+
+  /// Renders the newest frame of each camera into one composite frame on the
+  /// primary camera's clock.
+  private func composeLatestPair(at time: CMTime) {
+    guard
+      let writer = writers.first,
+      let adaptor = writer.pixelBufferAdaptor,
+      let compositorContext
+    else {
+      return
+    }
+
     guard
       let primaryBuffer = latestPipPrimaryBuffer,
       let secondaryBuffer = latestPipSecondaryBuffer
@@ -392,7 +475,6 @@ final class CaptureRecordingWriter: @unchecked Sendable {
     }
     pipDiagnostics.validFramePairs += 1
 
-    let time = CMSampleBufferGetPresentationTimeStamp(primarySample)
     beginIfNeeded(at: time)
 
     guard writer.writer.status == .writing else {

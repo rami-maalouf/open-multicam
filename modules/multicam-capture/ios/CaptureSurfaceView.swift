@@ -2,11 +2,25 @@ import AVFoundation
 import ExpoModulesCore
 import UIKit
 
+/// Hosts one camera preview. In the simulator its own layer also shows the
+/// simulated camera frames, which have no capture session to draw them.
+final class CapturePreviewHostView: UIView {
+#if targetEnvironment(simulator)
+  override class var layerClass: AnyClass {
+    AVSampleBufferDisplayLayer.self
+  }
+#endif
+
+  var feedLayer: AVSampleBufferDisplayLayer? {
+    layer as? AVSampleBufferDisplayLayer
+  }
+}
+
 final class CaptureSurfaceView: ExpoView {
   private let primaryPreviewLayer = AVCaptureVideoPreviewLayer()
   private let secondaryPreviewLayer = AVCaptureVideoPreviewLayer()
-  private let primaryPreviewHost = UIView()
-  private let secondaryPreviewHost = UIView()
+  private let primaryPreviewHost = CapturePreviewHostView()
+  private let secondaryPreviewHost = CapturePreviewHostView()
   private let panGesture = UIPanGestureRecognizer()
   private let previewTapGesture = UITapGestureRecognizer()
   private let zoomPinchGesture = UIPinchGestureRecognizer()
@@ -40,6 +54,8 @@ final class CaptureSurfaceView: ExpoView {
     secondaryPreviewHost.isHidden = true
     secondaryPreviewHost.layer.addSublayer(secondaryPreviewLayer)
     addSubview(secondaryPreviewHost)
+    primaryPreviewHost.feedLayer?.videoGravity = .resizeAspectFill
+    secondaryPreviewHost.feedLayer?.videoGravity = .resizeAspectFill
 
     panGesture.addTarget(self, action: #selector(handlePipPan))
     addGestureRecognizer(panGesture)
@@ -65,6 +81,12 @@ final class CaptureSurfaceView: ExpoView {
 
   private var leadingHost: UIView {
     isPipSwapped ? secondaryPreviewHost : primaryPreviewHost
+  }
+
+  /// The layers the simulator's simulated cameras draw into, in slot order.
+  /// Empty on a device.
+  var simulatedFeedLayers: [AVSampleBufferDisplayLayer] {
+    [primaryPreviewHost, secondaryPreviewHost].compactMap(\.feedLayer)
   }
 
   private var trailingPreviewLayer: AVCaptureVideoPreviewLayer {
