@@ -521,6 +521,51 @@ describe("native capture surface", () => {
     });
   });
 
+  it("orders the camera tiles as a zoom ladder with the selfie camera last", async () => {
+    const lens = (id: string, deviceType: string, position = "back") => ({
+      ...simcamCapabilities.cameras[0],
+      id,
+      label: id,
+      deviceType,
+      position,
+    });
+    const pip = (backId: string) => ({
+      ...simcamCapabilities.configurations[0],
+      id: `pip:${backId}:front`,
+      mode: "pip",
+      output: "composite-file",
+      cameraIds: [backId, "front"],
+      frameRates: [30],
+    });
+    mockDiscoverCapabilities.mockResolvedValue({
+      ...simcamCapabilities,
+      // discovery sorts by name: Back Camera, Back Telephoto, Back Ultra Wide
+      cameras: [
+        lens("wide", "wide"),
+        lens("telephoto", "telephoto"),
+        lens("ultra-wide", "ultra-wide"),
+        lens("front", "true-depth", "front"),
+      ],
+      multicam: { kind: "supported" },
+      configurations: [pip("wide"), pip("telephoto"), pip("ultra-wide")],
+      recommendedConfigurationId: "pip:wide:front",
+    });
+    const screen = render(<CaptureScreen />);
+
+    fireEvent.press(
+      await screen.findByRole("button", { name: "Cameras: wide + front" }),
+    );
+
+    expect(
+      screen.getAllByTestId(/^camera-tile-/).map((tile) => tile.props.testID),
+    ).toEqual([
+      "camera-tile-ultra-wide",
+      "camera-tile-wide",
+      "camera-tile-telephoto",
+      "camera-tile-front",
+    ]);
+  });
+
   it("offers retry when discovery or configuration fails", async () => {
     mockDiscoverCapabilities.mockRejectedValueOnce(new Error("camera reset"));
     const screen = render(<CaptureScreen />);
