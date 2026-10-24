@@ -45,6 +45,15 @@ const config: GoldieConfig = {
     deviceWidthRatio: 0.84,
     template: "editorial",
     layout: "classic",
+    decorations: [
+      {
+        kind: "badge",
+        text: { "en-US": "Free & open source" },
+        position: "top-right",
+        background: "#4FC6D1",
+        color: "#062326",
+      },
+    ],
   },
 
   store: {
@@ -68,16 +77,7 @@ const config: GoldieConfig = {
       id: "pip",
       flow: "store-01-pip",
       headline: { "en-US": "Film both sides at once" },
-      subhead: { "en-US": "Back and selfie cameras, recording together." },
-      decorations: [
-        {
-          kind: "badge",
-          text: { "en-US": "Free, no paywall" },
-          position: "top-right",
-          background: "#4FC6D1",
-          color: "#062326",
-        },
-      ],
+      subhead: { "en-US": "Like iPhone 17 Dual Capture, on older iPhones too." },
     },
     {
       kind: "screenshot",
@@ -92,7 +92,8 @@ const config: GoldieConfig = {
       flow: "store-03-cameras",
       headline: { "en-US": "Pair any two cameras" },
       subhead: {
-        "en-US": "0.5×, 1×, 3× or selfie. Picture in picture, split, or two files.",
+        "en-US":
+          "0.5×, 1×, 3× or selfie.\nPicture in picture, split, or two files.",
       },
     },
     {
@@ -106,8 +107,10 @@ const config: GoldieConfig = {
       kind: "screenshot",
       id: "library",
       flow: "store-05-library",
-      headline: { "en-US": "Your takes stay on your iPhone" },
-      subhead: { "en-US": "No account. No ads. No analytics." },
+      headline: { "en-US": "All on your iPhone.\nNo login." },
+      subhead: {
+        "en-US": "Free and open source.\nNo account, no cloud, no ads.",
+      },
     },
     {
       kind: "preview",
