@@ -1,8 +1,21 @@
 # App Store release
 
-Last checked: September 9, 2026.
+Last checked: October 24, 2026.
 
 OpenMulticam is a free iPhone app with an optional, one-time developer donation. Every camera feature is free. The donation follows Twilight's StoreKit 2 non-consumable model, including restoration through the Apple Account.
+
+## October 24 release preparation
+
+- Version: 1.0.0, production build 2. EAS build: `0f543175-cc8a-4e7e-8c45-919e45c59186`, source commit `84bd525`.
+- The production build finished successfully. The downloaded archive confirms bundle ID `com.ramimaalouf.openmulticam`, version 1.0.0, build 2, minimum iOS 18.6, and SDK `iphoneos26.5`.
+- EAS upload submission: `a2eee719-7319-4066-a4c6-690fccaa10fd`, last observed `IN_PROGRESS`. Apple had not exposed build 2 yet; the app version still has build 1 selected. Inspect this existing upload before retrying, then select processed build 2. Nothing has been submitted to App Review.
+- Final marketing assets are in `/Users/rami/Documents/life-os/design/app-store/open-multicam/final/`. Four 1206 x 2622 screenshots and four 1320 x 2868 screenshots are uploaded in filename order. The obsolete privacy screenshot was removed from the listing and remains in Apple's Asset Library.
+- `app-preview.mp4` is uploaded for the medium Dynamic Island display, with other compatible display groups inheriting it. Apple reports both video delivery and the poster frame as complete. The video is 886 x 1920, 30 fps, and 27.17 seconds.
+- Verified existing listing: free app, 175 territories, automatic release after approval, published Data Not Collected privacy declaration, complete age rating, reviewer contact, and accessible privacy/support URLs.
+- `bun run validate` passes: 174 tests and all 21 Expo Doctor checks, with 90.18% branch coverage. Native XCTest passes with full state-machine region and line coverage. All four hosted StoreKit tests pass on iOS 26.1. The separate foundation-preview scenario also passes; that scenario checks the development review surface, not physical camera behavior.
+- The owner confirmed dual-camera recording, playback, and export work on a physical iPhone before the SDK 57 patch alignment. The newly built binary still needs a TestFlight smoke test.
+- Account blockers observed in App Store Connect: the Account Holder must accept the updated Apple Developer Program License Agreement and update legal entity information before activating the Paid Apps Agreement for the donation.
+- The donation product is missing its review screenshot. Existing local support captures show the unavailable state; capture the functioning donation screen with its localized price for review. Include the first donation product with the first app version's review submission.
 
 ## App identifiers
 
@@ -56,7 +69,7 @@ EAS Metadata does not currently expose Apple's new `socialMedia` and `socialMedi
 - App Privacy: Data Not Collected. Production telemetry is disabled in code and covered by a release privacy test. Recordings and StoreKit entitlement checks stay on the device; Apple processes payments.
 - Age rating: 4+, with all questionnaire content and interactive features absent. No hosted social media, chat, advertising, or unrestricted web browser.
 - Content rights: the app does not contain third-party media. Use only approved, non-private sample footage in store screenshots.
-- Upload native-resolution, opaque screenshots of the actual release app. A 6.5-inch iPhone set supports 1284 x 2778 portrait screenshots.
+- Upload opaque screenshots depicting the actual app. The current listing uses 1206 x 2622 for the medium Dynamic Island display and 1320 x 2868 for the large display; verify the accepted display groups in App Store Connect for each release.
 - Complete the donation's review screenshot and review notes. The first donation product must be included in the same review submission as the first app version.
 - Select the processed build, add the app version and donation for review, then submit the combined submission. Automatic release after approval is configured.
 
