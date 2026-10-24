@@ -11,14 +11,16 @@ import { fileURLToPath } from "node:url";
 
 const usage = `usage:
   bun scripts/simulator-cameras.mjs set --back <video|image> --front <video|image>
-    [--back-start <seconds>] [--front-start <seconds>] [--device <udid>]
+    [--back-start <seconds>] [--back-end <seconds>]
+    [--front-start <seconds>] [--front-end <seconds>] [--device <udid>]
   bun scripts/simulator-cameras.mjs clear [--device <udid>]
   bun scripts/simulator-cameras.mjs status [--device <udid>]
 
 without --device, every booted iOS simulator is used. relaunch the app after set or clear.
 a feed plays from its start each time the app launches, so a store screenshot
 shows the first seconds of each video: --back-start and --front-start skip to a
-better moment.`;
+better moment. a feed loops, so --back-end and --front-end keep it inside that
+part of the video.`;
 
 const feedKeys = {
   back: "OpenMulticamSimulatedBackCamera",
@@ -150,12 +152,20 @@ function readFeed(device, key) {
 
 // every video becomes the same portrait clip: filled to the feed size, 30 fps,
 // and silent, so the app decodes them all the same way
-function prepareFeed(role, source, start = "0") {
+function prepareFeed(role, source, start = "0", end = undefined) {
   const input = resolve(source);
   const startSeconds = Number(start);
+  const endSeconds = end === undefined ? undefined : Number(end);
 
   if (!Number.isFinite(startSeconds) || startSeconds < 0) {
     throw new Error(`the ${role} start ${start} is not a number of seconds`);
+  }
+
+  if (
+    endSeconds !== undefined &&
+    (!Number.isFinite(endSeconds) || endSeconds <= startSeconds)
+  ) {
+    throw new Error(`the ${role} end ${end} is not a time after the start`);
   }
 
   if (!existsSync(input)) {
@@ -176,6 +186,7 @@ function prepareFeed(role, source, start = "0") {
     "-v", "error",
     "-y",
     "-ss", String(startSeconds),
+    ...(endSeconds === undefined ? [] : ["-to", String(endSeconds)]),
     "-i", input,
     "-vf",
     `scale=${feedWidth}:${feedHeight}:force_original_aspect_ratio=increase,` +
@@ -199,8 +210,18 @@ function main() {
     }
 
     const feeds = {
-      back: prepareFeed("back", options.back, options["back-start"]),
-      front: prepareFeed("front", options.front, options["front-start"]),
+      back: prepareFeed(
+        "back",
+        options.back,
+        options["back-start"],
+        options["back-end"],
+      ),
+      front: prepareFeed(
+        "front",
+        options.front,
+        options["front-start"],
+        options["front-end"],
+      ),
     };
 
     for (const device of targetDevices(options.device)) {
