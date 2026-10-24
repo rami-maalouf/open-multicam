@@ -15,7 +15,7 @@ OpenMulticam is a free iPhone app with an optional, one-time developer donation.
 - `bun run validate` passes: 174 tests and all 21 Expo Doctor checks, with 90.18% branch coverage. Native XCTest passes with full state-machine region and line coverage. All four hosted StoreKit tests pass on iOS 26.1. The separate foundation-preview scenario also passes; that scenario checks the development review surface, not physical camera behavior.
 - The owner confirmed dual-camera recording, playback, and export work on a physical iPhone before the SDK 57 patch alignment. The newly built binary still needs a TestFlight smoke test.
 - The owner accepted the updated agreements and completed the legal-entity step. The Free Apps Agreement is active. The Paid Apps Agreement is `Pending User Info`: Apple still requests a bank account, Canadian GST/HST Form 506, and the U.S. Tax Questionnaire. Complete these in App Store Connect Business before offering the donation.
-- The donation product is missing its review screenshot. Existing local support captures show the unavailable state; capture the functioning donation screen with its localized price for review. Include the first donation product with the first app version's review submission.
+- The donation's review screenshot is ready but not uploaded: `/Users/rami/Documents/life-os/design/app-store/open-multicam/final/review/donation-review-1206x2622.png` (1206 x 2622, no alpha). It shows the Support OpenMulticam screen with `Donate $1.99`, captured on October 24 on the iOS 26.1 simulator while a hosted XCTest held an `SKTestSession` with `modules/tip-jar/ios/Tests/Support.storekit`. Running the app from Xcode with the scheme's StoreKit configuration did not apply it; StoreKit stayed on Sandbox, which has no product until the Paid Apps Agreement is active. Include the first donation product with the first app version's review submission.
 
 ## App identifiers
 
@@ -70,7 +70,7 @@ EAS Metadata does not currently expose Apple's new `socialMedia` and `socialMedi
 - Age rating: 4+, with all questionnaire content and interactive features absent. No hosted social media, chat, advertising, or unrestricted web browser.
 - Content rights: the app does not contain third-party media. Use only approved, non-private sample footage in store screenshots.
 - Upload opaque screenshots depicting the actual app. The current listing uses 1206 x 2622 for the medium Dynamic Island display and 1320 x 2868 for the large display; verify the accepted display groups in App Store Connect for each release.
-- Complete the donation's review screenshot and review notes. The first donation product must be included in the same review submission as the first app version.
+- Upload the donation's review screenshot and complete its review notes. The first donation product must be included in the same review submission as the first app version.
 - Select the processed build, add the app version and donation for review, then submit the combined submission. Automatic release after approval is configured.
 
 ## Current Apple requirements
