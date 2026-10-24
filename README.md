@@ -81,6 +81,7 @@ Real multicam capture requires an iPhone. The simulator has no cameras, so a sim
 
 ```bash
 bun scripts/simulator-cameras.mjs set --back scene.mp4 --front face.mp4   # every booted simulator, or --device <udid>
+bun scripts/simulator-cameras.mjs set --back scene.mp4 --back-start 3 --front face.mp4   # skip the first 3 seconds of scene.mp4
 bun scripts/simulator-cameras.mjs status
 bun scripts/simulator-cameras.mjs clear    # back to SimCam or the EAS Camera helper
 ```

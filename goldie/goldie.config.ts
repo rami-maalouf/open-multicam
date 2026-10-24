@@ -9,6 +9,9 @@ import type { GoldieConfig } from "goldie";
 //        -configuration Release -sdk iphonesimulator -derivedDataPath ios/build build
 //   2. point an "iPhone 17 Pro Max" simulator at two feeds:
 //      bun scripts/simulator-cameras.mjs set --back <video> --front <video> --device <udid>
+//      every flow launches the app again and the feeds play from their start,
+//      so the screenshots show the first seconds of each video and the preview
+//      the first 30. --back-start and --front-start skip to a better moment.
 // goldie picks the newest iOS runtime that has an "iPhone 17 Pro Max". an expo
 // sdk 57 app built with the iOS 27 sdk stops at launch on iOS 27, so that
 // simulator has to run iOS 26 until the app moves to the scene life cycle.

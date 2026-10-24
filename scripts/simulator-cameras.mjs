@@ -10,11 +10,15 @@ import { fileURLToPath } from "node:url";
 // survive the app being reinstalled.
 
 const usage = `usage:
-  bun scripts/simulator-cameras.mjs set --back <video|image> --front <video|image> [--device <udid>]
+  bun scripts/simulator-cameras.mjs set --back <video|image> --front <video|image>
+    [--back-start <seconds>] [--front-start <seconds>] [--device <udid>]
   bun scripts/simulator-cameras.mjs clear [--device <udid>]
   bun scripts/simulator-cameras.mjs status [--device <udid>]
 
-without --device, every booted iOS simulator is used. relaunch the app after set or clear.`;
+without --device, every booted iOS simulator is used. relaunch the app after set or clear.
+a feed plays from its start each time the app launches, so a store screenshot
+shows the first seconds of each video: --back-start and --front-start skip to a
+better moment.`;
 
 const feedKeys = {
   back: "OpenMulticamSimulatedBackCamera",
@@ -146,8 +150,13 @@ function readFeed(device, key) {
 
 // every video becomes the same portrait clip: filled to the feed size, 30 fps,
 // and silent, so the app decodes them all the same way
-function prepareFeed(role, source) {
+function prepareFeed(role, source, start = "0") {
   const input = resolve(source);
+  const startSeconds = Number(start);
+
+  if (!Number.isFinite(startSeconds) || startSeconds < 0) {
+    throw new Error(`the ${role} start ${start} is not a number of seconds`);
+  }
 
   if (!existsSync(input)) {
     throw new Error(`the ${role} feed ${input} does not exist`);
@@ -166,6 +175,7 @@ function prepareFeed(role, source) {
   run("ffmpeg", [
     "-v", "error",
     "-y",
+    "-ss", String(startSeconds),
     "-i", input,
     "-vf",
     `scale=${feedWidth}:${feedHeight}:force_original_aspect_ratio=increase,` +
@@ -189,8 +199,8 @@ function main() {
     }
 
     const feeds = {
-      back: prepareFeed("back", options.back),
-      front: prepareFeed("front", options.front),
+      back: prepareFeed("back", options.back, options["back-start"]),
+      front: prepareFeed("front", options.front, options["front-start"]),
     };
 
     for (const device of targetDevices(options.device)) {
