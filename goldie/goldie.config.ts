@@ -25,7 +25,7 @@ const config: GoldieConfig = {
 
   devices: ["iphone-6.9"],
   locales: ["en-US"],
-  appearance: "light",
+  appearance: "dark",
 
   frame: { variant: "17-pro-orange" },
 
