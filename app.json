@@ -49,7 +49,9 @@
           "supportsPictureInPicture": false
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-image",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true
