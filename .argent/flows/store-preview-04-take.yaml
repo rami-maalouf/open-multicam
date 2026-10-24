@@ -4,6 +4,7 @@ steps:
   - tap: { text: Open library }
   - await: { visible: { text: Picture-in-picture take } }
   - wait: 1400
-  - tap: { text: Picture-in-picture take }
+  - echo: Takes pile up across flows, and a bare text tap picks the narrowest row, so open the newest one, first under the heading.
+  - tap: { text: Picture-in-picture take, next: { text: Library } }
   - await: { visible: { text: Save to Photos } }
   - wait: 2600

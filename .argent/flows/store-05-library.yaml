@@ -1,5 +1,5 @@
 steps:
-  - echo: Three takes, one per dual-camera style, so the library shows the range.
+  - echo: Three takes, one per dual-camera style, so the library shows the range. The take from store-04-take is still there too.
   - launch: com.ramimaalouf.openmulticam
   - await: { visible: { text: Inset camera preview } }
   - tap: { text: Record }
