@@ -24,6 +24,15 @@ import type { GoldieConfig } from "goldie";
 // simulator has to run iOS 26 until the app moves to the scene life cycle.
 const APP_ROOT = resolve(import.meta.dirname, "..");
 
+// the hero carries a large sticker; every other tile repeats it as a badge
+const FREE_BADGE = {
+  kind: "badge",
+  text: { "en-US": "Free & open source" },
+  position: "top-right",
+  background: "#4FC6D1",
+  color: "#062326",
+} as const;
+
 const config: GoldieConfig = {
   appRoot: APP_ROOT,
   appPath: `${APP_ROOT}/ios/build/Build/Products/Release-iphonesimulator/OpenMulticam.app`,
@@ -45,15 +54,6 @@ const config: GoldieConfig = {
     deviceWidthRatio: 0.84,
     template: "editorial",
     layout: "classic",
-    decorations: [
-      {
-        kind: "badge",
-        text: { "en-US": "Free & open source" },
-        position: "top-right",
-        background: "#4FC6D1",
-        color: "#062326",
-      },
-    ],
   },
 
   store: {
@@ -78,11 +78,23 @@ const config: GoldieConfig = {
       flow: "store-01-pip",
       headline: { "en-US": "Film both sides at once" },
       subhead: { "en-US": "Like iPhone 17 Dual Capture, on older iPhones too." },
+      // the panorama is two tiles wide, so x past 1 lands on its right tile
+      decorations: [
+        {
+          kind: "image",
+          src: "art/free-open-source.png",
+          x: 1.06,
+          y: 0.035,
+          width: 0.88,
+          rotate: -3,
+        },
+      ],
     },
     {
       kind: "screenshot",
       id: "recording",
       flow: "store-02-recording",
+      decorations: [FREE_BADGE],
       headline: { "en-US": "One take. Two angles." },
       subhead: { "en-US": "Picture in picture, saved as a single video." },
     },
@@ -90,6 +102,7 @@ const config: GoldieConfig = {
       kind: "screenshot",
       id: "cameras",
       flow: "store-03-cameras",
+      decorations: [FREE_BADGE],
       headline: { "en-US": "Pair any two cameras" },
       subhead: {
         "en-US":
@@ -100,6 +113,7 @@ const config: GoldieConfig = {
       kind: "screenshot",
       id: "take",
       flow: "store-04-take",
+      decorations: [FREE_BADGE],
       headline: { "en-US": "Share it the moment you stop" },
       subhead: { "en-US": "Save to Photos or send it anywhere." },
     },
@@ -107,6 +121,7 @@ const config: GoldieConfig = {
       kind: "screenshot",
       id: "library",
       flow: "store-05-library",
+      decorations: [FREE_BADGE],
       headline: { "en-US": "All on your iPhone.\nNo login." },
       subhead: {
         "en-US": "Free and open source.\nNo account, no cloud, no ads.",
