@@ -2,6 +2,8 @@ executionPrerequisite: >-
   Capture screen back in picture in picture after the camera sheet closed.
 steps:
   - await: { visible: { text: Record } }
+  - echo: goldie pins the status bar again as each clip starts, and iOS animates it for about 1.5 s, so the clip starts idle and that part is trimmed off.
+  - wait: 1800
   - tap: { text: Record }
   - await: { visible: { text: Stop recording } }
   - wait: 4200

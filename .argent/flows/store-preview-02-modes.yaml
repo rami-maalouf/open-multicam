@@ -2,6 +2,8 @@ executionPrerequisite: >-
   Capture screen in picture in picture, back camera full screen, front camera
   in the inset.
 steps:
+  - echo: goldie pins the status bar again as each clip starts, and iOS animates it for about 1.5 s, so the clip starts idle and that part is trimmed off.
+  - wait: 1800
   - tap: { text: "Cameras: Back Camera + Front Camera" }
   - await: { visible: { id: camera-sheet-style-split } }
   - await: { idle: true, timeout: 2000 }

@@ -1,6 +1,8 @@
 executionPrerequisite: >-
   Capture screen with one picture-in-picture take just saved.
 steps:
+  - echo: goldie pins the status bar again as each clip starts, and iOS animates it for about 1.5 s, so the clip starts idle and that part is trimmed off.
+  - wait: 1800
   - tap: { text: Open library }
   - await: { visible: { text: Picture-in-picture take } }
   - wait: 1400

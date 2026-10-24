@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import type { GoldieConfig } from "goldie";
 
 // store screenshots and the app preview, captured on the simulator with the
-// simulated cameras. before a capture:
+// simulated cameras. the steps around a capture:
 //   1. build the release simulator app:
 //      xcodebuild -workspace ios/OpenMulticam.xcworkspace -scheme OpenMulticam \
 //        -configuration Release -sdk iphonesimulator -derivedDataPath ios/build build
@@ -13,6 +13,12 @@ import type { GoldieConfig } from "goldie";
 //      so the screenshots show the first seconds of each video and the preview
 //      the first 30. --back-start and --front-start skip to a better moment,
 //      and --back-end and --front-end keep the loop inside it.
+//   3. after `goldie capture`: goldie 0.5.0 pins the status bar again every
+//      200 ms while it records the preview, and iOS animates the first 1.5 s
+//      of each clip (a 9:37 clock, icons that jump) and once showed the real
+//      clock. each preview flow starts idle, so trim that part of
+//      out/raw/<device>/preview-*.mp4, and any later glitch, before
+//      `goldie preview`.
 // goldie picks the newest iOS runtime that has an "iPhone 17 Pro Max". an expo
 // sdk 57 app built with the iOS 27 sdk stops at launch on iOS 27, so that
 // simulator has to run iOS 26 until the app moves to the scene life cycle.
