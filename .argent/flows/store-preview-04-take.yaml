@@ -1,0 +1,12 @@
+executionPrerequisite: >-
+  Capture screen with one picture-in-picture take just saved.
+steps:
+  - echo: goldie pins the status bar again as each clip starts, and iOS animates it for about 1.5 s, so the clip starts idle and that part is trimmed off.
+  - wait: 1800
+  - tap: { text: Open library }
+  - await: { visible: { text: Picture-in-picture take } }
+  - wait: 1400
+  - echo: Takes pile up across flows, and a bare text tap picks the narrowest row, so open the newest one, first under the heading.
+  - tap: { text: Picture-in-picture take, next: { text: Library } }
+  - await: { visible: { text: Save to Photos } }
+  - wait: 2600

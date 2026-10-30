@@ -1,0 +1,6 @@
+steps:
+  - launch: com.ramimaalouf.openmulticam
+  - await: { visible: { text: "Cameras: Back Camera + Front Camera" } }
+  - tap: { text: "Cameras: Back Camera + Front Camera" }
+  - await: { visible: { id: camera-sheet-style-split } }
+  - await: { idle: true, timeout: 3000 }

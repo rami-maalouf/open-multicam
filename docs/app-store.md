@@ -1,8 +1,21 @@
 # App Store release
 
-Last checked: September 9, 2026.
+Last checked: October 24, 2026.
 
 OpenMulticam is a free iPhone app with an optional, one-time developer donation. Every camera feature is free. The donation follows Twilight's StoreKit 2 non-consumable model, including restoration through the Apple Account.
+
+## October 24 release preparation
+
+- Version: 1.0.0, production build 2. EAS build: `0f543175-cc8a-4e7e-8c45-919e45c59186`, source commit `84bd525`.
+- The production build finished successfully. The downloaded archive confirms bundle ID `com.ramimaalouf.openmulticam`, version 1.0.0, build 2, minimum iOS 18.6, and SDK `iphoneos26.5`.
+- EAS upload submission `a2eee719-7319-4066-a4c6-690fccaa10fd` finished. Apple build `03b227b1-ab4b-4f07-b2e9-977490ad6b9a` is `VALID`, `APP_STORE_ELIGIBLE`, and selected for app version 1.0.0. Its internal TestFlight state is `READY_FOR_BETA_TESTING`; the existing internal Team (Expo) group has access to all builds. App version 1.0.0 and the first donation product were submitted together to App Review on October 24, 2026 at 06:13 UTC. Review submission `c33f7e3b-3185-43d7-b3e5-b537d3614e67` is `WAITING_FOR_REVIEW`.
+- Final marketing assets are in `/Users/rami/Documents/life-os/design/app-store/open-multicam/final/`. Four 1206 x 2622 screenshots and four 1320 x 2868 screenshots are uploaded in filename order. The obsolete privacy screenshot was removed from the listing and remains in Apple's Asset Library.
+- `app-preview.mp4` is uploaded for the medium Dynamic Island display, with other compatible display groups inheriting it. Apple reports both video delivery and the poster frame as complete. The video is 886 x 1920, 30 fps, and 27.17 seconds.
+- Verified existing listing: free app, 175 territories, manual release after approval (server `releaseType: MANUAL`, local `automaticRelease: false`), published Data Not Collected privacy declaration, complete age rating, reviewer contact, and accessible privacy/support URLs.
+- `bun run validate` passes: 174 tests and all 21 Expo Doctor checks, with 90.18% branch coverage. Native XCTest passes with full state-machine region and line coverage. All four hosted StoreKit tests pass on iOS 26.1. The separate foundation-preview scenario also passes; that scenario checks the development review surface, not physical camera behavior.
+- The owner confirmed dual-camera recording, playback, and export work on a physical iPhone before the SDK 57 patch alignment. A TestFlight smoke test of build 2 remains recommended before manual release.
+- The owner accepted the updated agreements and completed the legal-entity step. The Free Apps Agreement is active. The Paid Apps Agreement, bank account, Canadian GST/HST Form 506, and U.S. tax forms are now active. Digital Services Act and Canadian Part XX compliance are also active.
+- The donation's review screenshot is uploaded and Apple reports `COMPLETE`; the donation product is included in the submitted review. Accepted source: `/Users/rami/Documents/life-os/design/app-store/open-multicam/final/review/donation-review-1206x2622.png` (1206 x 2622, no alpha). Apple screenshot ID: `c3cba0e4-f4f5-4755-8bc2-ac22be9c3e17`. The 414 x 900 preview copy was rejected for incorrect dimensions and its failed upload was removed. The accepted image shows the Support OpenMulticam screen with `Donate $1.99`, captured on October 24 on the iOS 26.1 simulator while a hosted XCTest held an `SKTestSession` with `modules/tip-jar/ios/Tests/Support.storekit`. Running the app from Xcode with the scheme's StoreKit configuration did not apply it; StoreKit stayed on Sandbox while the Paid Apps Agreement was still pending. The first donation product was submitted with the first app version. Approval will leave the app awaiting the owner's manual release; it will not publish automatically.
 
 ## App identifiers
 
@@ -56,8 +69,8 @@ EAS Metadata does not currently expose Apple's new `socialMedia` and `socialMedi
 - App Privacy: Data Not Collected. Production telemetry is disabled in code and covered by a release privacy test. Recordings and StoreKit entitlement checks stay on the device; Apple processes payments.
 - Age rating: 4+, with all questionnaire content and interactive features absent. No hosted social media, chat, advertising, or unrestricted web browser.
 - Content rights: the app does not contain third-party media. Use only approved, non-private sample footage in store screenshots.
-- Upload native-resolution, opaque screenshots of the actual release app. A 6.5-inch iPhone set supports 1284 x 2778 portrait screenshots.
-- Complete the donation's review screenshot and review notes. The first donation product must be included in the same review submission as the first app version.
+- Upload opaque screenshots depicting the actual app. The current listing uses 1206 x 2622 for the medium Dynamic Island display and 1320 x 2868 for the large display; verify the accepted display groups in App Store Connect for each release.
+- Upload the donation's review screenshot and complete its review notes. The first donation product must be included in the same review submission as the first app version.
 - Select the processed build, add the app version and donation for review, then submit the combined submission. Automatic release after approval is configured.
 
 ## Current Apple requirements

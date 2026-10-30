@@ -26,6 +26,11 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
   private let zoomCacheLock = NSLock()
   private var recordingContext: CaptureRecordingContext?
   private var recordingWriter: CaptureRecordingWriter?
+  // the simulator's stand-in for a capture session, set only while its
+  // simulated cameras are configured
+  private var simulatedSource: CaptureSimulatedSource?
+  private var simulatedCameras: [CaptureSimulatedCamera] = []
+  private var simulatedFeedLayers: [AVSampleBufferDisplayLayer] = []
 
   private override init() {
     super.init()
@@ -35,9 +40,11 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
     _ layers: [AVCaptureVideoPreviewLayer],
     surface: CaptureSurfaceView
   ) {
+    let feedLayers = surface.simulatedFeedLayers
     sessionQueue.async {
       self.mountedSurfaceCount += 1
       self.previewLayers = layers
+      self.simulatedFeedLayers = feedLayers
       self.previewSurface = surface
       self.wantsPreview = true
       self.connectPreviewLayers()
@@ -56,6 +63,7 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
       self.wantsPreview = false
       self.disconnectPreviewLayers()
       self.previewLayers = []
+      self.simulatedFeedLayers = []
       self.previewSurface = nil
       self.stopAndTearDownSession()
     }
@@ -100,6 +108,7 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
   func suspendPreview() {
     sessionQueue.async {
       self.wantsPreview = false
+      self.simulatedSource?.stop()
       if self.captureSession?.isRunning == true {
         self.captureSession?.stopRunning()
       }
@@ -139,6 +148,14 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
   /// recorded frames carry it.
   func setZoomFactor(_ factor: CGFloat, forSlot slot: Int) {
     sessionQueue.async {
+      if let simulatedSource = self.simulatedSource {
+        self.writeZoomCache(
+          simulatedSource.setZoomFactor(factor, forSlot: slot),
+          forSlot: slot
+        )
+        return
+      }
+
       guard let device = self.device(forSlot: slot) else {
         return
       }
@@ -226,24 +243,17 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
         guard
           let preset = self.preset,
           self.recordingWriter == nil,
-          let captureSession = self.captureSession
+          let cameras = self.recordingCameras(for: preset)
         else {
           continuation.resume(returning: .failure(.invalidStateTransition))
           return
-        }
-
-        let deviceIds = [preset.cameraAId, preset.cameraBId].compactMap { $0 }
-        let devices = deviceIds.compactMap { id in
-          captureSession.inputs
-            .compactMap { $0 as? AVCaptureDeviceInput }
-            .first(where: { $0.device.uniqueID == id })?.device
         }
 
         do {
           let context = try CaptureRecordingStorage.prepare(
             recordingSetId: recordingSetId,
             preset: preset,
-            devices: devices,
+            cameras: cameras,
             expectsAudio: self.audioOutput != nil
           )
           self.recordingWriter = try CaptureRecordingWriter(
@@ -262,6 +272,29 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
         }
       }
     }
+  }
+
+  /// The cameras the preset records, in slot order, or nil with nothing live
+  /// to record from.
+  private func recordingCameras(
+    for preset: CapturePreset
+  ) -> [CaptureRecordingCamera]? {
+    if simulatedSource != nil {
+      return simulatedCameras.map(\.recordingCamera)
+    }
+
+    guard let captureSession else {
+      return nil
+    }
+
+    let deviceIds = [preset.cameraAId, preset.cameraBId].compactMap { $0 }
+    return deviceIds
+      .compactMap { id in
+        captureSession.inputs
+          .compactMap { $0 as? AVCaptureDeviceInput }
+          .first(where: { $0.device.uniqueID == id })?.device
+      }
+      .map(CaptureRecordingStorage.recordingCamera)
   }
 
   func stopRecording() async -> Result<CaptureFinalizedRecording, CaptureFailure> {
@@ -305,6 +338,11 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
     snapshot: CaptureCapabilitySnapshot,
     isSimulator: Bool
   ) throws {
+    if snapshot.isSimulated {
+      try configureSimulatedCameras(preset: preset)
+      return
+    }
+
     let cameraIds = [preset.cameraAId, preset.cameraBId].compactMap { $0 }
     let devices = cameraIds.compactMap(snapshot.device(id:))
 
@@ -434,6 +472,44 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
     startSessionIfNeeded()
   }
 
+  /// The simulator has no capture session, so a simulated source stands in
+  /// for one: it feeds the preview and the recorder on the session queue.
+  private func configureSimulatedCameras(preset: CapturePreset) throws {
+    let cameraIds = [preset.cameraAId, preset.cameraBId].compactMap { $0 }
+    let available = CaptureSimulatedCameras.configured() ?? []
+    let cameras = cameraIds.compactMap { id in
+      available.first { $0.id == id }
+    }
+
+    guard cameras.count == cameraIds.count else {
+      throw CaptureFailure.configurationUnavailable
+    }
+
+    stopAndTearDownSession()
+    isPipSwapped = false
+    writeZoomCache(1, forSlot: 0)
+    writeZoomCache(1, forSlot: 1)
+
+    guard
+      let source = CaptureSimulatedSource(
+        cameras: cameras,
+        preset: preset,
+        queue: sessionQueue,
+        onFrames: { [weak self] frames, time in
+          self?.recordingWriter?.appendFrames(frames, at: time)
+        }
+      )
+    else {
+      throw CaptureFailure.sessionConfigurationFailed
+    }
+
+    simulatedSource = source
+    simulatedCameras = cameras
+    self.preset = preset
+    connectPreviewLayers()
+    startSessionIfNeeded()
+  }
+
   private func configureAudioIfAuthorized(
     session: AVCaptureSession
   ) throws -> AVCaptureAudioDataOutput? {
@@ -504,6 +580,12 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
   }
 
   private func connectPreviewLayers() {
+    if let simulatedSource, let preset {
+      simulatedSource.attach(displayLayers: simulatedFeedLayers)
+      updateLayerVisibility(for: preset.cameraBId == nil ? 1 : 2)
+      return
+    }
+
     guard
       let captureSession,
       let preset,
@@ -599,11 +681,16 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
   }
 
   private func startSessionIfNeeded() {
-    guard
-      wantsPreview,
-      let captureSession,
-      !captureSession.isRunning
-    else {
+    guard wantsPreview else {
+      return
+    }
+
+    if let simulatedSource {
+      simulatedSource.start()
+      return
+    }
+
+    guard let captureSession, !captureSession.isRunning else {
       return
     }
 
@@ -627,6 +714,9 @@ final class CaptureSessionService: NSObject, @unchecked Sendable {
     if captureSession?.isRunning == true {
       captureSession?.stopRunning()
     }
+    simulatedSource?.stop()
+    simulatedSource = nil
+    simulatedCameras = []
     disconnectPreviewLayers()
     captureSession = nil
     preset = nil

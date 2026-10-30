@@ -1,0 +1,11 @@
+steps:
+  - launch: com.ramimaalouf.openmulticam
+  - await: { visible: { text: Inset camera preview } }
+  - echo: Tapping the inset swaps it with the full-screen camera, so the host fills the screen.
+  - tap: { text: Inset camera preview }
+  - wait: 800
+  - tap: { text: Record }
+  - await: { visible: { text: Stop recording } }
+  - echo: Let the timer reach a few seconds so the take reads as underway.
+  - wait: 3200
+  - await: { idle: true, timeout: 1000 }

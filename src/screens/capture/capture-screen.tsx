@@ -145,6 +145,21 @@ const zoomLabelByDeviceType: Partial<Record<CameraDeviceType, string>> = {
   telephoto: "3\u00d7",
 };
 
+// discovery sorts cameras by name, which puts 3x between 1x and 0.5x, so the
+// tiles are put back in ladder order with the selfie camera last
+const ladderRankByDeviceType: Partial<Record<CameraDeviceType, number>> = {
+  "ultra-wide": 0,
+  wide: 1,
+  telephoto: 2,
+};
+
+function cameraTileRank(camera: CameraDescriptor): number {
+  if (camera.position === "front") {
+    return 4;
+  }
+  return ladderRankByDeviceType[camera.deviceType] ?? 3;
+}
+
 function cameraTileLabel(camera: CameraDescriptor): string {
   if (camera.position === "front") {
     return "Selfie";
@@ -598,12 +613,18 @@ export function CaptureScreen() {
         </View>
       </View>
 
-      <View
-        accessible
-        accessibilityLabel={`Camera preview. Native state ${surfaceState}. ${message}`}
-        accessibilityRole="image"
-        style={styles.preview}
-      >
+      <View style={styles.preview}>
+        {/* an accessible container would hide the camera picker and the
+            overlay buttons from VoiceOver, so the description is its own
+            element, under the surface so the inset still answers touches */}
+        <View
+          accessible
+          accessibilityLabel={`Camera preview. Native state ${surfaceState}. ${message}`}
+          accessibilityRole="image"
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+          testID="camera-preview-description"
+        />
         <CaptureSurfaceView
           accessible={false}
           style={StyleSheet.absoluteFill}
@@ -760,9 +781,9 @@ function CameraSheet({
     mode,
     selection?.leadingCameraId ?? null,
   );
-  const cameras = (capabilities?.cameras ?? []).filter((camera) =>
-    usableCameras.has(camera.id),
-  );
+  const cameras = (capabilities?.cameras ?? [])
+    .filter((camera) => usableCameras.has(camera.id))
+    .sort((left, right) => cameraTileRank(left) - cameraTileRank(right));
 
   const slotFor = (cameraId: string): 1 | 2 | null => {
     if (selection?.leadingCameraId === cameraId) {
@@ -1021,6 +1042,9 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
     borderRadius: radii.card,
     borderWidth: 2,
+    // two columns that fill the sheet, like the style row above them
+    flexBasis: "40%",
+    flexGrow: 1,
     gap: spacing.compact,
     minWidth: 150,
     padding: spacing.regular,

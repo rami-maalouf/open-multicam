@@ -32,20 +32,19 @@ struct CaptureConfigurationDescriptor {
 
 struct CaptureCapabilitySnapshot {
   let devices: [AVCaptureDevice]
+  let cameraDescriptors: [[String: Any]]
   let configurations: [CaptureConfigurationDescriptor]
   let recommendedConfigurationId: String?
   let isMulticamSupported: Bool
   let isSimulator: Bool
+  /// set when the cameras are the simulator's simulated cameras, which have
+  /// no AVCaptureDevice behind them
+  let isSimulated: Bool
 
   var payload: [String: Any] {
     CaptureBoundaryPayloads.deviceCapabilities(
       discoveredAtMs: Date().timeIntervalSince1970 * 1_000,
-      cameras: devices.map {
-        CaptureDeviceDiscovery.cameraDescriptor(
-          $0,
-          isSimulator: isSimulator
-        )
-      },
+      cameras: cameraDescriptors,
       configurations: configurations.map(\.payload),
       recommendedConfigurationId: recommendedConfigurationId,
       isMulticamSupported: isMulticamSupported,
@@ -117,13 +116,19 @@ struct CaptureCapabilitySnapshot {
 }
 
 enum CaptureDeviceDiscovery {
-  private static let releaseFrameRates = [24, 25, 30]
+  static let releaseFrameRates = [24, 25, 30]
 
   static func capabilities(isSimulator: Bool) -> [String: Any] {
     snapshot(isSimulator: isSimulator).payload
   }
 
   static func snapshot(isSimulator: Bool) -> CaptureCapabilitySnapshot {
+#if targetEnvironment(simulator)
+    if let cameras = CaptureSimulatedCameras.configured() {
+      return CaptureSimulatedCameras.snapshot(cameras: cameras)
+    }
+#endif
+
     let discovery = discoverySession
     let devices = videoDevices(
       discoveredDevices: discovery.devices,
@@ -143,11 +148,18 @@ enum CaptureDeviceDiscovery {
 
     return CaptureCapabilitySnapshot(
       devices: devices,
+      cameraDescriptors: devices.map {
+        CaptureDeviceDiscovery.cameraDescriptor(
+          $0,
+          isSimulator: isSimulator
+        )
+      },
       configurations: configurations,
       recommendedConfigurationId: recommended,
       isMulticamSupported:
         multicamSupported && !availableDualConfigurations.isEmpty,
-      isSimulator: isSimulator
+      isSimulator: isSimulator,
+      isSimulated: false
     )
   }
 
@@ -310,13 +322,25 @@ enum CaptureDeviceDiscovery {
       return nil
     }
 
-    return CaptureConfigurationDescriptor(
-      id: "single:\(device.uniqueID)",
+    return singleConfiguration(
+      cameraId: device.uniqueID,
+      position: device.position,
+      frameRates: frameRates
+    )
+  }
+
+  static func singleConfiguration(
+    cameraId: String,
+    position: AVCaptureDevice.Position,
+    frameRates: [Int]
+  ) -> CaptureConfigurationDescriptor {
+    CaptureConfigurationDescriptor(
+      id: "single:\(cameraId)",
       mode: .single,
       output: .singleFile,
-      cameraIds: [device.uniqueID],
+      cameraIds: [cameraId],
       frameRates: frameRates,
-      availability: device.position == .back ? "recommended" : "available",
+      availability: position == .back ? "recommended" : "available",
       bitrate: 16_000_000,
       estimatedHardwareCost: 0.45
     )
@@ -325,7 +349,8 @@ enum CaptureDeviceDiscovery {
   private static func dualConfigurations(
     discovery: AVCaptureDevice.DiscoverySession
   ) -> [CaptureConfigurationDescriptor] {
-    discovery.supportedMultiCamDeviceSets.flatMap { deviceSet -> [CaptureConfigurationDescriptor] in
+    let configurations = discovery.supportedMultiCamDeviceSets.flatMap {
+      deviceSet -> [CaptureConfigurationDescriptor] in
       let devices = sortedDevices(Array(deviceSet))
 
       guard devices.count == 2 else {
@@ -342,53 +367,71 @@ enum CaptureDeviceDiscovery {
         return []
       }
 
-      let ids = devices.map(\.uniqueID)
-      let isFrontBack = Set(devices.map(\.position)) == Set([.front, .back])
+      return dualConfigurations(
+        cameraIds: devices.map(\.uniqueID),
+        isFrontBack: Set(devices.map(\.position)) == Set([.front, .back]),
+        frameRates: frameRates
+      )
+    }
 
-      var configurations = [
-        // split suits any supported pair: two back lenses stacked read as one
-        // framing of the same scene, not just a reaction shot
+    return sortedByAvailability(configurations)
+  }
+
+  /// The modes one camera pair can record. `cameraIds` must already be in
+  /// discovery order, back before front.
+  static func dualConfigurations(
+    cameraIds ids: [String],
+    isFrontBack: Bool,
+    frameRates: [Int]
+  ) -> [CaptureConfigurationDescriptor] {
+    var configurations = [
+      // split suits any supported pair: two back lenses stacked read as one
+      // framing of the same scene, not just a reaction shot
+      CaptureConfigurationDescriptor(
+        id: "split:\(ids.joined(separator: ":"))",
+        mode: .split,
+        output: .compositeFile,
+        cameraIds: ids,
+        frameRates: frameRates,
+        availability: isFrontBack ? "available" : "recommended",
+        bitrate: 16_000_000,
+        estimatedHardwareCost: 0.84
+      ),
+      CaptureConfigurationDescriptor(
+        id: "discrete:\(ids.joined(separator: ":"))",
+        mode: .discrete,
+        output: .dualFiles,
+        cameraIds: ids,
+        frameRates: frameRates,
+        availability: "available",
+        bitrate: 12_000_000,
+        estimatedHardwareCost: 0.80
+      )
+    ]
+
+    if isFrontBack {
+      configurations.insert(
         CaptureConfigurationDescriptor(
-          id: "split:\(ids.joined(separator: ":"))",
-          mode: .split,
+          id: "pip:\(ids.joined(separator: ":"))",
+          mode: .pip,
           output: .compositeFile,
           cameraIds: ids,
           frameRates: frameRates,
-          availability: isFrontBack ? "available" : "recommended",
+          availability: "recommended",
           bitrate: 16_000_000,
           estimatedHardwareCost: 0.84
         ),
-        CaptureConfigurationDescriptor(
-          id: "discrete:\(ids.joined(separator: ":"))",
-          mode: .discrete,
-          output: .dualFiles,
-          cameraIds: ids,
-          frameRates: frameRates,
-          availability: "available",
-          bitrate: 12_000_000,
-          estimatedHardwareCost: 0.80
-        )
-      ]
-
-      if isFrontBack {
-        configurations.insert(
-          CaptureConfigurationDescriptor(
-            id: "pip:\(ids.joined(separator: ":"))",
-            mode: .pip,
-            output: .compositeFile,
-            cameraIds: ids,
-            frameRates: frameRates,
-            availability: "recommended",
-            bitrate: 16_000_000,
-            estimatedHardwareCost: 0.84
-          ),
-          at: 0
-        )
-      }
-
-      return configurations
+        at: 0
+      )
     }
-    .sorted { lhs, rhs in
+
+    return configurations
+  }
+
+  static func sortedByAvailability(
+    _ configurations: [CaptureConfigurationDescriptor]
+  ) -> [CaptureConfigurationDescriptor] {
+    configurations.sorted { lhs, rhs in
       if lhs.availability != rhs.availability {
         return lhs.availability == "recommended"
       }
