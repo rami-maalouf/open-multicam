@@ -31,7 +31,7 @@ bunx @expo/explore@0.23.0 setup --check
 bunx @expo/explore@0.23.0 doctor --json
 ```
 
-merge the explore configuration and all three generated workflows into `main`. the review workflow deliberately runs the default branch's tools, so the integration pr cannot enable its own visual review. the repository already has an `EXPO_TOKEN` secret; its account needs eas simulator access and access to this app's eas project.
+keep the integration as a draft until the runtime and doctor blockers below are resolved and a real capture is inspected. merging the generated baseline workflow into `main` automatically starts a baseline on that push, so qualification must precede the merge. the review workflow deliberately runs the default branch's tools, so the integration pr cannot enable its own visual review. the repository already has an `EXPO_TOKEN` secret; its account needs eas simulator access and access to this app's eas project.
 
 after committing and resolving the doctor limitation below, the following command runs a real capture and consumes eas build/simulator usage:
 
@@ -39,7 +39,7 @@ after committing and resolving the doctor limitation below, the following comman
 bunx @expo/explore@0.23.0 doctor --capture --yes
 ```
 
-inspect the five captured screens in both appearances before calling the setup runtime-verified. then run **expo explore baseline** in github actions and open a non-draft, same-repository pr. only authorized authors receive credentialed capture. the generated workflows include `explore-compare.yml` for comparing any two refs with `scope: all`.
+inspect the five captured screens in both appearances before calling the setup runtime-verified. after merging the qualified setup, inspect the automatically triggered **expo explore baseline** run (or rerun it manually), then open a non-draft, same-repository pr. only authorized authors receive credentialed capture. the generated workflows include `explore-compare.yml` for comparing any two refs with `scope: all`.
 
 `report.preview.hosting: eas` enables the generated deployment job. it creates the `open-multicam-explore` eas hosting project on its first successful review. the expo token must have permission to create that project; use a robot user's token with that access. hosted report links contain an access token, so treat them as shared-file links. the github artifact remains available if hosting fails. this configuration does not deploy anything until a workflow or upload command runs.
 
@@ -74,3 +74,11 @@ the configuration is authored and statically checked. no paid capture, hosted de
 `setup --check` and `source:verify --scope all` passed. the execution plan selects exactly five captures per revision and excludes the two routes listed above. `bun run check:repository` and `git diff --check` also passed; no production code or dependencies changed, so no new unit test was added for this configuration-only change.
 
 **doctor limitation in 0.23.0:** doctor still reports `CAPTURE_PARAMETERS_MISSING` for the excluded take-detail route. its route-check implementation filters out redirects but does not filter `excluded` routes. the execution planner correctly marks this route excluded and omits it from both capture lists. do not invent an id to make doctor pass. this upstream inconsistency blocks the doctor capture preflight; use a release that fixes excluded-route checks before claiming a clean doctor result. the other current failures are the expected uncommitted setup files and workflows not yet on `main`.
+
+## runtime qualification blocker
+
+the unchanged sdk 57 application was built in release and launched successfully on ios 26.5, including the native empty-library readiness label. the same build crashes on ios 27 because it has not adopted the required scene lifecycle; the existing goldie configuration also records this limitation.
+
+explore 0.23.0 exposes device name and pose, but no runtime version pin. its local simulator controller chooses the newest compatible installed runtime, which is ios 27 on the validation mac. a separately prepared ios 26.5 simulator does not solve this because explore creates its own simulator. the cloud runtime has not been observed. resolve application runtime compatibility or verify a supported capture environment before merging this setup; no unsupported runtime field is added to the yaml.
+
+the support route loads storekit state asynchronously. inspect its first real capture for transient connecting versus settled donation states before interpreting screenshot differences as regressions. full repository validation passed (174 tests, one existing skip, types/lint, doctor 21/21), as did native xctest and ios export; these do not qualify explore capture or physical cameras.
