@@ -1,0 +1,35 @@
+mode: deterministic
+app:
+  name: OpenMulticam
+  platform: ios
+  bundleId: com.ramimaalouf.openmulticam
+  easProfile: preview-simulator
+  scheme: openmulticam
+navigation:
+  provider: expo-router
+device:
+  name: iPhone 17 Pro
+exploration:
+  scope: changes
+  exclude:
+    # release builds redirect this development-only screen to capture.
+    - /dev-foundation
+    # a take needs real local media and a runtime-generated recording id.
+    # see docs/explore.md before enabling this route; never substitute a fake id.
+    - /library/[recordingSetId]
+setup:
+  # fresh simulators have no recordings; fail if this expected state is absent.
+  - action: open
+    url: openmulticam://library
+    ready:
+      label: Your takes stay on this iPhone
+capture:
+  maxMinutes: 30
+  maxActions: 500
+  appearance: auto
+  launch: screenshot
+  reset: root-link
+  unattributed: publish
+report:
+  preview:
+    hosting: eas

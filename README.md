@@ -104,6 +104,8 @@ bun run validate         # repository checks + lint + typecheck + coverage + exp
 
 Cloud builds use EAS with the profiles in [`eas.json`](eas.json): `development`, `simulator`, `preview-simulator` (what the fix agent uses), `preview`, and `production`.
 
+Before-and-after screen reviews use [Expo Explore](docs/explore.md). The initial deterministic configuration covers five screens on an iOS simulator, with explicit exclusions for development-only UI and take playback that needs a real recording fixture. The guide explains CI activation, hosted reports, and the additional setup needed for simulated-camera coverage.
+
 ## How it was built
 
 The product was specified before it was implemented: [`SPEC.md`](SPEC.md) resolves the product decisions, the reference capabilities, and the Apple platform contracts. Claude Code implemented against that spec, with the task history under [`tasks/`](tasks).
