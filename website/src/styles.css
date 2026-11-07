@@ -145,8 +145,7 @@ button {
 }
 
 .brand img {
-  border-radius: 8px;
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 6px 24px rgb(79 198 209 / 0.3);
+  filter: drop-shadow(0 4px 14px rgb(79 198 209 / 0.25));
 }
 
 .bar nav {
