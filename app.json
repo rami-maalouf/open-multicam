@@ -3,7 +3,7 @@
     "name": "OpenMulticam",
     "slug": "open-multicam",
     "description": "Private, native multicamera video recording for iPhone.",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "platforms": [
       "ios"
     ],
