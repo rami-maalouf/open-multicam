@@ -1,0 +1,13 @@
+{
+  "name": "open-multicam-website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun ./src/index.html",
+    "build": "bun run build.ts",
+    "preview": "bun run build.ts && bunx serve dist"
+  },
+  "dependencies": {
+    "three": "0.187.0"
+  }
+}
