@@ -25,6 +25,7 @@
           "recorder"
         ],
         "promoText": "Two perspectives, one iPhone. Record separate files, picture-in-picture, or split view. All camera features are free, with optional support.",
+        "releaseNotes": "A new look: the new OpenMulticam icon is a prism in 3D glasses, because two views make one picture.\n\nThe app now opens straight into your cameras, with no blank screen on the way.",
         "privacyPolicyUrl": "https://github.com/rami-maalouf/open-multicam/blob/main/docs/privacy.md",
         "supportUrl": "https://github.com/rami-maalouf/open-multicam/blob/main/docs/support.md",
         "marketingUrl": "https://cam.orbitlabs.studio"
