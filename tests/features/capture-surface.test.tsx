@@ -13,6 +13,7 @@ const mockRequestMicrophonePermission = jest.fn();
 const mockStartRecording = jest.fn();
 const mockStopRecording = jest.fn();
 const mockOpenSettings = jest.fn();
+const mockRevealApp = jest.fn();
 let mockModuleEventListener: ((event: unknown) => void) | null = null;
 let mockCaptureFocusEffect: (() => void | (() => void)) | null = null;
 
@@ -43,6 +44,10 @@ jest.mock("../../modules/multicam-capture", () => {
     },
   };
 });
+
+jest.mock("@/foundation/launch/launch-screen", () => ({
+  revealApp: () => mockRevealApp(),
+}));
 
 jest.mock("expo-router", () => {
   const React = require("react");
@@ -150,6 +155,7 @@ describe("native capture surface", () => {
     mockStopRecording.mockResolvedValue({ ok: true, value: {} });
     mockOpenSettings.mockReset();
     mockOpenSettings.mockResolvedValue(true);
+    mockRevealApp.mockReset();
   });
 
   it("mounts the native surface and explains simulator availability", async () => {
@@ -241,11 +247,16 @@ describe("native capture surface", () => {
     const screen = render(<CaptureScreen />);
 
     await waitFor(() => {
-      expect(screen.queryByText("Two perspectives. One take.")).toBeNull();
+      expect(screen.queryByText("Two cameras,\none iPhone.")).toBeNull();
     });
     expect(screen.getByText("SimCam Back")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
     expect(screen.getByTestId("native-capture-surface")).toBeTruthy();
+    // the launch image waits a beat for the first frames, then lets the preview through
+    expect(mockRevealApp).not.toHaveBeenCalled();
+    await waitFor(() => expect(mockRevealApp).toHaveBeenCalledTimes(1), {
+      timeout: 2_000,
+    });
   });
 
   it("keeps the camera picker and the permission button reachable by VoiceOver", async () => {
@@ -304,6 +315,10 @@ describe("native capture surface", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Continue" })).toBeTruthy();
     });
+    // the first screen shows the mark and the headline, and the launch image gives way to it
+    expect(screen.getByTestId("capture-brand-mark")).toBeTruthy();
+    expect(screen.getByText("Two cameras,\none iPhone.")).toBeTruthy();
+    expect(mockRevealApp).toHaveBeenCalled();
     fireEvent.press(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() => {

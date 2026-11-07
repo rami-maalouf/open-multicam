@@ -2,6 +2,7 @@ import { Link, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AppState,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -19,6 +20,7 @@ import { AdaptiveMaterial } from "@/components/adaptive-material";
 import { AppText } from "@/components/app-text";
 import { Icon } from "@/components/icon";
 import { validateCaptureRequest } from "@/core/capture/contracts";
+import { revealApp } from "@/foundation/launch/launch-screen";
 import {
   availableModes,
   camerasFor,
@@ -57,6 +59,9 @@ type CapturePhase =
   | "failed";
 
 const simulatorCameraRetryMs = 1_000;
+// the session reports ready a moment before its first frames reach the preview
+const firstFramesMs = 450;
+const brandMark = require("../../../assets/brand/mark.png");
 
 function supportedConfigurations(
   capabilities: DeviceCapabilities,
@@ -559,6 +564,20 @@ export function CaptureScreen() {
     "failed",
   ].includes(phase);
 
+  // the launch image waits for the first real content: a screen that needs the viewer, or the
+  // cameras once their first frames have had time to reach the preview
+  useEffect(() => {
+    if (shouldShowBlockingOverlay && phase !== "checking") {
+      revealApp();
+      return;
+    }
+    if (phase !== "ready") {
+      return;
+    }
+    const revealTimer = setTimeout(revealApp, firstFramesMs);
+    return () => clearTimeout(revealTimer);
+  }, [phase, shouldShowBlockingOverlay]);
+
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.screen}>
       <View style={styles.topBar}>
@@ -633,15 +652,18 @@ export function CaptureScreen() {
 
         {shouldShowBlockingOverlay ? (
           <View style={styles.blockingOverlay}>
-            <View style={styles.previewMark}>
-              <Icon name="viewfinder" size="prominent" tone="previewLabel" />
-            </View>
+            <Image
+              accessibilityIgnoresInvertColors
+              source={brandMark}
+              style={styles.brandMark}
+              testID="capture-brand-mark"
+            />
             <AppText
               style={styles.overlayTitle}
               tone="previewLabel"
               variant="title"
             >
-              Two perspectives. One take.
+              {"Two cameras,\none iPhone."}
             </AppText>
             <AppText style={styles.overlayCopy} tone="previewSecondary">
               {message}
@@ -950,15 +972,11 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
   },
-  previewMark: {
-    alignItems: "center",
-    borderColor: colors.previewSeparator,
-    borderRadius: radii.floating,
-    borderWidth: 1,
-    height: 72,
-    justifyContent: "center",
+  // the mark is 944 by 520, drawn by assets/brand/prism.mjs
+  brandMark: {
+    height: 88,
     marginBottom: spacing.section,
-    width: 72,
+    width: 160,
   },
   overlayTitle: { maxWidth: 360, textAlign: "center" },
   overlayCopy: { marginTop: spacing.small, maxWidth: 340, textAlign: "center" },

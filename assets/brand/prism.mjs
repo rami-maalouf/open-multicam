@@ -129,7 +129,10 @@ png(join(here, "splash.svg"), join(assets, "splash-icon.png"));
 // the website's cuts of the icon
 mkdirSync(website, { recursive: true });
 writeFileSync(join(website, "mark.svg"), mark);
+writeFileSync(join(here, "mark.svg"), mark);
+// the app's own copy of the mark, for its first screen
+png(join(here, "mark.svg"), join(here, "mark.png"));
 png(join(assets, "icon.png"), join(website, "icon-180.png"), 180);
 png(join(assets, "icon.png"), join(website, "icon-64.png"), 64);
 execFileSync("rm", ["-f", tmp]);
-console.log("wrote assets/icon.png, assets/icon-dark.png, assets/splash-icon.png and the website icons and mark");
+console.log("wrote assets/icon.png, assets/icon-dark.png, assets/splash-icon.png and the website icons, and the mark for the app and the website");
