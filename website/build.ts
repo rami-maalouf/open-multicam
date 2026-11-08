@@ -18,7 +18,6 @@ if (!result.success) {
 }
 await cp("./src/public", "./dist", { recursive: true });
 await cp("./src/img/share.jpg", "./dist/share.jpg");
-await cp("./src/vercel.json", "./dist/vercel.json");
 
 // preload the two text faces, which bun would otherwise try to bundle from the html
 const preload = ["sora-latin-wght-normal", "geist-latin-wght-normal"]

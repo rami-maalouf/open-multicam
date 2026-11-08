@@ -12,17 +12,18 @@ reduced motion. Without WebGL, a still picture in picture stands in for it.
 |---|---|
 | `src/index.html` | The page: hero with the layout switch, why it exists, how it works, the close. |
 | `src/styles.css` | The look: a dark studio, the icon's aqua and petrol teal, the record button's red. |
-| `src/main.js` | Reveals, the frosted bar, the layout switch and its timer, and the deferred load of the scene. |
+| `src/main.js` | Reveals, the frosted bar, the layout switch and its timer, the deferred load of the scene, and the Android waitlist dialog (`/?join=android` opens it). |
+| `api/waitlist.ts` | The Android waitlist: saves the email to the shared Notion waitlist (`App: openmulticam`). Needs `NOTION_API_KEY` and `NOTION_WAITLIST_DATASOURCE_ID` on the Vercel project. |
 | `src/scene.js` | The two frames: shader-lit rounded rims with depth, the feeds cropped to fit, springs between picture in picture, split and two files. |
 | `src/public/media/` | `feeds.mp4`: the back and front camera side by side (the clips behind the store screenshots), a 7 second loop. `feeds.jpg` is its first frame. |
 | `src/public/fonts/` | Sora, Geist and Geist Mono (SIL OFL). |
 | `src/img/` | The icon cuts and the share image. |
-| `build.ts` | Bundles `src/index.html` into `dist/` and adds the fixed-address files. |
+| `build.ts` | Bundles `src/index.html` into `dist/` and adds the fixed-address files. `vercel.json` runs it on Vercel and serves `dist/`. |
 
 ```sh
 bun install
 bun run preview    # build, then serve dist/ on a local port
-bun run build      # dist/, ready for any static host
+bun run build      # dist/
 ./deploy.sh        # build and publish to Vercel (project "openmulticam")
 ```
 

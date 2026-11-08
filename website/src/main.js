@@ -109,3 +109,84 @@ function start() {
 const idle = window.requestIdleCallback ?? ((fn) => setTimeout(fn, 120));
 if (document.readyState === "complete") idle(start);
 else addEventListener("load", () => idle(start), { once: true });
+
+// the android waitlist: an email, saved to the shared notion waitlist by /api/waitlist.
+// /?join=android opens it from a link.
+const dialog = document.getElementById("waitlist");
+const emailInput = dialog?.querySelector("[data-email]");
+const formPanel = dialog?.querySelector('[data-panel="form"]');
+const donePanel = dialog?.querySelector('[data-panel="done"]');
+const errorEl = dialog?.querySelector("[data-error]");
+const submitBtn = dialog?.querySelector("[data-submit]");
+let submitting = false;
+
+function resetWaitlist() {
+  formPanel.hidden = false;
+  donePanel.hidden = true;
+  errorEl.hidden = true;
+  emailInput.value = "";
+  submitting = false;
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Join waitlist";
+}
+
+function openWaitlist() {
+  resetWaitlist();
+  dialog.showModal();
+  queueMicrotask(() => emailInput.focus());
+}
+
+function fail(message) {
+  errorEl.hidden = false;
+  errorEl.textContent = message;
+  submitting = false;
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Join waitlist";
+}
+
+async function joinWaitlist() {
+  if (submitting) return;
+  const email = emailInput.value.trim();
+  if (!email || !email.includes("@")) {
+    fail("Please enter a valid email address.");
+    emailInput.focus();
+    return;
+  }
+  submitting = true;
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Joining…";
+  errorEl.hidden = true;
+  try {
+    // local preview: succeed without notion so the flow can be checked offline
+    if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+      await new Promise((r) => setTimeout(r, 450));
+    } else {
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, platform: "Android" }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Failed to join waitlist");
+    }
+    formPanel.hidden = true;
+    donePanel.hidden = false;
+  } catch (error) {
+    fail(error instanceof Error ? error.message : "Something went wrong");
+  }
+}
+
+if (dialog) {
+  document.querySelectorAll("[data-waitlist-open]").forEach((btn) => btn.addEventListener("click", openWaitlist));
+  dialog.addEventListener("click", (e) => e.target === dialog && dialog.close());
+  submitBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    joinWaitlist();
+  });
+  emailInput.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    joinWaitlist();
+  });
+  if (new URLSearchParams(location.search).get("join")?.toLowerCase() === "android") openWaitlist();
+}
