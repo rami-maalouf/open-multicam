@@ -8,8 +8,11 @@ import { useMemo } from "react";
 import { useColorScheme } from "react-native";
 
 import { AccessibilityPreferencesProvider } from "@/foundation/accessibility/preferences";
+import { holdLaunchScreen } from "@/foundation/launch/launch-screen";
 import "@/core/telemetry";
 import { colors } from "@/theme";
+
+holdLaunchScreen();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();

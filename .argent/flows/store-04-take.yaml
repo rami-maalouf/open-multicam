@@ -1,0 +1,14 @@
+steps:
+  - launch: com.ramimaalouf.openmulticam
+  - await: { visible: { text: Inset camera preview } }
+  - tap: { text: Record }
+  - await: { visible: { text: Stop recording } }
+  - wait: 4500
+  - tap: { text: Stop recording }
+  - await: { visible: { text: Record } }
+  - tap: { text: Open library }
+  - await: { visible: { text: Picture-in-picture take } }
+  - echo: Takes pile up across flows, and a bare text tap picks the narrowest row, so open the newest one, first under the heading.
+  - tap: { text: Picture-in-picture take, next: { text: Library } }
+  - await: { visible: { text: Save to Photos } }
+  - await: { idle: true, timeout: 3000 }

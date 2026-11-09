@@ -1,0 +1,5 @@
+node_modules
+dist
+.vercel
+# the hero needs its camera loop; the repository ignores other videos
+!src/public/media/feeds.mp4

@@ -1,0 +1,12 @@
+executionPrerequisite: >-
+  App freshly restarted by goldie, settled on the capture screen in picture in
+  picture, with simulated cameras set.
+steps:
+  - await: { visible: { text: Inset camera preview } }
+  - echo: goldie pins the status bar again as each clip starts, and iOS animates it for about 1.5 s, so the clip starts idle and that part is trimmed off.
+  - wait: 3800
+  - echo: Tapping the inset promotes it to full screen, then tapping again swaps back.
+  - tap: { text: Inset camera preview }
+  - wait: 2000
+  - tap: { text: Inset camera preview }
+  - wait: 1200

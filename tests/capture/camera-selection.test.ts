@@ -91,6 +91,36 @@ describe("camera slot selection", () => {
     });
   });
 
+  it("uses an available pair when the saved cameras are missing", () => {
+    expect(resolveSelection(configurations, "pip", "removed", "missing")).toEqual({
+      configurationId: "pip:wide:front",
+      mode: "pip",
+      leadingCameraId: "wide",
+      trailingCameraId: "front",
+    });
+  });
+
+  it("starts with a supported pair before any camera preference is saved", () => {
+    expect(resolveSelection(configurations, "pip", null, null)).toEqual({
+      configurationId: "pip:wide:front",
+      mode: "pip",
+      leadingCameraId: "wide",
+      trailingCameraId: "front",
+    });
+  });
+
+  it("falls back to an available single camera when the saved lens is missing", () => {
+    expect(resolveSelection(configurations, "single", "removed", null)).toEqual({
+      configurationId: "single:wide",
+      mode: "single",
+      leadingCameraId: "wide",
+    });
+  });
+
+  it("offers no partners until a primary camera is selected", () => {
+    expect([...partnersFor(configurations, "pip", null)]).toEqual([]);
+  });
+
   it("reports only the cameras that can pair with slot one", () => {
     expect([...partnersFor(configurations, "split", "wide")].sort()).toEqual([
       "front",
@@ -110,6 +140,14 @@ describe("camera slot selection", () => {
 
   describe("tapping a tile", () => {
     const current = resolveSelection(configurations, "pip", "wide", "front");
+
+    it("switches the active lens without keeping a second slot in single mode", () => {
+      expect(selectCamera(configurations, "single", current, "ultra")).toEqual({
+        configurationId: "single:ultra",
+        mode: "single",
+        leadingCameraId: "ultra",
+      });
+    });
 
     it("leaves slot one alone when it is tapped again", () => {
       expect(selectCamera(configurations, "pip", current, "wide")).toBe(current);

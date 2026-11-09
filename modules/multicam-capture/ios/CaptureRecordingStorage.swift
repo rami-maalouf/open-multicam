@@ -47,7 +47,7 @@ enum CaptureRecordingStorage {
   static func prepare(
     recordingSetId: String,
     preset: CapturePreset,
-    devices: [AVCaptureDevice],
+    cameras: [CaptureRecordingCamera],
     expectsAudio: Bool
   ) throws -> CaptureRecordingContext {
     let stagingURL = try stagingRoot()
@@ -57,7 +57,7 @@ enum CaptureRecordingStorage {
       withIntermediateDirectories: true
     )
 
-    guard let cameraADevice = devices.first else {
+    guard let cameraA = cameras.first else {
       throw CaptureFailure.configurationUnavailable
     }
 
@@ -84,8 +84,8 @@ enum CaptureRecordingStorage {
       createdAtUtcMs: Int(Date().timeIntervalSince1970 * 1_000),
       stagingURL: stagingURL,
       preset: preset,
-      cameraA: recordingCamera(cameraADevice),
-      cameraB: devices.count > 1 ? recordingCamera(devices[1]) : nil,
+      cameraA: cameraA,
+      cameraB: cameras.count > 1 ? cameras[1] : nil,
       clips: clips,
       expectsAudio: expectsAudio
     )
@@ -327,7 +327,7 @@ enum CaptureRecordingStorage {
     ]
   }
 
-  private static func recordingCamera(
+  static func recordingCamera(
     _ device: AVCaptureDevice
   ) -> CaptureRecordingCamera {
     let position: String

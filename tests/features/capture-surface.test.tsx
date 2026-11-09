@@ -13,6 +13,7 @@ const mockRequestMicrophonePermission = jest.fn();
 const mockStartRecording = jest.fn();
 const mockStopRecording = jest.fn();
 const mockOpenSettings = jest.fn();
+const mockRevealApp = jest.fn();
 let mockModuleEventListener: ((event: unknown) => void) | null = null;
 let mockCaptureFocusEffect: (() => void | (() => void)) | null = null;
 
@@ -43,6 +44,10 @@ jest.mock("../../modules/multicam-capture", () => {
     },
   };
 });
+
+jest.mock("@/foundation/launch/launch-screen", () => ({
+  revealApp: () => mockRevealApp(),
+}));
 
 jest.mock("expo-router", () => {
   const React = require("react");
@@ -150,6 +155,7 @@ describe("native capture surface", () => {
     mockStopRecording.mockResolvedValue({ ok: true, value: {} });
     mockOpenSettings.mockReset();
     mockOpenSettings.mockResolvedValue(true);
+    mockRevealApp.mockReset();
   });
 
   it("mounts the native surface and explains simulator availability", async () => {
@@ -241,11 +247,60 @@ describe("native capture surface", () => {
     const screen = render(<CaptureScreen />);
 
     await waitFor(() => {
-      expect(screen.queryByText("Two perspectives. One take.")).toBeNull();
+      expect(screen.queryByText("Two cameras,\none iPhone.")).toBeNull();
     });
     expect(screen.getByText("SimCam Back")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
     expect(screen.getByTestId("native-capture-surface")).toBeTruthy();
+    // the launch image waits a beat for the first frames, then lets the preview through
+    expect(mockRevealApp).not.toHaveBeenCalled();
+    await waitFor(() => expect(mockRevealApp).toHaveBeenCalledTimes(1), {
+      timeout: 2_000,
+    });
+  });
+
+  it("keeps the camera picker and the permission button reachable by VoiceOver", async () => {
+    // iOS hides every descendant of an accessible view from VoiceOver, so
+    // above the control itself no ancestor may be one
+    type Node = {
+      props: { accessible?: boolean; accessibilityLabel?: string };
+      parent: Node | null;
+    };
+    const expectNoAccessibleAncestor = (element: Node) => {
+      let control: Node | null = element;
+      while (control && control.props.accessible !== true) {
+        control = control.parent;
+      }
+      // the control's composite and host views both carry its props
+      let ancestor = control?.parent ?? null;
+      while (
+        ancestor &&
+        ancestor.props.accessibilityLabel === control?.props.accessibilityLabel
+      ) {
+        ancestor = ancestor.parent;
+      }
+      while (ancestor) {
+        expect(ancestor.props.accessible).not.toBe(true);
+        ancestor = ancestor.parent;
+      }
+    };
+
+    mockDiscoverCapabilities.mockResolvedValue(simcamCapabilities);
+    const preview = render(<CaptureScreen />);
+    expectNoAccessibleAncestor(
+      await preview.findByRole("button", { name: /^Cameras:/ }),
+    );
+    preview.unmount();
+
+    mockGetPermissionStatus.mockResolvedValue({
+      kind: "capture-permissions",
+      camera: "not-determined",
+      microphone: "not-determined",
+    });
+    const permission = render(<CaptureScreen />);
+    expectNoAccessibleAncestor(
+      await permission.findByRole("button", { name: "Continue" }),
+    );
   });
 
   it("asks before requesting camera and microphone access", async () => {
@@ -260,6 +315,10 @@ describe("native capture surface", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Continue" })).toBeTruthy();
     });
+    // the first screen shows the mark and the headline, and the launch image gives way to it
+    expect(screen.getByTestId("capture-brand-mark")).toBeTruthy();
+    expect(screen.getByText("Two cameras,\none iPhone.")).toBeTruthy();
+    expect(mockRevealApp).toHaveBeenCalled();
     fireEvent.press(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() => {
@@ -519,6 +578,51 @@ describe("native capture surface", () => {
         }),
       );
     });
+  });
+
+  it("orders the camera tiles as a zoom ladder with the selfie camera last", async () => {
+    const lens = (id: string, deviceType: string, position = "back") => ({
+      ...simcamCapabilities.cameras[0],
+      id,
+      label: id,
+      deviceType,
+      position,
+    });
+    const pip = (backId: string) => ({
+      ...simcamCapabilities.configurations[0],
+      id: `pip:${backId}:front`,
+      mode: "pip",
+      output: "composite-file",
+      cameraIds: [backId, "front"],
+      frameRates: [30],
+    });
+    mockDiscoverCapabilities.mockResolvedValue({
+      ...simcamCapabilities,
+      // discovery sorts by name: Back Camera, Back Telephoto, Back Ultra Wide
+      cameras: [
+        lens("wide", "wide"),
+        lens("telephoto", "telephoto"),
+        lens("ultra-wide", "ultra-wide"),
+        lens("front", "true-depth", "front"),
+      ],
+      multicam: { kind: "supported" },
+      configurations: [pip("wide"), pip("telephoto"), pip("ultra-wide")],
+      recommendedConfigurationId: "pip:wide:front",
+    });
+    const screen = render(<CaptureScreen />);
+
+    fireEvent.press(
+      await screen.findByRole("button", { name: "Cameras: wide + front" }),
+    );
+
+    expect(
+      screen.getAllByTestId(/^camera-tile-/).map((tile) => tile.props.testID),
+    ).toEqual([
+      "camera-tile-ultra-wide",
+      "camera-tile-wide",
+      "camera-tile-telephoto",
+      "camera-tile-front",
+    ]);
   });
 
   it("offers retry when discovery or configuration fails", async () => {

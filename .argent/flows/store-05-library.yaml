@@ -1,0 +1,38 @@
+steps:
+  - echo: Three takes, one per dual-camera style, so the library shows the range. The take from store-04-take is still there too.
+  - launch: com.ramimaalouf.openmulticam
+  - await: { visible: { text: Inset camera preview } }
+  - tap: { text: Record }
+  - await: { visible: { text: Stop recording } }
+  - wait: 3000
+  - tap: { text: Stop recording }
+  - await: { visible: { text: Record } }
+  - tap: { text: "Cameras: Back Camera + Front Camera" }
+  - await: { visible: { id: camera-sheet-style-split } }
+  - echo: The sheet slides up, so let it land before tapping inside it.
+  - await: { idle: true, timeout: 2000 }
+  - tap: { id: camera-sheet-style-split }
+  - await: { hidden: { id: camera-sheet-style-split } }
+  - await: { visible: { text: Record } }
+  - wait: 800
+  - tap: { text: Record }
+  - await: { visible: { text: Stop recording } }
+  - wait: 5000
+  - tap: { text: Stop recording }
+  - await: { visible: { text: Record } }
+  - tap: { text: "Cameras: Back Camera + Front Camera" }
+  - await: { visible: { id: camera-sheet-style-discrete } }
+  - echo: The sheet slides up, so let it land before tapping inside it.
+  - await: { idle: true, timeout: 2000 }
+  - tap: { id: camera-sheet-style-discrete }
+  - await: { hidden: { id: camera-sheet-style-discrete } }
+  - await: { visible: { text: Record } }
+  - wait: 800
+  - tap: { text: Record }
+  - await: { visible: { text: Stop recording } }
+  - wait: 7000
+  - tap: { text: Stop recording }
+  - await: { visible: { text: Record } }
+  - tap: { text: Open library }
+  - await: { visible: { text: Two-camera take } }
+  - await: { idle: true, timeout: 3000 }

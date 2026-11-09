@@ -1,0 +1,17 @@
+{
+  "name": "open-multicam-website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun ./src/index.html",
+    "build": "bun run build.ts",
+    "preview": "bun run build.ts && bunx serve dist"
+  },
+  "dependencies": {
+    "@notionhq/client": "^5.31.1",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6"
+  }
+}

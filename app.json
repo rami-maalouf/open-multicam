@@ -3,7 +3,7 @@
     "name": "OpenMulticam",
     "slug": "open-multicam",
     "description": "Private, native multicamera video recording for iPhone.",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "platforms": [
       "ios"
     ],
@@ -35,10 +35,10 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 260,
           "resizeMode": "contain",
-          "backgroundColor": "#f7f6f2",
+          "backgroundColor": "#05090b",
           "dark": {
             "image": "./assets/splash-icon.png",
-            "backgroundColor": "#080d0f"
+            "backgroundColor": "#030607"
           }
         }
       ],
@@ -49,7 +49,9 @@
           "supportsPictureInPicture": false
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-image",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true

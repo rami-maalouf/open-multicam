@@ -28,7 +28,8 @@ function libraryEntry(
   manifest:
     | typeof recordingManifestFixtures.single
     | typeof recordingManifestFixtures.discrete
-    | typeof recordingManifestFixtures.pip,
+    | typeof recordingManifestFixtures.pip
+    | typeof recordingManifestFixtures.split,
 ): RecordingLibraryEntry {
   return {
     ...manifest,
@@ -69,6 +70,18 @@ describe("recording library", () => {
       expect(screen.getByText(/Front/)).toBeTruthy();
     });
     expect(screen.getAllByRole("button")).toHaveLength(3);
+  });
+
+  it("names a split take instead of falling back to its first camera", async () => {
+    mockListRecordings.mockResolvedValue([
+      libraryEntry(recordingManifestFixtures.split),
+    ]);
+    const screen = render(<LibraryScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Split take/)).toBeTruthy();
+    });
+    expect(screen.queryByText(/Wide/)).toBeNull();
   });
 
   it("keeps capture navigation available when reading fails", async () => {

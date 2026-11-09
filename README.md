@@ -77,7 +77,18 @@ bun run ios          # build and run on a simulator or device
 bun run start        # start the dev server (dev client)
 ```
 
-Multicam capture requires real hardware; the simulator gets injected camera input for UI work.
+Real multicam capture requires an iPhone. The simulator has no cameras, so a simulator build can replay a video or an image from your Mac as each lens of an iPhone 17 Pro. Picture-in-picture, split, two files, pinch zoom and recording then all work in the simulator:
+
+```bash
+bun scripts/simulator-cameras.mjs set --back scene.mp4 --front face.mp4   # every booted simulator, or --device <udid>
+bun scripts/simulator-cameras.mjs set --back scene.mp4 --back-start 3 --back-end 18 --front face.mp4   # loop seconds 3 to 18 of scene.mp4
+bun scripts/simulator-cameras.mjs status
+bun scripts/simulator-cameras.mjs clear    # back to SimCam or the EAS Camera helper
+```
+
+Relaunch the app after `set` or `clear`. The feed paths live in the simulator's global defaults, so they survive reinstalls.
+
+App Store screenshots and the app preview come from [goldie](https://github.com/software-mansion-labs/goldie): the flows are in `.argent/flows/store-*` and the config, with its setup steps, is `goldie/goldie.config.ts`.
 
 Quality gates:
 
