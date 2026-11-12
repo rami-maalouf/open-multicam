@@ -30,7 +30,7 @@ internal class CaptureRenderer(private val handler: Handler, private val onFailu
     put(floatArrayOf(0f, 0f, 1f, 0f, 0f, 1f, 1f, 1f)); position(0)
   }
   data class Feed(val texture: Int, val source: SurfaceTexture, val surface: Surface,
-    val rotation: Int, val front: Boolean, val matrix: FloatArray = FloatArray(16), var ready: Boolean = false)
+    var rotation: Int, val front: Boolean, val matrix: FloatArray = FloatArray(16), var ready: Boolean = false)
   private val feeds = mutableListOf<Feed>()
   private var preview: EGLSurface? = null
   private var previewWidth = 0
@@ -108,12 +108,18 @@ internal class CaptureRenderer(private val handler: Handler, private val onFailu
     val feed = Feed(texture[0], source, Surface(source), rotation, front)
     feeds += feed
     source.setOnFrameAvailableListener({
+      // frame messages already queued for a released feed still arrive after clearFeeds(), and
+      // updateTexImage() on an abandoned texture would throw and tear the new session down
+      if (feeds.none { it === feed }) return@setOnFrameAvailableListener
       try {
         current(parking); source.updateTexImage(); source.getTransformMatrix(feed.matrix); feed.ready = true
         if (feed === feeds.firstOrNull()) render(System.nanoTime())
       } catch (error: Throwable) { onFailure(error) }
     }, handler)
     return feed.surface
+  }
+  fun rotate(rotations: List<Int>) {
+    feeds.forEachIndexed { index, feed -> rotations.getOrNull(index)?.let { feed.rotation = it } }
   }
   fun startEncoding(surfaces: List<Surface>) {
     current(parking)

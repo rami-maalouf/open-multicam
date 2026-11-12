@@ -113,7 +113,8 @@ internal class CaptureDiscovery(context: Context) {
     val cameras = manager.cameraIdList.map { camera(it) }
     val dual = configs.any { it["mode"] != "single" }
     val result = mutableMapOf<String, Any?>("kind" to "device-capabilities", "schemaVersion" to 1,
-      "discoveredAtMs" to System.currentTimeMillis(), "isSimulator" to (Build.FINGERPRINT.startsWith("generic") || Build.MODEL.contains("Emulator")),
+      "discoveredAtMs" to System.currentTimeMillis(), "isSimulator" to (Build.FINGERPRINT.startsWith("generic") || Build.MODEL.contains("Emulator") ||
+        Build.HARDWARE in listOf("ranchu", "goldfish") || Build.PRODUCT.startsWith("sdk_")),
       "cameras" to cameras, "configurations" to configs,
       "multicam" to if (dual) mapOf("kind" to "supported") else mapOf("kind" to "unsupported", "reason" to mapOf(
         "kind" to if (cameras.isEmpty()) "camera-unavailable" else "multicam-unsupported",

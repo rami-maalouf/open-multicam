@@ -7,8 +7,10 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.hardware.camera2.*
 import android.hardware.camera2.params.MeteringRectangle
+import android.hardware.display.DisplayManager
 import android.os.*
 import android.util.Range
+import android.view.Display
 import android.view.Surface
 import java.util.UUID
 import java.util.concurrent.*
@@ -23,8 +25,9 @@ internal class CaptureEngine(val context: Context) {
   private val devices = mutableListOf<CameraDevice>()
   private val sessions = mutableListOf<CameraCaptureSession>()
   private val requests = mutableListOf<CaptureRequest.Builder>()
-  private val zooms = mutableListOf<Float>()
-  private var generation = 0
+  // read from the ui thread during a pinch, so it never waits on the camera thread
+  @Volatile private var zooms = floatArrayOf()
+  @Volatile private var generation = 0
   @Volatile var preset: Preset? = null
     private set
   @Volatile var state = "idle"
@@ -39,22 +42,38 @@ internal class CaptureEngine(val context: Context) {
   private var recorder: CaptureRecorder? = null
   private var startedAt = 0L
   private var elapsedStart = 0L
-  @Volatile private var failureQueued = false
+  private val failures = FailureGate()
   @Volatile private var closed = false
   var emit: ((Payload) -> Unit)? = null
   private var previewSurface: Surface? = null
   private var previewWidth = 0
   private var previewHeight = 0
+  private var deviceRotation = 0
   private var thermalListener: PowerManager.OnThermalStatusChangedListener? = null
+  private val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+  private val displays = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+  private val displayListener = object : DisplayManager.DisplayListener {
+    override fun onDisplayAdded(displayId: Int) {}
+    override fun onDisplayRemoved(displayId: Int) {}
+    // turning straight from one landscape to the other changes no layout, so js never reconfigures
+    override fun onDisplayChanged(displayId: Int) {
+      val p = preset ?: return
+      if (displayId != Display.DEFAULT_DISPLAY) return
+      val rotation = CaptureRules.deviceRotation(p.orientation, displayRotation())
+      if (rotation == deviceRotation) return
+      deviceRotation = rotation
+      renderer?.rotate(p.cameraIds.map { feedRotation(it) })
+    }
+  }
 
   init {
     if (Build.VERSION.SDK_INT >= 29) {
-      val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
       val listener = PowerManager.OnThermalStatusChangedListener { status ->
         if (status >= PowerManager.THERMAL_STATUS_CRITICAL) interrupt("system-pressure-critical")
       }
       thermalListener = listener; power.addThermalStatusListener(listener)
     }
+    displays.registerDisplayListener(displayListener, handler)
   }
   fun execute(block: () -> Unit) { if (!closed) operations.execute(block) }
   private fun <T> camera(block: () -> T): T {
@@ -67,6 +86,12 @@ internal class CaptureEngine(val context: Context) {
     val payload = mapOf("kind" to kind) + details
     emit?.invoke(mapOf("kind" to "state-changed", "sequence" to ++sequence, "state" to payload))
   }
+  private fun thermalCritical() = Build.VERSION.SDK_INT >= 29 && power.currentThermalStatus >= PowerManager.THERMAL_STATUS_CRITICAL
+  private fun displayRotation(): Int = when (displays.getDisplay(Display.DEFAULT_DISPLAY)?.rotation) {
+    Surface.ROTATION_90 -> 90; Surface.ROTATION_180 -> 180; Surface.ROTATION_270 -> 270; else -> 0
+  }
+  private fun feedRotation(id: String): Int = CaptureRules.feedRotation(
+    discovery.characteristics(id)[CameraCharacteristics.SENSOR_ORIENTATION] ?: 0, deviceRotation, discovery.position(id) == "front")
   fun result(block: () -> Any): Payload = try { success(block()) }
     catch (error: Throwable) {
       val cause = if (error is ExecutionException) error.cause ?: error else error
@@ -81,10 +106,15 @@ internal class CaptureEngine(val context: Context) {
       })
       if (failure.code != "invalid_state_transition") {
         handler.removeCallbacks(progress)
-        val id = recording?.id
+        val pending = recording
+        val frames = runCatching { camera { renderer?.encodedFrames ?: 0L } }.getOrDefault(1L)
         runCatching { camera { renderer?.stopEncoding(); closeCameras() } }
-        recorder?.release(); recorder = null; storage.abandon(); recording = null
-        publish("failed", mapOf("error" to failure.payload()) + if (id != null) mapOf("recordingSetId" to id) else emptyMap())
+        recorder?.release(); recorder = null
+        // a take that failed to start, or stopped before its first frame, has nothing to recover
+        val empty = state in listOf("preparing", "ready", "starting") || frames == 0L
+        if (pending != null && empty) storage.discard(pending) else storage.abandon()
+        recording = null
+        publish("failed", mapOf("error" to failure.payload()) + if (pending != null) mapOf("recordingSetId" to pending.id) else emptyMap())
       }
       failure.result()
     }
@@ -94,24 +124,22 @@ internal class CaptureEngine(val context: Context) {
     publish("configuring", mapOf("requestId" to (request["configurationId"] ?: UUID.randomUUID().toString())))
     if (context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
       throw CaptureFailure("camera_permission_denied", "Allow camera access in Settings.", "open-settings")
+    if (thermalCritical())
+      throw CaptureFailure("thermal_state_critical", "The device is too warm to use the cameras. Let it cool down, then try again.", "wait-for-device")
     val resolved = discovery.resolve(request)
     val ready = CompletableFuture<Unit>()
     camera {
       pipAnimation?.let { handler.removeCallbacks(it) }; pipAnimation = null
       closeCameras()
-      if (renderer == null) renderer = CaptureRenderer(handler) { cameraFailure("writer-failed") }
-      renderer!!.clearFeeds(); renderer!!.preset = resolved; renderer!!.swapped = false; renderer!!.corner = 1; renderer!!.draggedInset = null
-      renderer!!.attachPreview(previewSurface, previewWidth, previewHeight)
-      preset = resolved; swapped = false; corner = 1; recording = null; failureQueued = false
+      if (renderer == null) renderer = CaptureRenderer(handler) { cameraFailure("writer-failed", generation) }
+      val target = renderer!!
+      target.clearFeeds(); target.preset = resolved; target.swapped = false; target.corner = 1; target.draggedInset = null
+      target.attachPreview(previewSurface, previewWidth, previewHeight)
+      preset = resolved; swapped = false; corner = 1; recording = null
+      zooms = FloatArray(resolved.cameraIds.size) { 1f }
+      deviceRotation = CaptureRules.deviceRotation(resolved.orientation, displayRotation())
       val token = generation
-      val outputs = resolved.cameraIds.map { id ->
-        val c = discovery.characteristics(id)
-        val sensorRotation = c[CameraCharacteristics.SENSOR_ORIENTATION] ?: 0
-        val front = discovery.position(id) == "front"
-        val deviceRotation = if (resolved.orientation == "portrait") 0 else 90
-        val rotation = if (front) (sensorRotation + deviceRotation) % 360 else (sensorRotation - deviceRotation + 360) % 360
-        renderer!!.createFeed(rotation, front)
-      }
+      val outputs = resolved.cameraIds.map { id -> target.createFeed(feedRotation(id), discovery.position(id) == "front") }
       var configured = 0
       val opened = mutableMapOf<String, CameraDevice>()
       fun createSessions() {
@@ -128,8 +156,8 @@ internal class CaptureEngine(val context: Context) {
                 val af = (discovery.characteristics(id)[CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES] ?: intArrayOf())
                 if (af.contains(CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO)) builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO)
                 builder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, if (resolved.stabilization == "standard") CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON else CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF)
-                sessions += session; requests += builder; zooms += 1f
-                // preserve slot order independently of asynchronous configuration callbacks.
+                // sessions are appended in callback order; every lookup goes through the device id.
+                sessions += session; requests += builder
                 session.setRepeatingRequest(builder.build(), null, handler)
                 configured++
                 if (configured == resolved.cameraIds.size) ready.complete(Unit)
@@ -151,11 +179,11 @@ internal class CaptureEngine(val context: Context) {
           }
           override fun onDisconnected(device: CameraDevice) {
             device.close(); ready.completeExceptionally(IllegalStateException("Camera disconnected."))
-            if (token == generation) cameraFailure("media-services-reset")
+            cameraFailure("media-services-reset", token)
           }
           override fun onError(device: CameraDevice, error: Int) {
             device.close(); ready.completeExceptionally(IllegalStateException("Camera error $error."))
-            if (token == generation) cameraFailure("media-services-reset")
+            cameraFailure("media-services-reset", token)
           }
         }, handler)
       }
@@ -168,12 +196,14 @@ internal class CaptureEngine(val context: Context) {
     if (state != "previewing") invalidState()
     if (context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
       throw CaptureFailure("camera_permission_denied", "Allow camera access in Settings.", "open-settings")
+    if (thermalCritical()) throw CaptureFailure("thermal_state_critical", "The device is too warm to record. Let it cool down, then try again.", "wait-for-device")
     val p = preset ?: invalidState()
     val id = UUID.randomUUID().toString()
+    val token = generation
     publish("preparing", mapOf("recordingSetId" to id, "preset" to p.payload()))
     val audio = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     val pending = storage.prepare(id, p, audio); recording = pending
-    val writer = CaptureRecorder(context, p, pending, audio) { cameraFailure("writer-failed") }; recorder = writer
+    val writer = CaptureRecorder(context, p, pending, audio) { cameraFailure("writer-failed", token) }; recorder = writer
     val surfaces = writer.prepare()
     publish("ready", mapOf("recordingSetId" to id, "preset" to p.payload()))
     publish("starting", mapOf("recordingSetId" to id, "preset" to p.payload()))
@@ -196,7 +226,9 @@ internal class CaptureEngine(val context: Context) {
     check(timing.second > 0) { "No complete video frame was recorded." }
     val manifest = storage.finalize(pending, p, timing.first / 1_000_000_000.0, swapped, corner)
     val duration = ((manifest["outcome"] as Map<*, *>)["durationMs"] as Number).toLong()
-    publish("completed", mapOf("recordingSetId" to pending.id, "durationMs" to duration))
+    // js tells the viewer why a take it did not stop has ended, for example a device that is too warm
+    publish("completed", mapOf("recordingSetId" to pending.id, "durationMs" to duration) +
+      if (reason != "user-requested") mapOf("reason" to reason) else emptyMap())
     recording = null
     manifest
   }
@@ -205,29 +237,31 @@ internal class CaptureEngine(val context: Context) {
       if (state != "recording") return
       execute {
         if (state == "recording") {
+          val free = storage.freeBytes
           emit?.invoke(mapOf("kind" to "recording-progress", "sequence" to ++sequence, "recordingSetId" to recording?.id,
-            "elapsedMs" to SystemClock.elapsedRealtime() - elapsedStart, "droppedFrameCount" to camera { renderer?.droppedFrames ?: 0L }, "freeStorageBytes" to storage.freeBytes))
-          if (storage.freeBytes < 50L * 1024 * 1024) stop("storage-critical")
+            "elapsedMs" to SystemClock.elapsedRealtime() - elapsedStart, "droppedFrameCount" to camera { renderer?.droppedFrames ?: 0L }, "freeStorageBytes" to free))
+          val remux = recording?.takeIf { preset?.mode == "discrete" }?.clips?.getOrNull(1)?.file?.let { CaptureRules.remuxReserveBytes(it.length()) } ?: 0L
+          if (CaptureRules.storageCritical(free, remux)) stop("storage-critical")
         }
       }
       handler.postDelayed(this, 500)
     }
   }
-  private fun cameraFailure(reason: String) {
-    if (failureQueued || closed) return
-    failureQueued = true
+  private fun cameraFailure(reason: String, token: Int) {
+    if (closed || !failures.admit(token, generation)) return
     execute {
+      if (token != generation) return@execute
       if (state == "recording") stop(reason)
       else if (state !in listOf("configuring", "idle", "completed", "failed", "interrupted")) {
         publish("interrupted", mapOf("reason" to reason, "recoverable" to false))
       }
-      camera { closeCameras() }
+      runCatching { camera { if (token == generation) closeCameras() } }
     }
   }
   fun interrupt(reason: String) { execute {
     if (state == "recording") stop(reason)
     else if (state == "previewing") publish("interrupted", mapOf("reason" to reason, "recoverable" to false))
-    camera { closeCameras() }
+    runCatching { camera { closeCameras() } }
   } }
   fun attach(surface: Surface?, width: Int, height: Int) {
     handler.post {
@@ -235,14 +269,25 @@ internal class CaptureEngine(val context: Context) {
       runCatching { renderer?.attachPreview(surface, width, height) }
     }
   }
-  fun detach(surface: Surface?) {
-    if (closed) return
-    camera {
+  // returns false when the camera thread did not let go in time; the view then releases the surface later
+  fun detach(surface: Surface?): Boolean {
+    if (closed) return true
+    val task = FutureTask(Callable {
       if (previewSurface === surface) {
-        renderer?.attachPreview(null, 0, 0)
+        runCatching { renderer?.attachPreview(null, 0, 0) }
         previewSurface = null
       }
+    })
+    if (!handler.post(task)) return true
+    val detached = runCatching { task.get(2, TimeUnit.SECONDS) }.isSuccess
+    // without a preview the cameras would keep streaming, with the privacy indicator on, while the viewer is elsewhere
+    execute {
+      if (state == "previewing" && runCatching { camera { previewSurface == null } }.getOrDefault(false)) {
+        publish("interrupted", mapOf("reason" to "backgrounded", "recoverable" to true))
+        runCatching { camera { closeCameras() } }
+      }
     }
+    return detached
   }
   fun dragPip(frame: RectF?) { handler.post {
     pipAnimation?.let { handler.removeCallbacks(it) }; pipAnimation = null
@@ -284,15 +329,12 @@ internal class CaptureEngine(val context: Context) {
     val sensor = c[CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE] ?: return@post
     if (!factor.isFinite()) return@post
     val zoom = factor.coerceIn(1f, c[CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM] ?: 1f)
-    zooms[sessionIndex] = zoom
+    zooms = zooms.copyOf().also { if (slot < it.size) it[slot] = zoom }
     val w = (sensor.width() / zoom).toInt(); val h = (sensor.height() / zoom).toInt()
     builder.set(CaptureRequest.SCALER_CROP_REGION, Rect(sensor.centerX() - w / 2, sensor.centerY() - h / 2, sensor.centerX() + w / 2, sensor.centerY() + h / 2))
     runCatching { sessions[sessionIndex].setRepeatingRequest(builder.build(), null, handler) }
   } }
-  fun zoomFactor(slot: Int): Float = if (closed) 1f else camera {
-    val id = preset?.cameraIds?.getOrNull(slot)
-    zooms.getOrNull(sessions.indexOfFirst { it.device.id == id }) ?: 1f
-  }
+  fun zoomFactor(slot: Int): Float = zooms.getOrNull(slot) ?: 1f
   fun focus(slot: Int, x: Float, y: Float, paneAspect: Float) { handler.post {
     val p = preset ?: return@post
     val id = p.cameraIds.getOrNull(slot) ?: return@post
@@ -306,9 +348,7 @@ internal class CaptureEngine(val context: Context) {
     val sensor = Rect(crop.centerX() - streamWidth / 2, crop.centerY() - streamHeight / 2,
       crop.centerX() + streamWidth / 2, crop.centerY() + streamHeight / 2)
     val front = discovery.position(id) == "front"
-    val sensorRotation = c[CameraCharacteristics.SENSOR_ORIENTATION] ?: 0
-    val deviceRotation = if (p.orientation == "landscape") 90 else 0
-    val rotation = (sensorRotation + (if (front) deviceRotation else -deviceRotation) + 360) % 360
+    val rotation = feedRotation(id)
     val sourceAspect = if (rotation % 180 == 0) 1920f / 1080 else 1080f / 1920
     val nx = .5f + (x - .5f) * minOf(1f, paneAspect / sourceAspect)
     val ny = .5f + (y - .5f) * minOf(1f, sourceAspect / paneAspect)
@@ -333,7 +373,7 @@ internal class CaptureEngine(val context: Context) {
   } }
   private fun closeCameras() {
     generation++
-    sessions.forEach { runCatching { it.close() } }; sessions.clear(); requests.clear(); zooms.clear()
+    sessions.forEach { runCatching { it.close() } }; sessions.clear(); requests.clear()
     devices.forEach { runCatching { it.close() } }; devices.clear()
   }
   fun destroy() { execute {
@@ -342,9 +382,8 @@ internal class CaptureEngine(val context: Context) {
       handler.removeCallbacks(progress)
       runCatching { camera { closeCameras(); renderer?.close(); renderer = null } }
       recorder?.release(); recorder = null; storage.abandon()
-      if (Build.VERSION.SDK_INT >= 29) thermalListener?.let {
-        (context.getSystemService(Context.POWER_SERVICE) as PowerManager).removeThermalStatusListener(it)
-      }
+      if (Build.VERSION.SDK_INT >= 29) thermalListener?.let { power.removeThermalStatusListener(it) }
+      displays.unregisterDisplayListener(displayListener)
       publish("idle")
     } finally {
       emit = null; closed = true; thread.quitSafely(); operations.shutdown()

@@ -70,8 +70,11 @@ class CaptureSurfaceView(context: Context, appContext: AppContext) : ExpoView(co
   override fun onSurfaceTextureSizeChanged(source: SurfaceTexture, width: Int, height: Int) { engine.attach(surface, width, height) }
   override fun onSurfaceTextureUpdated(source: SurfaceTexture) {}
   override fun onSurfaceTextureDestroyed(source: SurfaceTexture): Boolean {
-    engine.detach(surface); surface?.release(); surface = null
-    return true
+    val current = surface; surface = null
+    if (engine.detach(current)) { current?.release(); return true }
+    // egl may still hold the surface, so it is released only after the camera thread lets go of it
+    if (!engine.handler.post { current?.release(); source.release() }) { current?.release(); return true }
+    return false
   }
   private fun pane(x: Float, y: Float): RectF {
     return when (engine.preset?.mode) {
