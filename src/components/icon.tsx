@@ -1,6 +1,8 @@
 import { Image, type ImageProps } from "expo-image";
+import { Platform } from "react-native";
 
-import { colors, iconSizes } from "@/theme";
+import { androidIconSource } from "@/components/icon-sources";
+import { iconSizes, useThemeColors } from "@/theme";
 
 export type IconTone =
   | "primary"
@@ -37,6 +39,7 @@ export function Icon({
   tone = "primary",
   ...props
 }: IconProps) {
+  const colors = useThemeColors();
   const dimension = iconSizes[size];
   const accessible = label !== undefined;
 
@@ -47,7 +50,7 @@ export function Icon({
       accessibilityRole={accessible ? "image" : undefined}
       accessible={accessible}
       contentFit="contain"
-      source={`sf:${name}`}
+      source={Platform.OS === "ios" ? `sf:${name}` : androidIconSource(name)}
       style={[{ height: dimension, width: dimension }, style]}
       tintColor={colors[tone] as string}
     />

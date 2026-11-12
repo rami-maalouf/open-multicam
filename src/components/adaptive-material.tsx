@@ -3,10 +3,10 @@ import {
   GlassView,
   isLiquidGlassAvailable,
 } from "expo-glass-effect";
-import { View, type ViewProps } from "react-native";
+import { Platform, View, type ViewProps } from "react-native";
 
 import { useAccessibilityPreferences } from "@/foundation/accessibility/preferences";
-import { materials } from "@/theme";
+import { materials, useThemeColors } from "@/theme";
 
 export type MaterialRole = keyof typeof materials;
 
@@ -29,15 +29,21 @@ export function AdaptiveMaterial({
   ...props
 }: AdaptiveMaterialProps) {
   const { reduceTransparency } = useAccessibilityPreferences();
-  const token = materials[material];
+  const colors = useThemeColors();
+  // android has no system blur material, so it always uses the themed fallback.
+  const fallbackColor = {
+    bar: colors.surface,
+    previewOverlay: colors.previewChrome,
+    floatingControl: colors.raisedSurface,
+  }[material];
   const materialStyle = [{ overflow: "hidden" as const }, style];
 
-  if (reduceTransparency) {
+  if (reduceTransparency || Platform.OS !== "ios") {
     return (
       <View
         {...props}
         style={[
-          { backgroundColor: token.fallbackColor, overflow: "hidden" },
+          { backgroundColor: fallbackColor, overflow: "hidden" },
           style,
         ]}
       >
@@ -62,7 +68,7 @@ export function AdaptiveMaterial({
   return (
     <BlurView
       {...props}
-      intensity={token.blurIntensity}
+      intensity={materials[material].blurIntensity}
       style={materialStyle}
       tint={blurTints[material]}
     >
