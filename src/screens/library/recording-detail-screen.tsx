@@ -230,12 +230,10 @@ export function RecordingDetailScreen() {
     );
   }
 
+  // the dialog sits outside the scroll view, whose keyboard handling would otherwise spend the
+  // first tap on Save dismissing the keyboard
   return (
-    <ScrollView
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
-      style={styles.screen}
-    >
+    <>
       <Modal visible={renameDraft !== null} transparent animationType="fade" onRequestClose={() => { if (!renameBusy) setRenameDraft(null); }}>
         <View style={styles.dialogBackdrop}>
           <View accessibilityViewIsModal style={styles.dialog}>
@@ -263,86 +261,92 @@ export function RecordingDetailScreen() {
           </View>
         </View>
       </Modal>
-      <View style={styles.videoCard}>
-        <VideoView
-          contentFit="contain"
-          nativeControls
-          player={player}
-          style={styles.video}
-        />
-      </View>
-
-      {clips.length > 1 ? (
-        <View style={styles.clipPicker}>
-          {clips.map((clip, index) => (
-            <Pressable
-              accessibilityRole="button"
-              key={clip.clipId}
-              onPress={() => {
-                player.pause();
-                setSelectedClipIndex(index);
-              }}
-              style={[
-                styles.clipButton,
-                index === selectedClipIndex && styles.clipButtonSelected,
-              ]}
-            >
-              <AppText
-                tone={index === selectedClipIndex ? "previewLabel" : "primary"}
-                variant="caption"
-              >
-                {clipLabels[index]}
-              </AppText>
-            </Pressable>
-          ))}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
+        style={styles.screen}
+      >
+        <View style={styles.videoCard}>
+          <VideoView
+            contentFit="contain"
+            nativeControls
+            player={player}
+            style={styles.video}
+          />
         </View>
-      ) : null}
 
-      <View style={styles.headingRow}>
-        <View style={styles.headingText}>
-          <AppText numberOfLines={2} variant="title">
-            {recordingDisplayName(entry)}
-          </AppText>
-          <AppText tone="secondary">
-            {formatRecordingDuration(recordingDurationMs(entry))} · {" "}
-            {entry.preset.width} × {entry.preset.height} · {entry.preset.frameRate} fps
-          </AppText>
-          {health === "recovered" ? (
-            <View style={styles.recoveredNotice}>
-              <Icon name="exclamationmark.triangle" size="compact" tone="secondary" />
-              <AppText style={styles.recoveredText} tone="secondary" variant="callout">
-                {clips.length < entry.clips.length
-                  ? "Recovered after an interruption. One video in this take couldn't be saved."
-                  : "Recovered after an interruption. The end of the take may be missing."}
-              </AppText>
-            </View>
-          ) : null}
+        {clips.length > 1 ? (
+          <View style={styles.clipPicker}>
+            {clips.map((clip, index) => (
+              <Pressable
+                accessibilityRole="button"
+                key={clip.clipId}
+                onPress={() => {
+                  player.pause();
+                  setSelectedClipIndex(index);
+                }}
+                style={[
+                  styles.clipButton,
+                  index === selectedClipIndex && styles.clipButtonSelected,
+                ]}
+              >
+                <AppText
+                  tone={index === selectedClipIndex ? "previewLabel" : "primary"}
+                  variant="caption"
+                >
+                  {clipLabels[index]}
+                </AppText>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
+        <View style={styles.headingRow}>
+          <View style={styles.headingText}>
+            <AppText numberOfLines={2} variant="title">
+              {recordingDisplayName(entry)}
+            </AppText>
+            <AppText tone="secondary">
+              {formatRecordingDuration(recordingDurationMs(entry))} · {" "}
+              {entry.preset.width} × {entry.preset.height} · {entry.preset.frameRate} fps
+            </AppText>
+            {health === "recovered" ? (
+              <View style={styles.recoveredNotice}>
+                <Icon name="exclamationmark.triangle" size="compact" tone="secondary" />
+                <AppText style={styles.recoveredText} tone="secondary" variant="callout">
+                  {clips.length < entry.clips.length
+                    ? "Recovered after an interruption. One video in this take couldn't be saved."
+                    : "Recovered after an interruption. The end of the take may be missing."}
+                </AppText>
+              </View>
+            ) : null}
+          </View>
+          <Pressable
+            accessibilityLabel="Rename take"
+            accessibilityRole="button"
+            onPress={rename}
+            style={styles.iconButton}
+          >
+            <Icon name="pencil" tone="accent" />
+          </Pressable>
+        </View>
+
+        <View style={styles.actionGrid}>
+          <ActionButton icon="square.and.arrow.up" label="Share" onPress={share} />
+          <ActionButton icon="photo.badge.arrow.down" label={`Save to ${galleryName}`} onPress={saveToPhotos} />
         </View>
         <Pressable
-          accessibilityLabel="Rename take"
           accessibilityRole="button"
-          onPress={rename}
-          style={styles.iconButton}
+          onPress={confirmDelete}
+          style={styles.deleteButton}
         >
-          <Icon name="pencil" tone="accent" />
+          <Icon name="trash" tone="critical" />
+          <AppText tone="critical" variant="headline">
+            Delete take
+          </AppText>
         </Pressable>
-      </View>
-
-      <View style={styles.actionGrid}>
-        <ActionButton icon="square.and.arrow.up" label="Share" onPress={share} />
-        <ActionButton icon="photo.badge.arrow.down" label={`Save to ${galleryName}`} onPress={saveToPhotos} />
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        onPress={confirmDelete}
-        style={styles.deleteButton}
-      >
-        <Icon name="trash" tone="critical" />
-        <AppText tone="critical" variant="headline">
-          Delete take
-        </AppText>
-      </Pressable>
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 }
 
