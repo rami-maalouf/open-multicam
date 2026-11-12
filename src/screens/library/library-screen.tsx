@@ -14,10 +14,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { multicamCaptureModule } from "../../../modules/multicam-capture";
 import { AppText } from "@/components/app-text";
 import { Icon } from "@/components/icon";
+import type { IconName } from "@/components/icon-sources";
 import {
   formatRecordingDuration,
   recordingDisplayName,
   recordingDurationMs,
+  recordingHealth,
   type RecordingLibraryEntry,
 } from "@/core/library/entry";
 import { radii, shadows, spacing, useThemeColors, useThemedStyles, type ThemeColors } from "@/theme";
@@ -86,6 +88,7 @@ function RecordingRow({
 }: Readonly<{ recording: RecordingLibraryEntry }>) {
   const styles = useThemedStyles(createStyles);
   const { kind: recordingKind, icon: recordingIcon } = recordingKindOf(recording);
+  const health = recordingHealth(recording);
 
   return (
     <Link
@@ -101,15 +104,20 @@ function RecordingRow({
         {({ pressed }) => (
           <View style={[styles.recordingRow, pressed && styles.pressed]}>
             <View style={styles.recordingArtwork}>
-              <Icon name={recordingIcon} size="prominent" tone="accent" />
+              <Icon
+                name={health === "damaged" ? "exclamationmark.triangle" : recordingIcon}
+                size="prominent"
+                tone={health === "damaged" ? "critical" : "accent"}
+              />
             </View>
             <View style={styles.recordingText}>
               <AppText numberOfLines={1} variant="headline">
                 {recordingDisplayName(recording)}
               </AppText>
               <AppText numberOfLines={1} tone="secondary" variant="callout">
-                {recordingKind} · {" "}
-                {formatRecordingDuration(recordingDurationMs(recording))}
+                {health === "damaged"
+                  ? `${recordingKind} · Damaged`
+                  : `${recordingKind} · ${formatRecordingDuration(recordingDurationMs(recording))}${health === "recovered" ? " · Recovered" : ""}`}
               </AppText>
             </View>
             <Icon name="chevron.right" size="compact" tone="secondary" />
@@ -122,7 +130,7 @@ function RecordingRow({
 
 function recordingKindOf(
   recording: RecordingLibraryEntry,
-): Readonly<{ kind: string; icon: string }> {
+): Readonly<{ kind: string; icon: IconName }> {
   switch (recording.mode) {
     case "discrete":
       return { kind: "Two-camera take", icon: "rectangle.split.2x1.fill" };

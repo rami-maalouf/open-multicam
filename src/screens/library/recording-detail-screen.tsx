@@ -19,10 +19,13 @@ import {
 import { multicamCaptureModule } from "../../../modules/multicam-capture";
 import { AppText } from "@/components/app-text";
 import { Icon } from "@/components/icon";
+import type { IconName } from "@/components/icon-sources";
 import {
   formatRecordingDuration,
+  playableClipUris,
   recordingDisplayName,
   recordingDurationMs,
+  recordingHealth,
   type RecordingLibraryEntry,
 } from "@/core/library/entry";
 import { playHaptic } from "@/foundation/haptics/haptics";
@@ -41,7 +44,10 @@ export function RecordingDetailScreen() {
   const galleryName = Platform.OS === "android" ? "gallery" : "Photos";
   const [isLoading, setLoading] = useState(true);
   const [selectedClipIndex, setSelectedClipIndex] = useState(0);
-  const selectedUri = entry?.clipUris[selectedClipIndex]?.uri ?? null;
+  // interrupted takes can keep some videos and lose others, so only the playable ones are offered
+  const clips = useMemo(() => (entry === null ? [] : playableClipUris(entry)), [entry]);
+  const health = entry === null ? null : recordingHealth(entry);
+  const selectedUri = clips[selectedClipIndex]?.uri ?? null;
   const player = useVideoPlayer(selectedUri, (createdPlayer) => {
     createdPlayer.loop = false;
   });
@@ -62,11 +68,16 @@ export function RecordingDetailScreen() {
   }, [load]);
 
   const clipLabels = useMemo(() => {
-    if (entry === null || entry.mode !== "discrete") {
-      return [entry?.cameraA.label ?? "Camera"];
+    if (entry === null) {
+      return [];
     }
-    return [entry.cameraA.label, entry.cameraB.label];
-  }, [entry]);
+    return clips.map((clip) =>
+      entry.mode === "discrete" &&
+      entry.clips.find((candidate) => candidate.id === clip.clipId)?.role === "cameraB"
+        ? entry.cameraB.label
+        : entry.cameraA.label,
+    );
+  }, [clips, entry]);
 
   const rename = useCallback(() => {
     if (entry === null) {
@@ -119,13 +130,13 @@ export function RecordingDetailScreen() {
         Alert.alert("Sharing unavailable", "Sharing isn't available on this device.");
         return;
       }
-      for (const clip of entry.clipUris) {
+      for (const clip of clips) {
         await Sharing.shareAsync(clip.uri, { mimeType: "video/mp4", UTI: "public.mpeg-4" });
       }
     } catch {
       Alert.alert("Couldn't share take", "Your videos are still in the library. Please try again.");
     }
-  }, [entry]);
+  }, [clips, entry]);
 
   const saveToPhotos = useCallback(async () => {
     if (entry === null) return;
@@ -142,7 +153,7 @@ export function RecordingDetailScreen() {
           return;
         }
       }
-      for (const clip of entry.clipUris) {
+      for (const clip of clips) {
         if (Platform.OS === "android" && Number(Platform.Version) >= 30) {
           await MediaLibrary.Asset.create(clip.uri);
         } else {
@@ -154,7 +165,7 @@ export function RecordingDetailScreen() {
     } catch {
       Alert.alert("Couldn't save every video", "Your take is still in the library. Some videos may already have been saved. Please try again.");
     }
-  }, [entry, galleryName]);
+  }, [clips, entry, galleryName]);
 
   const confirmDelete = useCallback(() => {
     if (entry === null) {
@@ -186,6 +197,30 @@ export function RecordingDetailScreen() {
     );
   }
 
+  if (entry !== null && health === "damaged") {
+    return (
+      <View style={styles.centered}>
+        <Icon name="exclamationmark.triangle" size="prominent" tone="critical" />
+        <AppText style={styles.centeredText} variant="headline">
+          {"This take couldn't be saved"}
+        </AppText>
+        <AppText style={styles.centeredText} tone="secondary">
+          Recording stopped before the video was finished, so there is nothing to play. Delete it to free up space.
+        </AppText>
+        <Pressable
+          accessibilityRole="button"
+          onPress={confirmDelete}
+          style={[styles.deleteButton, styles.damagedDelete]}
+        >
+          <Icon name="trash" tone="critical" />
+          <AppText tone="critical" variant="headline">
+            Delete take
+          </AppText>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (entry === null || selectedUri === null) {
     return (
       <View style={styles.centered}>
@@ -210,6 +245,7 @@ export function RecordingDetailScreen() {
               accessibilityLabel="Take name"
               autoFocus
               editable={!renameBusy}
+              maxLength={120}
               onChangeText={setRenameDraft}
               onSubmitEditing={() => void saveRename()}
               returnKeyType="done"
@@ -236,9 +272,9 @@ export function RecordingDetailScreen() {
         />
       </View>
 
-      {entry.clipUris.length > 1 ? (
+      {clips.length > 1 ? (
         <View style={styles.clipPicker}>
-          {entry.clipUris.map((clip, index) => (
+          {clips.map((clip, index) => (
             <Pressable
               accessibilityRole="button"
               key={clip.clipId}
@@ -271,6 +307,16 @@ export function RecordingDetailScreen() {
             {formatRecordingDuration(recordingDurationMs(entry))} · {" "}
             {entry.preset.width} × {entry.preset.height} · {entry.preset.frameRate} fps
           </AppText>
+          {health === "recovered" ? (
+            <View style={styles.recoveredNotice}>
+              <Icon name="exclamationmark.triangle" size="compact" tone="secondary" />
+              <AppText style={styles.recoveredText} tone="secondary" variant="callout">
+                {clips.length < entry.clips.length
+                  ? "Recovered after an interruption. One video in this take couldn't be saved."
+                  : "Recovered after an interruption. The end of the take may be missing."}
+              </AppText>
+            </View>
+          ) : null}
         </View>
         <Pressable
           accessibilityLabel="Rename take"
@@ -305,7 +351,7 @@ function ActionButton({
   label,
   onPress,
 }: Readonly<{
-  icon: string;
+  icon: IconName;
   label: string;
   onPress: () => Promise<void>;
 }>) {
@@ -338,6 +384,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: "center",
     padding: spacing.control,
   },
+  centeredText: { maxWidth: 320, textAlign: "center" },
+  damagedDelete: { alignSelf: "stretch", marginTop: spacing.section, paddingHorizontal: spacing.control },
+  recoveredNotice: { alignItems: "center", flexDirection: "row", gap: spacing.small },
+  recoveredText: { flex: 1 },
   videoCard: {
     // the height cap narrows the card on tall phones, so keep it centered
     alignSelf: "center",

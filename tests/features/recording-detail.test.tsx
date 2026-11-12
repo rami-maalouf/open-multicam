@@ -247,4 +247,54 @@ describe("recording detail", () => {
       alert.mockRestore();
     }
   });
+
+  it("offers only the video that survived an interrupted two-camera take", async () => {
+    const [clipA, clipB] = entry.clips;
+    mockListRecordings.mockResolvedValue([
+      {
+        ...entry,
+        outcome: { kind: "recoverable", reason: "finalization-incomplete", playableClipIds: ["clip-b"] },
+        clips: [
+          { ...clipA, status: "corrupt" as const, media: null, issue: "The interrupted file could not be decoded." },
+          { ...clipB, status: "recoverable" as const, issue: "Recovered after the recording was interrupted." },
+        ],
+      } satisfies RecordingLibraryEntry,
+    ]);
+    const screen = render(<RecordingDetailScreen />);
+
+    await screen.findByTestId("video-player");
+    expect(screen.getByText(/One video in this take couldn't be saved/)).toBeTruthy();
+    expect(screen.getByText(/0:04/)).toBeTruthy();
+    // a single surviving clip needs no camera picker
+    expect(screen.queryByRole("button", { name: "Front" })).toBeNull();
+    fireEvent.press(screen.getByRole("button", { name: "Share" }));
+    await waitFor(() => expect(mockShareAsync).toHaveBeenCalledTimes(1));
+    expect(mockShareAsync).toHaveBeenCalledWith("file:///recordings/set-discrete/b.mp4", expect.any(Object));
+  });
+
+  it("offers only deletion for a take with nothing left to play", async () => {
+    const [clipA, clipB] = entry.clips;
+    mockListRecordings.mockResolvedValue([
+      {
+        ...entry,
+        outcome: { kind: "corrupt", reason: "unreadable-track" },
+        clips: [
+          { ...clipA, status: "corrupt" as const, media: null, issue: "The interrupted file could not be decoded." },
+          { ...clipB, status: "corrupt" as const, media: null, issue: "The interrupted file could not be decoded." },
+        ],
+      } satisfies RecordingLibraryEntry,
+    ]);
+    const screen = render(<RecordingDetailScreen />);
+
+    expect(await screen.findByText("This take couldn't be saved")).toBeTruthy();
+    expect(screen.queryByTestId("video-player")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Save to/ })).toBeNull();
+    fireEvent.press(screen.getByRole("button", { name: "Delete take" }));
+    const deleteActions = alertSpy.mock.calls.find(([title]) => title === "Delete this take?")?.[2] as
+      | Array<{ onPress?: () => void }>
+      | undefined;
+    deleteActions?.[1]?.onPress?.();
+    await waitFor(() => expect(mockDeleteRecording).toHaveBeenCalledWith("set-discrete"));
+  });
 });
