@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <g transform="translate(512 524) scale(0.9) translate(-512 -478)">
+    <path d="M-120,641 L420,516" stroke="#0c2329" stroke-width="108" stroke-linecap="round"/><path d="M-120,641 L420,516" stroke="#ffffff" stroke-width="64" stroke-linecap="round"/><path d="M-120,641 L420,516" transform="translate(0 -11.5)" stroke="#fff" stroke-opacity="0.35" stroke-width="14" stroke-linecap="round"/>
+    <path d="M600,500 L1160,210" stroke="#0c2329" stroke-width="108" stroke-linecap="round"/><path d="M600,500 L1160,210" stroke="#3fe0ec" stroke-width="64" stroke-linecap="round"/><path d="M600,500 L1160,210" transform="translate(0 -11.5)" stroke="#fff" stroke-opacity="0.35" stroke-width="14" stroke-linecap="round"/>
+    <path d="M600,500 L1160,784" stroke="#0c2329" stroke-width="108" stroke-linecap="round"/><path d="M600,500 L1160,784" stroke="#ff4a5e" stroke-width="64" stroke-linecap="round"/><path d="M600,500 L1160,784" transform="translate(0 -11.5)" stroke="#fff" stroke-opacity="0.35" stroke-width="14" stroke-linecap="round"/>
+    
+    <clipPath id="tri"><path d="M478.9,297.7 Q512,236 545.1,297.7 L722.9,628.3 Q756,690 686.0,690.0 L338.0,690.0 Q268,690 301.1,628.3 Z"/></clipPath>
+    <path d="M478.9,297.7 Q512,236 545.1,297.7 L722.9,628.3 Q756,690 686.0,690.0 L338.0,690.0 Q268,690 301.1,628.3 Z" fill="#bff6f9"/>
+    <g clip-path="url(#tri)">
+      <path d="M512,196 L512,740 L800,740 L800,196Z" fill="#7fdde6"/>
+      <path d="M362,596 L466,402" stroke="#fff" stroke-opacity="0.8" stroke-width="24" stroke-linecap="round"/>
+      <circle cx="338" cy="644" r="13" fill="#fff" fill-opacity="0.8"/>
+    </g>
+    <path d="M512,288 L512,486" stroke="#0c2329" stroke-width="14" stroke-linecap="round" opacity="0.5"/><path d="M512,676 L512,682" stroke="#0c2329" stroke-width="14" stroke-linecap="round" opacity="0.5"/>
+    <path d="M478.9,297.7 Q512,236 545.1,297.7 L722.9,628.3 Q756,690 686.0,690.0 L338.0,690.0 Q268,690 301.1,628.3 Z" fill="none" stroke="#0c2329" stroke-width="30" stroke-linejoin="round"/>
+    <path d="M396,520 L626,520" stroke="#0c2329" stroke-width="16" stroke-linecap="round"/>
+    <path d="M404,522 L496,522 Q500,586 452,590 Q406,588 404,522Z" fill="#3fe0ec" stroke="#0c2329" stroke-width="14" stroke-linejoin="round"/>
+    <path d="M528,522 L620,522 Q618,588 572,590 Q524,586 528,522Z" fill="#ff4a5e" stroke="#0c2329" stroke-width="14" stroke-linejoin="round"/>
+    <path d="M424,534 L446,534" stroke="#fff" stroke-opacity="0.8" stroke-width="10" stroke-linecap="round"/>
+    <path d="M548,534 L570,534" stroke="#fff" stroke-opacity="0.8" stroke-width="10" stroke-linecap="round"/>
+    <path d="M480,628 Q520,646 552,614" fill="none" stroke="#0c2329" stroke-width="14" stroke-linecap="round"/>
+  </g>
+  <path d="M352,304 Q357.72,324.28 378,330 Q357.72,335.72 352,356 Q346.28,335.72 326,330 Q346.28,324.28 352,304Z" fill="#fff"/><path d="M410,255 Q412.86,265.14 423,268 Q412.86,270.86 410,281 Q407.14,270.86 397,268 Q407.14,265.14 410,255Z" fill="#fff"/><path d="M672,713 Q675.74,726.26 689,730 Q675.74,733.74 672,747 Q668.26,733.74 655,730 Q668.26,726.26 672,713Z" fill="#fff"/></svg>
