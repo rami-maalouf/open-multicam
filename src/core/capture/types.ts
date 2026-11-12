@@ -281,6 +281,8 @@ export type CaptureState =
       kind: "completed";
       recordingSetId: string;
       durationMs: number;
+      // why the take ended when the system stopped it rather than the viewer
+      reason?: CaptureStopReason;
     }>
   | Readonly<{
       kind: "interrupted";
