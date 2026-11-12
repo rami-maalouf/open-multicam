@@ -68,4 +68,12 @@ class CaptureRulesTest {
     assertFalse(gate.admit(token = 3, current = 4))
     assertTrue(gate.admit(token = 4, current = 4))
   }
+
+  @Test fun camerasGetPlainNamesAndANumberOnlyWhenTwoWouldMatch() {
+    assertEquals("Front Camera", CaptureRules.cameraLabel("front", "wide", 0, 1))
+    assertEquals("Back Ultra Wide Camera", CaptureRules.cameraLabel("back", "ultra-wide", 0, 1))
+    assertEquals("Back Telephoto Camera", CaptureRules.cameraLabel("back", "telephoto", 0, 1))
+    assertEquals("External Camera", CaptureRules.cameraLabel("unspecified", "external", 0, 1))
+    assertEquals("Back Camera 2", CaptureRules.cameraLabel("back", "wide", 1, 2))
+  }
 }

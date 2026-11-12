@@ -23,18 +23,28 @@ internal class CaptureDiscovery(context: Context) {
     CameraCharacteristics.LENS_FACING_FRONT -> "front"
     else -> "unspecified"
   }
-  fun camera(id: String): Payload {
+  private fun fieldOfView(id: String): Double {
     val c = characteristics(id)
     val focal = c[CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS]?.firstOrNull() ?: 0f
     val physical = c[CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE]
-    val fov = if (physical != null && focal > 0) Math.toDegrees(2 * atan(physical.width / (2.0 * focal))) else 0.0
-    val type = when {
-      c[CameraCharacteristics.LENS_FACING] == CameraCharacteristics.LENS_FACING_EXTERNAL -> "external"
+    return if (physical != null && focal > 0) Math.toDegrees(2 * atan(physical.width / (2.0 * focal))) else 0.0
+  }
+  private fun type(id: String): String {
+    val fov = fieldOfView(id)
+    return when {
+      characteristics(id)[CameraCharacteristics.LENS_FACING] == CameraCharacteristics.LENS_FACING_EXTERNAL -> "external"
       fov > 95 -> "ultra-wide"
       fov in 1.0..45.0 -> "telephoto"
       else -> "wide"
     }
-    val label = "${position(id).replaceFirstChar { it.uppercase() }} ${type.replace('-', ' ')} camera ($id)"
+  }
+  fun camera(id: String): Payload {
+    val c = characteristics(id)
+    val fov = fieldOfView(id)
+    val type = type(id)
+    val position = position(id)
+    val twins = manager.cameraIdList.filter { position(it) == position && type(it) == type }.sorted()
+    val label = CaptureRules.cameraLabel(position, type, twins.indexOf(id), twins.size)
     return mapOf("id" to id, "label" to label, "position" to position(id), "deviceType" to type,
       "fieldOfViewDegrees" to fov,
       "zoomRange" to mapOf("minimum" to 1, "maximum" to (c[CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM] ?: 1f)),

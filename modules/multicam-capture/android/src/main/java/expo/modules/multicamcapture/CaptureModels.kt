@@ -50,6 +50,18 @@ internal object CaptureRules {
     return UUID.fromString(normalized).toString()
   }
 
+  // the same names ios gives its cameras; a number only tells apart two cameras that would share one
+  fun cameraLabel(position: String, type: String, index: Int, count: Int): String {
+    val name = when (type) {
+      "external" -> "External Camera"
+      "ultra-wide" -> "${side(position)} Ultra Wide Camera"
+      "telephoto" -> "${side(position)} Telephoto Camera"
+      else -> "${side(position)} Camera"
+    }.trim()
+    return if (count > 1) "$name ${index + 1}" else name
+  }
+  private fun side(position: String) = when (position) { "back" -> "Back"; "front" -> "Front"; else -> "" }
+
   // js only sends portrait or landscape, so the display decides which way landscape is turned
   fun deviceRotation(orientation: String, displayRotationDegrees: Int): Int =
     if (orientation == "portrait") 0 else if (displayRotationDegrees == 270) 270 else 90
