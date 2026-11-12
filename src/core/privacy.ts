@@ -8,7 +8,7 @@ export const privacySections = [
   },
   {
     title: "Camera, microphone, and exports",
-    body: "Camera access provides preview and video recording. Microphone access adds sound to your videos. On iOS, Add Photos access is requested only when you choose Save to Photos. On Android 10 and later, Save to gallery adds the selected videos without requesting library access; older Android versions require write access. OpenMulticam does not browse your existing photo library. You can change permissions in your device settings.",
+    body: "Camera access provides preview and video recording. Microphone access adds sound to your videos. On iOS, Add Photos access is requested only when you choose Save to Photos. On Android 11 and later, Save to gallery adds the selected videos without requesting library access; Android 10 and earlier ask for storage write access. OpenMulticam does not browse your existing photo library. You can change permissions in your device settings.",
   },
   {
     title: "Storage and deletion",
