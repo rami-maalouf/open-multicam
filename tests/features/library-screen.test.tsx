@@ -3,7 +3,10 @@ import type { ReactNode } from "react";
 
 import { LibraryScreen } from "@/screens/library/library-screen";
 import type { RecordingLibraryEntry } from "@/core/library/entry";
-import { recordingManifestFixtures } from "@/testing/recording-fixtures";
+import {
+  recordingManifestFixtures,
+  recordingOutcomeFixtures,
+} from "@/testing/recording-fixtures";
 import { render } from "@/testing/render";
 
 const mockListRecordings = jest.fn();
@@ -29,7 +32,9 @@ function libraryEntry(
     | typeof recordingManifestFixtures.single
     | typeof recordingManifestFixtures.discrete
     | typeof recordingManifestFixtures.pip
-    | typeof recordingManifestFixtures.split,
+    | typeof recordingManifestFixtures.split
+    | typeof recordingOutcomeFixtures.recoverable
+    | typeof recordingOutcomeFixtures.corrupt,
 ): RecordingLibraryEntry {
   return {
     ...manifest,
@@ -51,7 +56,7 @@ describe("recording library", () => {
     const screen = render(<LibraryScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText("Your takes stay on this iPhone")).toBeTruthy();
+      expect(screen.getByText("Your takes stay on this device")).toBeTruthy();
     });
     expect(screen.getByRole("button", { name: "Open camera" })).toBeTruthy();
   });
@@ -94,5 +99,19 @@ describe("recording library", () => {
       ).toBeTruthy();
     });
     expect(screen.getByRole("button", { name: "Open camera" })).toBeTruthy();
+  });
+
+  it("marks recovered and damaged takes instead of showing them as empty 0:00 takes", async () => {
+    mockListRecordings.mockResolvedValue([
+      libraryEntry(recordingOutcomeFixtures.recoverable),
+      libraryEntry(recordingOutcomeFixtures.corrupt),
+    ]);
+    const screen = render(<LibraryScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Front · 0:04 · Recovered")).toBeTruthy();
+      expect(screen.getByText("Front · Damaged")).toBeTruthy();
+    });
+    expect(screen.queryByText(/0:00/)).toBeNull();
   });
 });

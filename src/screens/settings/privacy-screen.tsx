@@ -3,9 +3,10 @@ import { ScrollView, StyleSheet, View } from "react-native";
 
 import { AppText } from "@/components/app-text";
 import { privacySections, supportUrl } from "@/core/privacy";
-import { colors, spacing } from "@/theme";
+import { spacing, useThemedStyles, type ThemeColors } from "@/theme";
 
 export function PrivacyScreen() {
+  const styles = useThemedStyles(createStyles);
   return (
     <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic" style={styles.screen}>
       {privacySections.map(({ title, body }) => (
@@ -21,7 +22,7 @@ export function PrivacyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.control, gap: spacing.spacious },
   section: { gap: spacing.small },

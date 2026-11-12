@@ -109,7 +109,7 @@ const captureErrorDefinitions = {
     recoveryAction: "open-settings",
   },
   camera_permission_restricted: {
-    message: "Camera access is restricted on this iPhone.",
+    message: "Camera access is restricted on this device.",
     retryable: false,
     recoveryAction: "open-settings",
   },
@@ -119,7 +119,7 @@ const captureErrorDefinitions = {
     recoveryAction: "open-settings",
   },
   microphone_permission_restricted: {
-    message: "Microphone access is restricted on this iPhone.",
+    message: "Microphone access is restricted on this device.",
     retryable: false,
     recoveryAction: "open-settings",
   },
@@ -184,7 +184,7 @@ const captureErrorDefinitions = {
     recoveryAction: "select-configuration",
   },
   thermal_state_critical: {
-    message: "Recording stopped because the iPhone became too warm.",
+    message: "Recording stopped because the device became too warm.",
     retryable: true,
     recoveryAction: "wait-for-device",
   },

@@ -4,6 +4,7 @@ import {
   AppState,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +20,7 @@ import {
 import { AdaptiveMaterial } from "@/components/adaptive-material";
 import { AppText } from "@/components/app-text";
 import { Icon } from "@/components/icon";
+import type { IconName } from "@/components/icon-sources";
 import { validateCaptureRequest } from "@/core/capture/contracts";
 import { revealApp } from "@/foundation/launch/launch-screen";
 import {
@@ -37,6 +39,7 @@ import type {
   CapturePermissionStatus,
   CaptureRequest,
   CaptureState,
+  CaptureStopReason,
   DeviceCapabilities,
   SupportedCaptureConfiguration,
 } from "@/core/capture/types";
@@ -45,7 +48,7 @@ import {
   reportRecorderSuccess,
 } from "@/core/telemetry/recorder";
 import { playHaptic } from "@/foundation/haptics/haptics";
-import { colors, radii, spacing } from "@/theme";
+import { radii, spacing, useThemedStyles, type ThemeColors } from "@/theme";
 
 type CapturePhase =
   | "checking"
@@ -200,7 +203,7 @@ function modeTitle(mode: CaptureMode): string {
   }
 }
 
-function modeIcon(mode: CaptureMode): string {
+function modeIcon(mode: CaptureMode): IconName {
   switch (mode) {
     case "pip":
       return "rectangle.inset.filled";
@@ -221,13 +224,36 @@ function formatElapsed(elapsedMs: number): string {
     .padStart(2, "0")}`;
 }
 
+function interruptionMessage(reason: CaptureStopReason): string {
+  switch (reason) {
+    case "system-pressure-critical":
+      return "The device is too warm to use the cameras. Let it cool down, then try again.";
+    case "media-services-reset":
+      return "Another app or the system took over the camera. Try again.";
+    default:
+      return "The camera stopped unexpectedly. Try again.";
+  }
+}
+
+function completedMessage(reason: CaptureStopReason | undefined): string {
+  switch (reason) {
+    case "system-pressure-critical":
+      return "Your take was saved. Recording stopped because the device became too warm. Let it cool down, then try again.";
+    case "storage-critical":
+      return "Your take was saved. Recording stopped because storage is almost full.";
+    default:
+      return "The interrupted take was saved safely.";
+  }
+}
+
 function permissionMessage(status: CapturePermissionStatus): string {
   return status === "restricted"
-    ? "Camera access is restricted on this iPhone."
+    ? "Camera access is restricted on this device."
     : "Camera access is off. Open Settings to use OpenMulticam.";
 }
 
 export function CaptureScreen() {
+  const styles = useThemedStyles(createStyles);
   const dimensions = useWindowDimensions();
   const orientation =
     dimensions.width > dimensions.height ? "landscape" : "portrait";
@@ -253,6 +279,24 @@ export function CaptureScreen() {
   const isUserStopping = useRef(false);
   const isRediscoveringSimulatorCamera = useRef(false);
   const phaseRef = useRef<CapturePhase>(phase);
+  const isFocused = useRef(false);
+  // an interruption that lands while a configure call is still in flight
+  const pendingInterruption = useRef<CaptureStopReason | null>(null);
+
+  const handleInterruption = useCallback((reason: CaptureStopReason) => {
+    pendingInterruption.current = null;
+    if (reason === "backgrounded") {
+      // the cameras closed because the preview left the screen; coming back reopens them
+      phaseRef.current = "checking";
+      setPhase("checking");
+      setMessage("Camera paused.");
+      return true;
+    }
+    phaseRef.current = "failed";
+    setPhase("failed");
+    setMessage(interruptionMessage(reason));
+    return false;
+  }, []);
 
   const configurations = useMemo(
     () => (capabilities === null ? [] : supportedConfigurations(capabilities)),
@@ -310,11 +354,16 @@ export function CaptureScreen() {
         return;
       }
 
+      pendingInterruption.current = null;
       const result = await multicamCaptureModule.configure(validated.value);
       if (!result.ok) {
         setPhase("failed");
         setMessage(result.error.message);
         await playHaptic("error");
+        return;
+      }
+      if (pendingInterruption.current !== null) {
+        handleInterruption(pendingInterruption.current);
         return;
       }
 
@@ -329,16 +378,23 @@ export function CaptureScreen() {
       );
       await playHaptic("captureReady");
     },
-    [orientation],
+    [handleInterruption, orientation],
   );
 
   const refresh = useCallback(async () => {
+    // rotation and permission dialogs can trigger focus while a take is active.
+    if (["recording", "finalizing"].includes(phaseRef.current)) return;
     setPhase("checking");
     setMessage("Checking camera access…");
 
     try {
       const permissions = await multicamCaptureModule.getPermissionStatus();
-      if (permissions.camera === "not-determined") {
+      // android can grant the camera earlier, through the system settings, without ever asking for the microphone.
+      const needsMicrophonePrompt =
+        Platform.OS === "android" &&
+        permissions.camera === "authorized" &&
+        permissions.microphone === "not-determined";
+      if (permissions.camera === "not-determined" || needsMicrophonePrompt) {
         setPhase("needs-permission");
         setMessage(
           "OpenMulticam needs camera access to show a live preview and microphone access to record sound.",
@@ -390,8 +446,12 @@ export function CaptureScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      isFocused.current = true;
       const refreshTimer = setTimeout(() => void refresh(), 0);
-      return () => clearTimeout(refreshTimer);
+      return () => {
+        isFocused.current = false;
+        clearTimeout(refreshTimer);
+      };
     }, [refresh]),
   );
 
@@ -431,11 +491,31 @@ export function CaptureScreen() {
           moduleEventSequence.current = event.sequence;
           setSurfaceState(event.state.kind);
 
-          if (event.state.kind === "completed" && !isUserStopping.current) {
+          if (event.state.kind === "configuring") {
+            pendingInterruption.current = null;
+          } else if (event.state.kind === "interrupted") {
+            if (phaseRef.current !== "ready") {
+              pendingInterruption.current = event.state.reason;
+            } else if (
+              handleInterruption(event.state.reason) &&
+              AppState.currentState === "active" &&
+              isFocused.current
+            ) {
+              void refresh();
+            }
+          } else if (event.state.kind === "completed" && !isUserStopping.current) {
             setRecordingStartedAt(null);
             setElapsedMs(0);
+            if (event.state.reason === "system-pressure-critical") {
+              // reopening the cameras on a device that is still too warm would only fail again
+              phaseRef.current = "failed";
+              setPhase("failed");
+              setMessage(completedMessage(event.state.reason));
+              return;
+            }
+            phaseRef.current = "checking";
             setPhase("checking");
-            setMessage("The interrupted take was saved safely.");
+            setMessage(completedMessage(event.state.reason));
             if (AppState.currentState === "active") {
               void refresh();
             }
@@ -455,7 +535,7 @@ export function CaptureScreen() {
       appStateSubscription.remove();
       moduleSubscription.remove();
     };
-  }, [refresh]);
+  }, [handleInterruption, refresh]);
 
   useEffect(() => {
     if (recordingStartedAt === null) {
@@ -663,7 +743,7 @@ export function CaptureScreen() {
               tone="previewLabel"
               variant="title"
             >
-              {"Two cameras,\none iPhone."}
+              {"Two cameras,\none device."}
             </AppText>
             <AppText style={styles.overlayCopy} tone="previewSecondary">
               {message}
@@ -796,6 +876,7 @@ function CameraSheet({
   mode: CaptureMode;
   selection: CameraSlotSelection | null;
 }>) {
+  const styles = useThemedStyles(createStyles);
   const modes = availableModes(configurations);
   const usableCameras = camerasFor(configurations, mode);
   const partners = partnersFor(
@@ -934,7 +1015,7 @@ function CameraSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { backgroundColor: colors.previewChrome, flex: 1 },
   topBar: {
     alignItems: "center",

@@ -10,6 +10,9 @@ expo-env.d.ts
 # generated native projects
 /ios/
 /android/
+/modules/*/android/build/
+/modules/*/android/.gradle/
+/modules/*/android/.cxx/
 .kotlin/
 *.orig.*
 

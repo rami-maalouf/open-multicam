@@ -1,4 +1,5 @@
 import * as MediaLibrary from "expo-media-library";
+import { saveToLibraryAsync } from "expo-media-library/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -6,7 +7,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
+  Platform,
   Pressable,
+  TextInput,
   ScrollView,
   StyleSheet,
   View,
@@ -15,24 +19,35 @@ import {
 import { multicamCaptureModule } from "../../../modules/multicam-capture";
 import { AppText } from "@/components/app-text";
 import { Icon } from "@/components/icon";
+import type { IconName } from "@/components/icon-sources";
 import {
   formatRecordingDuration,
+  playableClipUris,
   recordingDisplayName,
   recordingDurationMs,
+  recordingHealth,
   type RecordingLibraryEntry,
 } from "@/core/library/entry";
 import { playHaptic } from "@/foundation/haptics/haptics";
-import { colors, radii, spacing } from "@/theme";
+import { radii, spacing, useThemeColors, useThemedStyles, type ThemeColors } from "@/theme";
 
 export function RecordingDetailScreen() {
+  const styles = useThemedStyles(createStyles);
+  const colors = useThemeColors();
   const { recordingSetId } = useLocalSearchParams<{
     recordingSetId: string;
   }>();
   const router = useRouter();
   const [entry, setEntry] = useState<RecordingLibraryEntry | null>(null);
+  const [renameDraft, setRenameDraft] = useState<string | null>(null);
+  const [renameBusy, setRenameBusy] = useState(false);
+  const galleryName = Platform.OS === "android" ? "gallery" : "Photos";
   const [isLoading, setLoading] = useState(true);
   const [selectedClipIndex, setSelectedClipIndex] = useState(0);
-  const selectedUri = entry?.clipUris[selectedClipIndex]?.uri ?? null;
+  // interrupted takes can keep some videos and lose others, so only the playable ones are offered
+  const clips = useMemo(() => (entry === null ? [] : playableClipUris(entry)), [entry]);
+  const health = entry === null ? null : recordingHealth(entry);
+  const selectedUri = clips[selectedClipIndex]?.uri ?? null;
   const player = useVideoPlayer(selectedUri, (createdPlayer) => {
     createdPlayer.loop = false;
   });
@@ -53,14 +68,23 @@ export function RecordingDetailScreen() {
   }, [load]);
 
   const clipLabels = useMemo(() => {
-    if (entry === null || entry.mode !== "discrete") {
-      return [entry?.cameraA.label ?? "Camera"];
+    if (entry === null) {
+      return [];
     }
-    return [entry.cameraA.label, entry.cameraB.label];
-  }, [entry]);
+    return clips.map((clip) =>
+      entry.mode === "discrete" &&
+      entry.clips.find((candidate) => candidate.id === clip.clipId)?.role === "cameraB"
+        ? entry.cameraB.label
+        : entry.cameraA.label,
+    );
+  }, [clips, entry]);
 
   const rename = useCallback(() => {
     if (entry === null) {
+      return;
+    }
+    if (Platform.OS === "android") {
+      setRenameDraft(entry.name ?? "");
       return;
     }
     Alert.prompt(
@@ -85,36 +109,63 @@ export function RecordingDetailScreen() {
     );
   }, [entry, load]);
 
+  const saveRename = async () => {
+    if (entry === null || renameDraft === null || !renameDraft.trim() || renameBusy) return;
+    setRenameBusy(true);
+    try {
+      await multicamCaptureModule.renameRecording(entry.recordingSetId, renameDraft.trim());
+      await load();
+      setRenameDraft(null);
+    } catch {
+      Alert.alert("Couldn't rename take", "Your name was kept. Please try again.");
+    } finally {
+      setRenameBusy(false);
+    }
+  };
+
   const share = useCallback(async () => {
-    if (entry === null || !(await Sharing.isAvailableAsync())) {
-      return;
+    if (entry === null) return;
+    try {
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert("Sharing unavailable", "Sharing isn't available on this device.");
+        return;
+      }
+      for (const clip of clips) {
+        await Sharing.shareAsync(clip.uri, { mimeType: "video/mp4", UTI: "public.mpeg-4" });
+      }
+    } catch {
+      Alert.alert("Couldn't share take", "Your videos are still in the library. Please try again.");
     }
-    for (const clip of entry.clipUris) {
-      await Sharing.shareAsync(clip.uri, {
-        mimeType: "video/mp4",
-        UTI: "public.mpeg-4",
-      });
-    }
-  }, [entry]);
+  }, [clips, entry]);
 
   const saveToPhotos = useCallback(async () => {
-    if (entry === null) {
-      return;
+    if (entry === null) return;
+    try {
+      if (Platform.OS !== "android" || Number(Platform.Version) < 30) {
+        const permission = await MediaLibrary.requestPermissionsAsync(true);
+        if (!permission.granted) {
+          Alert.alert(
+            `${galleryName === "Photos" ? "Photos" : "Gallery"} access is off`,
+            Platform.OS === "android"
+              ? "Allow storage write access in Settings to save this take."
+              : "Allow Add Photos access in Settings to save this take.",
+          );
+          return;
+        }
+      }
+      for (const clip of clips) {
+        if (Platform.OS === "android" && Number(Platform.Version) >= 30) {
+          await MediaLibrary.Asset.create(clip.uri);
+        } else {
+          await saveToLibraryAsync(clip.uri);
+        }
+      }
+      await playHaptic("success");
+      Alert.alert(`Saved to ${galleryName}`, "Every video in this take was saved.");
+    } catch {
+      Alert.alert("Couldn't save every video", "Your take is still in the library. Some videos may already have been saved. Please try again.");
     }
-    const permission = await MediaLibrary.requestPermissionsAsync(true);
-    if (!permission.granted) {
-      Alert.alert(
-        "Photos access is off",
-        "Allow Add Photos access in Settings to save this take.",
-      );
-      return;
-    }
-    for (const clip of entry.clipUris) {
-      await MediaLibrary.saveToLibraryAsync(clip.uri);
-    }
-    await playHaptic("success");
-    Alert.alert("Saved to Photos", "Every video in this take was saved.");
-  }, [entry]);
+  }, [clips, entry, galleryName]);
 
   const confirmDelete = useCallback(() => {
     if (entry === null) {
@@ -146,6 +197,30 @@ export function RecordingDetailScreen() {
     );
   }
 
+  if (entry !== null && health === "damaged") {
+    return (
+      <View style={styles.centered}>
+        <Icon name="exclamationmark.triangle" size="prominent" tone="critical" />
+        <AppText style={styles.centeredText} variant="headline">
+          {"This take couldn't be saved"}
+        </AppText>
+        <AppText style={styles.centeredText} tone="secondary">
+          Recording stopped before the video was finished, so there is nothing to play. Delete it to free up space.
+        </AppText>
+        <Pressable
+          accessibilityRole="button"
+          onPress={confirmDelete}
+          style={[styles.deleteButton, styles.damagedDelete]}
+        >
+          <Icon name="trash" tone="critical" />
+          <AppText tone="critical" variant="headline">
+            Delete take
+          </AppText>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (entry === null || selectedUri === null) {
     return (
       <View style={styles.centered}>
@@ -155,82 +230,123 @@ export function RecordingDetailScreen() {
     );
   }
 
+  // the dialog sits outside the scroll view, whose keyboard handling would otherwise spend the
+  // first tap on Save dismissing the keyboard
   return (
-    <ScrollView
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
-      style={styles.screen}
-    >
-      <View style={styles.videoCard}>
-        <VideoView
-          contentFit="contain"
-          nativeControls
-          player={player}
-          style={styles.video}
-        />
-      </View>
-
-      {entry.clipUris.length > 1 ? (
-        <View style={styles.clipPicker}>
-          {entry.clipUris.map((clip, index) => (
-            <Pressable
-              accessibilityRole="button"
-              key={clip.clipId}
-              onPress={() => {
-                player.pause();
-                setSelectedClipIndex(index);
-              }}
-              style={[
-                styles.clipButton,
-                index === selectedClipIndex && styles.clipButtonSelected,
-              ]}
-            >
-              <AppText
-                tone={index === selectedClipIndex ? "previewLabel" : "primary"}
-                variant="caption"
-              >
-                {clipLabels[index]}
-              </AppText>
-            </Pressable>
-          ))}
+    <>
+      <Modal visible={renameDraft !== null} transparent animationType="fade" onRequestClose={() => { if (!renameBusy) setRenameDraft(null); }}>
+        <View style={styles.dialogBackdrop}>
+          <View accessibilityViewIsModal style={styles.dialog}>
+            <AppText variant="title">Rename take</AppText>
+            <AppText>Choose a name that will stay with this recording.</AppText>
+            <TextInput
+              accessibilityLabel="Take name"
+              autoFocus
+              editable={!renameBusy}
+              maxLength={120}
+              onChangeText={setRenameDraft}
+              onSubmitEditing={() => void saveRename()}
+              returnKeyType="done"
+              style={styles.renameInput}
+              value={renameDraft ?? ""}
+            />
+            <View style={styles.dialogActions}>
+              <Pressable accessibilityRole="button" disabled={renameBusy} onPress={() => setRenameDraft(null)} style={styles.dialogButton}>
+                <AppText>Cancel</AppText>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityState={{ disabled: renameBusy || !renameDraft?.trim() }} disabled={renameBusy || !renameDraft?.trim()} onPress={() => void saveRename()} style={styles.dialogButton}>
+                <AppText tone="accent">{renameBusy ? "Saving…" : "Save"}</AppText>
+              </Pressable>
+            </View>
+          </View>
         </View>
-      ) : null}
+      </Modal>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
+        style={styles.screen}
+      >
+        <View style={styles.videoCard}>
+          <VideoView
+            contentFit="contain"
+            nativeControls
+            player={player}
+            style={styles.video}
+          />
+        </View>
 
-      <View style={styles.headingRow}>
-        <View style={styles.headingText}>
-          <AppText numberOfLines={2} variant="title">
-            {recordingDisplayName(entry)}
-          </AppText>
-          <AppText tone="secondary">
-            {formatRecordingDuration(recordingDurationMs(entry))} · {" "}
-            {entry.preset.width} × {entry.preset.height} · {entry.preset.frameRate} fps
-          </AppText>
+        {clips.length > 1 ? (
+          <View style={styles.clipPicker}>
+            {clips.map((clip, index) => (
+              <Pressable
+                accessibilityRole="button"
+                key={clip.clipId}
+                onPress={() => {
+                  player.pause();
+                  setSelectedClipIndex(index);
+                }}
+                style={[
+                  styles.clipButton,
+                  index === selectedClipIndex && styles.clipButtonSelected,
+                ]}
+              >
+                <AppText
+                  tone={index === selectedClipIndex ? "previewLabel" : "primary"}
+                  variant="caption"
+                >
+                  {clipLabels[index]}
+                </AppText>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
+        <View style={styles.headingRow}>
+          <View style={styles.headingText}>
+            <AppText numberOfLines={2} variant="title">
+              {recordingDisplayName(entry)}
+            </AppText>
+            <AppText tone="secondary">
+              {formatRecordingDuration(recordingDurationMs(entry))} ·{" "}
+              {entry.preset.width} × {entry.preset.height} · {entry.preset.frameRate} fps
+            </AppText>
+            {health === "recovered" ? (
+              <View style={styles.recoveredNotice}>
+                <Icon name="exclamationmark.triangle" size="compact" tone="secondary" />
+                <AppText style={styles.recoveredText} tone="secondary" variant="callout">
+                  {clips.length < entry.clips.length
+                    ? "Recovered after an interruption. One video in this take couldn't be saved."
+                    : "Recovered after an interruption. The end of the take may be missing."}
+                </AppText>
+              </View>
+            ) : null}
+          </View>
+          <Pressable
+            accessibilityLabel="Rename take"
+            accessibilityRole="button"
+            onPress={rename}
+            style={styles.iconButton}
+          >
+            <Icon name="pencil" tone="accent" />
+          </Pressable>
+        </View>
+
+        <View style={styles.actionGrid}>
+          <ActionButton icon="square.and.arrow.up" label="Share" onPress={share} />
+          <ActionButton icon="photo.badge.arrow.down" label={`Save to ${galleryName}`} onPress={saveToPhotos} />
         </View>
         <Pressable
-          accessibilityLabel="Rename take"
           accessibilityRole="button"
-          onPress={rename}
-          style={styles.iconButton}
+          onPress={confirmDelete}
+          style={styles.deleteButton}
         >
-          <Icon name="pencil" tone="accent" />
+          <Icon name="trash" tone="critical" />
+          <AppText tone="critical" variant="headline">
+            Delete take
+          </AppText>
         </Pressable>
-      </View>
-
-      <View style={styles.actionGrid}>
-        <ActionButton icon="square.and.arrow.up" label="Share" onPress={share} />
-        <ActionButton icon="photo.badge.arrow.down" label="Save to Photos" onPress={saveToPhotos} />
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        onPress={confirmDelete}
-        style={styles.deleteButton}
-      >
-        <Icon name="trash" tone="critical" />
-        <AppText tone="critical" variant="headline">
-          Delete take
-        </AppText>
-      </Pressable>
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 }
 
@@ -239,10 +355,11 @@ function ActionButton({
   label,
   onPress,
 }: Readonly<{
-  icon: string;
+  icon: IconName;
   label: string;
   onPress: () => Promise<void>;
 }>) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -255,7 +372,12 @@ function ActionButton({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  dialogBackdrop: { flex: 1, justifyContent: "center", padding: spacing.section, backgroundColor: "rgba(0,0,0,0.5)" },
+  dialog: { backgroundColor: colors.surface, borderRadius: radii.card, padding: spacing.control, gap: spacing.regular },
+  dialogActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.regular },
+  dialogButton: { minHeight: 48, justifyContent: "center", paddingHorizontal: spacing.regular },
+  renameInput: { color: colors.primary, backgroundColor: colors.raisedSurface, borderRadius: radii.small, padding: spacing.regular, fontSize: 17 },
   screen: { backgroundColor: colors.background, flex: 1 },
   content: { gap: spacing.control, padding: spacing.control, paddingBottom: spacing.spacious },
   centered: {
@@ -266,6 +388,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: spacing.control,
   },
+  centeredText: { maxWidth: 320, textAlign: "center" },
+  damagedDelete: { alignSelf: "stretch", marginTop: spacing.section, paddingHorizontal: spacing.control },
+  recoveredNotice: { alignItems: "center", flexDirection: "row", gap: spacing.small },
+  recoveredText: { flex: 1 },
   videoCard: {
     // the height cap narrows the card on tall phones, so keep it centered
     alignSelf: "center",

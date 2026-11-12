@@ -5,14 +5,18 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { AppText } from "@/components/app-text";
 import { Icon } from "@/components/icon";
 import {
-  colors,
   radii,
   resolveThemePalette,
   spacing,
   typography,
+  useThemeColors,
+  useThemedStyles,
+  type ThemeColors,
 } from "@/theme";
 
 export function FoundationPreviewScreen() {
+  const styles = useThemedStyles(createStyles);
+  const colors = useThemeColors();
   const [largeAccessibilityText, setLargeAccessibilityText] = useState(false);
   const [increaseContrast, setIncreaseContrast] = useState(false);
   const [darkCameraPreview, setDarkCameraPreview] = useState(false);
@@ -151,7 +155,7 @@ export function FoundationPreviewScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: {
     backgroundColor: colors.background,
     flex: 1,

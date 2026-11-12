@@ -1,4 +1,4 @@
-import { DynamicColorIOS, type ColorValue, type TextStyle } from "react-native";
+import { Appearance, DynamicColorIOS, Platform, type ColorValue, type TextStyle } from "react-native";
 
 export type ThemeAppearance = "light" | "dark";
 export type ThemeContrast = "standard" | "high";
@@ -94,6 +94,9 @@ export function resolveThemePalette(
 }
 
 function adaptiveColor(role: ThemeColorRole): ColorValue {
+  if (Platform.OS !== "ios") {
+    return themePalettes[Appearance.getColorScheme() === "dark" ? "dark" : "light"].standard[role];
+  }
   return DynamicColorIOS({
     light: themePalettes.light.standard[role],
     dark: themePalettes.dark.standard[role],
