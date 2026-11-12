@@ -76,7 +76,7 @@ class TipJarStoreTest {
   }
 
   @Test
-  fun concurrentPurchaseIsRejectedAndAcknowledgementFailureIsRetriedOnRestore() = runTest {
+  fun concurrentPurchaseIsRejectedAndAcknowledgementFailureStillThanksAndIsRetried() = runTest {
     val billing = FakeBilling()
     val store = TipJarStore(billing, backgroundScope) {}
     val first = async { runCatching { store.purchase() } }
@@ -86,9 +86,14 @@ class TipJarStoreTest {
     billing.owned = listOf(SupportPurchase("paid", true, false))
     billing.update()
     runCurrent()
-    assertTrue(first.await().isFailure)
+    // the money moved, so the supporter is thanked even though play did not take the acknowledgement yet
+    assertEquals("purchased", first.await().getOrThrow())
+    assertEquals(true, store.status()["hasSupported"])
+    assertTrue(billing.acknowledgements.isEmpty())
     billing.acknowledgementFails = false
     assertEquals(true, store.restore()["hasSupported"])
+    assertEquals(listOf("paid"), billing.acknowledgements)
+    store.restore()
     assertEquals(listOf("paid"), billing.acknowledgements)
   }
 

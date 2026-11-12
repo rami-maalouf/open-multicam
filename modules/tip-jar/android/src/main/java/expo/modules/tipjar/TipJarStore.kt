@@ -1,5 +1,6 @@
 package expo.modules.tipjar
 
+import android.util.Log
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -123,14 +124,22 @@ internal class TipJarStore(
     billing.close()
   }
 
+  // the charge has already succeeded when this runs, so a failed acknowledgement must not turn it into
+  // an error. it is retried on the next status, restore or foreground refresh, well within the three
+  // days google play waits before refunding an unacknowledged purchase.
   private suspend fun acknowledge(purchases: List<SupportPurchase>) {
     acknowledgementLock.withLock {
       for (purchase in purchases) {
         if (purchase.completed) {
           check(purchase.token.isNotBlank()) { "Google Play returned an invalid purchase token." }
           if (!purchase.acknowledged && purchase.token !in acknowledgedTokens) {
-            billing.acknowledge(purchase.token)
-            acknowledgedTokens.add(purchase.token)
+            try {
+              billing.acknowledge(purchase.token)
+              acknowledgedTokens.add(purchase.token)
+            } catch (error: Exception) {
+              if (error is kotlinx.coroutines.CancellationException) throw error
+              Log.w("TipJar", "Acknowledgement failed and will be retried.", error)
+            }
           }
         }
       }
