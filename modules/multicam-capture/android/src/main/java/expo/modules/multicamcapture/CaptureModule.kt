@@ -57,10 +57,11 @@ class CaptureModule : Module() {
     val manager = appContext.permissions
     if (manager == null) { promise.reject("ERR_PERMISSIONS", "The permission service is unavailable.", null); return }
     manager.getPermissions({ result ->
+      // android lets the app ask again after a first denial, so only a permanent denial sends the viewer to settings
       fun status(permission: String) = when (result[permission]?.status) {
         PermissionsStatus.GRANTED -> "authorized"
         PermissionsStatus.UNDETERMINED -> "not-determined"
-        else -> "denied"
+        else -> if (result[permission]?.canAskAgain == true) "not-determined" else "denied"
       }
       promise.resolve(mapOf("kind" to "capture-permissions", "camera" to status(Manifest.permission.CAMERA), "microphone" to status(Manifest.permission.RECORD_AUDIO)))
     }, Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
