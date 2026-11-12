@@ -120,4 +120,6 @@ bun run android
 
 For an installable preview APK, use `bunx eas-cli build --platform android --profile preview`. The production profile produces a Play Store app bundle. Both use package `com.ramimaalouf.openmulticam`.
 
+To sideload a build without EAS, run `./gradlew app:assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a` in `android/`. The generated project signs release builds with the debug keystore, so that APK installs on any phone but cannot go to Google Play, and the tip jar only works in builds installed from Play.
+
 Android emulators can verify permissions, single-camera capture, the library, playback and export. Dual-camera modes require a device that advertises a compatible concurrent camera combination; an emulator cannot establish multicamera hardware parity. Play purchases require the app and tip product configured in Google Play Console and an eligible Play test account.
