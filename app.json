@@ -2,10 +2,11 @@
   "expo": {
     "name": "OpenMulticam",
     "slug": "open-multicam",
-    "description": "Private, native multicamera video recording for iPhone.",
+    "description": "Private, native multicamera video recording.",
     "version": "1.0.1",
     "platforms": [
-      "ios"
+      "ios",
+      "android"
     ],
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -68,6 +69,25 @@
         "projectId": "7e272538-a33a-4184-9bd5-7b28712854b7"
       }
     },
-    "owner": "ramimaalouf"
+    "owner": "ramimaalouf",
+    "android": {
+      "package": "com.ramimaalouf.openmulticam",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#05090b"
+      }
+    }
   }
 }

@@ -9,6 +9,8 @@ config.resolver.blockList = [
   /[/\\]\.artifacts[/\\]/,
   /[/\\]coverage[/\\]/,
   /[/\\]dist-validation[/\\]/,
+  // expo's env watcher matches custom env names that its transformer cannot parse.
+  /[/\\]\.env\.(?!(?:local|development|production)(?:\.local)?$)[^/\\]+$/,
 ];
 
 module.exports = config;
