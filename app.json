@@ -25,7 +25,7 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "OpenMulticam uses your iPhone cameras to preview and record the camera views you select.",
         "NSMicrophoneUsageDescription": "OpenMulticam uses the selected microphone to record sound with your videos.",
-        "NSPhotoLibraryAddUsageDescription": "OpenMulticam saves videos to Photos only when you choose Export to Photos."
+        "NSPhotoLibraryAddUsageDescription": "OpenMulticam saves videos to Photos only when you choose Save to Photos."
       }
     },
     "plugins": [

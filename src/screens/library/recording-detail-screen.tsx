@@ -307,7 +307,7 @@ export function RecordingDetailScreen() {
               {recordingDisplayName(entry)}
             </AppText>
             <AppText tone="secondary">
-              {formatRecordingDuration(recordingDurationMs(entry))} · {" "}
+              {formatRecordingDuration(recordingDurationMs(entry))} ·{" "}
               {entry.preset.width} × {entry.preset.height} · {entry.preset.frameRate} fps
             </AppText>
             {health === "recovered" ? (
