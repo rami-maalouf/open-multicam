@@ -60,11 +60,17 @@ internal class CaptureRecorder(
         extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith(prefix) == true
       }
       val vt = track(video, "video/"); val at = track(audio, "audio/")
+      // recorder a starts its microphone before recorder b and the first frame exist, so a's audio is aligned
+      // to a's first frame and moved to b's first frame instead of being copied with a's raw times
+      fun firstVideoUs(file: File): Long = MediaExtractor().run {
+        try { setDataSource(file.path); selectTrack(track(this, "video/")); sampleTime } finally { release() }
+      }
+      val firstVideoA = firstVideoUs(source); val firstVideoB = firstVideoUs(destination)
       val writer = MediaMuxer(output.path, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
       muxer = writer
       val videoOutput = writer.addTrack(video.getTrackFormat(vt)); val audioOutput = writer.addTrack(audio.getTrackFormat(at))
       writer.start()
-      fun copy(extractor: MediaExtractor, input: Int, target: Int) {
+      fun copy(extractor: MediaExtractor, input: Int, target: Int, time: (Long) -> Long) {
         extractor.selectTrack(input)
         val format = extractor.getTrackFormat(input)
         val maxSize = if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE) else 0
@@ -74,12 +80,16 @@ internal class CaptureRecorder(
           buffer.clear()
           val count = extractor.readSampleData(buffer, 0)
           if (count < 0) break
-          info.set(0, count, extractor.sampleTime, if (extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0) MediaCodec.BUFFER_FLAG_KEY_FRAME else 0)
-          writer.writeSampleData(target, buffer, info)
+          val presentation = time(extractor.sampleTime)
+          if (presentation >= 0) {
+            info.set(0, count, presentation, if (extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0) MediaCodec.BUFFER_FLAG_KEY_FRAME else 0)
+            writer.writeSampleData(target, buffer, info)
+          }
           extractor.advance()
         }
       }
-      copy(video, vt, videoOutput); copy(audio, at, audioOutput)
+      copy(video, vt, videoOutput) { it }
+      copy(audio, at, audioOutput) { CaptureRules.shiftedAudioTimeUs(it, firstVideoA, firstVideoB) }
       writer.stop(); writer.release(); muxer = null
       check(output.renameTo(destination)) { "Could not attach the microphone track to the second recording." }
     } finally { video.release(); audio.release(); runCatching { muxer?.release() }; output.delete() }

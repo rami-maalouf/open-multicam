@@ -49,6 +49,54 @@ internal object CaptureRules {
     require(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}").matches(normalized)) { "Invalid recording identifier." }
     return UUID.fromString(normalized).toString()
   }
+
+  // js only sends portrait or landscape, so the display decides which way landscape is turned
+  fun deviceRotation(orientation: String, displayRotationDegrees: Int): Int =
+    if (orientation == "portrait") 0 else if (displayRotationDegrees == 270) 270 else 90
+
+  fun feedRotation(sensorOrientation: Int, deviceRotation: Int, front: Boolean): Int =
+    if (front) (sensorOrientation + deviceRotation) % 360 else (sensorOrientation - deviceRotation + 360) % 360
+
+  const val storageReserveBytes = 50L * 1024 * 1024
+
+  // a two-file take writes camera b again at stop to attach the microphone, so b's size stays reserved
+  fun remuxReserveBytes(cameraBBytes: Long): Long = cameraBBytes + cameraBBytes / 20
+
+  fun storageCritical(freeBytes: Long, remuxReserveBytes: Long): Boolean = freeBytes < storageReserveBytes + remuxReserveBytes
+
+  // both encoders receive the same first frame, so camera a's microphone keeps its offset from a's first
+  // video frame when it moves next to b's first video frame
+  fun shiftedAudioTimeUs(audioUs: Long, firstVideoAUs: Long, firstVideoBUs: Long): Long = audioUs - firstVideoAUs + firstVideoBUs
+
+  // a staging take left by a crash or a failed stop. playable clips become "recoverable" so the outcome
+  // kind matches a clip status, as the shared manifest schema requires
+  fun recovered(manifest: Payload, media: Map<String, Payload?>): Payload {
+    val clips = (manifest["clips"] as List<*>).map { raw -> (raw as Map<*, *>).entries.associate { it.key as String to it.value } }
+    val whole = (manifest["outcome"] as? Map<*, *>)?.get("kind") == "ready" && clips.all { media[it["id"] as String] != null }
+    if (whole) return manifest
+    val updated = clips.map { clip ->
+      val validated = media[clip["id"] as String]
+      clip + if (validated != null) mapOf("status" to "recoverable", "media" to validated, "issue" to "Recovered after the recording was interrupted.")
+        else mapOf("status" to "corrupt", "media" to null, "issue" to "The interrupted file could not be decoded.")
+    }
+    val playable = updated.filter { it["media"] != null }.map { it["id"] }
+    val warnings = (manifest["warnings"] as? List<*>).orEmpty() +
+      mapOf("kind" to "recovery", "message" to "Recording was interrupted before finalization.")
+    return manifest + mapOf("clips" to updated, "warnings" to warnings,
+      "outcome" to if (playable.isNotEmpty()) mapOf("kind" to "recoverable", "reason" to "finalization-incomplete", "playableClipIds" to playable)
+        else mapOf("kind" to "corrupt", "reason" to "unreadable-track"))
+  }
+}
+
+// a camera failure belongs to the camera generation that raised it: one per generation is acted on,
+// and a failure queued for an older generation must not tear down a session configured after it
+internal class FailureGate {
+  @Volatile private var failed = -1
+  fun admit(token: Int, current: Int): Boolean {
+    if (token != current || token == failed) return false
+    failed = token
+    return true
+  }
 }
 
 internal object PipLayout {

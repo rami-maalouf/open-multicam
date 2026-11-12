@@ -137,31 +137,28 @@ internal class CaptureStorage(context: Context, private val discovery: CaptureDi
     write(directory, manifest); return manifest
   }
   @Synchronized fun abandon() { activeId = null }
+  // a take that never encoded a frame holds nothing worth recovering
+  @Synchronized fun discard(recording: Recording) {
+    recording.directory.deleteRecursively()
+    if (activeId == recording.id) activeId = null
+  }
   private fun recover() {
     staging.listFiles().orEmpty().filter { it.isDirectory && it.name != activeId }.forEach { directory ->
-      runCatching {
+      val promoted = runCatching {
         val id = CaptureRules.identifier(directory.name)
-        val manifest = read(directory).toMutableMap()
+        val manifest = read(directory)
         require(manifest["schemaVersion"] == 1 && manifest["recordingSetId"] == id)
-        val clips = (manifest["clips"] as List<*>).map { raw ->
-          val clip = (raw as Map<*, *>).entries.associate { it.key as String to it.value }.toMutableMap()
-          val validated = runCatching { media(clipFile(directory, clip["relativePath"] as String)) }.getOrNull()
-          clip["media"] = validated
-          clip["status"] = if (validated != null) "ready" else "corrupt"
-          clip["issue"] = if (validated != null) null else "The interrupted file could not be decoded."
-          clip
+        val media = (manifest["clips"] as List<*>).associate { raw ->
+          val clip = raw as Map<*, *>
+          clip["id"] as String to runCatching { media(clipFile(directory, clip["relativePath"] as String)) }.getOrNull()
         }
-        val playable = clips.filter { it["status"] == "ready" }.map { it["id"] }
-        manifest["clips"] = clips
-        if ((manifest["outcome"] as? Map<*, *>)?.get("kind") != "ready" || playable.size != clips.size) {
-          manifest["outcome"] = if (playable.isNotEmpty()) mapOf("kind" to "recoverable", "reason" to "finalization-incomplete", "playableClipIds" to playable)
-            else mapOf("kind" to "corrupt", "reason" to "unreadable-track")
-          manifest["warnings"] = listOf(mapOf("kind" to "recovery", "message" to "Recording was interrupted before finalization."))
-          write(directory, manifest)
-        }
+        val recovered = CaptureRules.recovered(manifest, media)
+        if (recovered !== manifest) write(directory, recovered)
         val destination = File(library, id)
         if (!destination.exists()) check(directory.renameTo(destination))
-      }
+      }.isSuccess
+      // a folder without a readable manifest or any video data, for example a crash during prepare, has nothing to recover
+      if (!promoted && directory.listFiles().orEmpty().none { it.extension == "mp4" && it.length() > 0 }) directory.deleteRecursively()
     }
   }
 }
