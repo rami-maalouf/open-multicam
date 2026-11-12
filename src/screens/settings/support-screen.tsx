@@ -13,6 +13,8 @@ export function SupportScreen() {
   const styles = useThemedStyles(createStyles);
   const colors = useThemeColors();
   const storeName = Platform.OS === "android" ? "Google Play" : "App Store";
+  // "the App Store" but plain "Google Play"
+  const storePlace = Platform.OS === "android" ? "Google Play" : "the App Store";
   const storeProvider = Platform.OS === "android" ? "Google Play" : "Apple";
   const storeAccount = Platform.OS === "android" ? "Google Account" : "Apple Account";
   const [status, setStatus] = useState<TipJarStatus | null>(null);
@@ -28,11 +30,11 @@ export function SupportScreen() {
         setMessage(next.available || next.hasSupported ? null : "Donations are temporarily unavailable. You can still use every camera feature.");
       }
     }).catch(() => {
-      if (active.current) setMessage(`Couldn't connect to the ${storeName}. Please try again when you're online.`);
+      if (active.current) setMessage(`Couldn't connect to ${storePlace}. Please try again when you're online.`);
     }).finally(() => {
       if (active.current) setBusy(false);
     });
-  }, [storeName]);
+  }, [storePlace]);
 
   useEffect(() => {
     active.current = true;

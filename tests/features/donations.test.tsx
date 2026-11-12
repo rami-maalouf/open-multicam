@@ -130,3 +130,14 @@ it("identifies Google Play and the Google Account for Android donations", async 
     jest.restoreAllMocks();
   }
 });
+
+it("names Google Play without an article when it cannot be reached", async () => {
+  jest.replaceProperty(Platform, "OS", "android");
+  store.getStatus.mockRejectedValueOnce(new Error("offline"));
+  try {
+    const screen = render(<SupportScreen />);
+    await screen.findByText("Couldn't connect to Google Play. Please try again when you're online.");
+  } finally {
+    jest.restoreAllMocks();
+  }
+});
