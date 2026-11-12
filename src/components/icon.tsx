@@ -1,7 +1,7 @@
 import { Image, type ImageProps } from "expo-image";
 import { Platform } from "react-native";
 
-import { androidIconSource } from "@/components/icon-sources";
+import { androidIconSource, type IconName } from "@/components/icon-sources";
 import { iconSizes, useThemeColors } from "@/theme";
 
 export type IconTone =
@@ -26,7 +26,7 @@ export type IconProps = Omit<
   | "tintColor"
 > & {
   label?: string;
-  name: string;
+  name: IconName;
   size?: IconSize;
   tone?: IconTone;
 };

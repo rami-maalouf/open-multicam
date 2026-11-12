@@ -1,4 +1,4 @@
-const paths: Record<string, string> = {
+const paths = {
   "camera.fill": '<path d="M3 6h5l2-3h4l2 3h5v15H3z"/><circle cx="12" cy="13" r="4"/>',
   "rectangle.stack": '<path d="M3 8h18v13H3zM5 5h14M7 2h10"/>',
   "photo.on.rectangle": '<path d="M3 6h18v15H3zM6 3h15M3 17l6-6 5 5 3-3 4 4"/><circle cx="16" cy="10" r="1"/>',
@@ -7,7 +7,10 @@ const paths: Record<string, string> = {
   "chevron.up.chevron.down": '<path d="m8 8 4-4 4 4M8 16l4 4 4-4"/>',
   "rectangle.inset.filled": '<path d="M2 4h20v16H2zM13 12h7v6h-7z"/>',
   "rectangle.split.1x2": '<path d="M2 3h20v18H2zM2 12h20"/>',
+  "rectangle.split.1x2.fill": '<path d="M2 3h20v18H2zM2 12h20"/>',
   "rectangle.split.2x1": '<path d="M2 3h20v18H2zM12 3v18"/>',
+  "rectangle.split.2x1.fill": '<path d="M2 3h20v18H2zM12 3v18"/>',
+  "video.fill": '<path d="M2 6h13v12H2zM15 10l7-4v12l-7-4"/>',
   "square.on.square": '<path d="M8 8h13v13H8zM4 16H2V2h14v2"/>',
   "xmark.circle.fill": '<circle cx="12" cy="12" r="9"/><path d="m8 8 8 8M8 16l8-8"/>',
   "exclamationmark.triangle": '<path d="m12 3 10 18H2zM12 9v5M12 17v1"/>',
@@ -22,10 +25,15 @@ const paths: Record<string, string> = {
   "pause.fill": '<path d="M7 4v16M17 4v16"/>',
   "play.fill": '<path d="m6 3 15 9-15 9z"/>',
   "circle.fill": '<circle cx="12" cy="12" r="8" fill="black"/>',
-};
+} as const satisfies Record<string, string>;
 
-export function androidIconSource(name: string): string {
-  const drawing = paths[name] ?? paths["camera.fill"];
+// every icon the app draws must have an android glyph, so a missing one fails typecheck
+export type IconName = keyof typeof paths;
+
+export const iconNames = Object.keys(paths) as readonly IconName[];
+
+export function androidIconSource(name: IconName): string {
+  const drawing = paths[name];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${drawing}</svg>`;
   return `data:image/svg+xml;base64,${btoa(svg)}`;
 }
