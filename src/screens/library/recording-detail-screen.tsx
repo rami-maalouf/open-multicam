@@ -1,4 +1,5 @@
 import * as MediaLibrary from "expo-media-library";
+import { saveToLibraryAsync } from "expo-media-library/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -6,7 +7,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
+  Platform,
   Pressable,
+  TextInput,
   ScrollView,
   StyleSheet,
   View,
@@ -22,14 +26,19 @@ import {
   type RecordingLibraryEntry,
 } from "@/core/library/entry";
 import { playHaptic } from "@/foundation/haptics/haptics";
-import { colors, radii, spacing } from "@/theme";
+import { radii, spacing, useThemeColors, useThemedStyles, type ThemeColors } from "@/theme";
 
 export function RecordingDetailScreen() {
+  const styles = useThemedStyles(createStyles);
+  const colors = useThemeColors();
   const { recordingSetId } = useLocalSearchParams<{
     recordingSetId: string;
   }>();
   const router = useRouter();
   const [entry, setEntry] = useState<RecordingLibraryEntry | null>(null);
+  const [renameDraft, setRenameDraft] = useState<string | null>(null);
+  const [renameBusy, setRenameBusy] = useState(false);
+  const galleryName = Platform.OS === "android" ? "gallery" : "Photos";
   const [isLoading, setLoading] = useState(true);
   const [selectedClipIndex, setSelectedClipIndex] = useState(0);
   const selectedUri = entry?.clipUris[selectedClipIndex]?.uri ?? null;
@@ -63,6 +72,10 @@ export function RecordingDetailScreen() {
     if (entry === null) {
       return;
     }
+    if (Platform.OS === "android") {
+      setRenameDraft(entry.name ?? "");
+      return;
+    }
     Alert.prompt(
       "Rename take",
       "Choose a name that will stay with this recording.",
@@ -85,36 +98,63 @@ export function RecordingDetailScreen() {
     );
   }, [entry, load]);
 
-  const share = useCallback(async () => {
-    if (entry === null || !(await Sharing.isAvailableAsync())) {
-      return;
+  const saveRename = async () => {
+    if (entry === null || renameDraft === null || !renameDraft.trim() || renameBusy) return;
+    setRenameBusy(true);
+    try {
+      await multicamCaptureModule.renameRecording(entry.recordingSetId, renameDraft.trim());
+      await load();
+      setRenameDraft(null);
+    } catch {
+      Alert.alert("Couldn't rename take", "Your name was kept. Please try again.");
+    } finally {
+      setRenameBusy(false);
     }
-    for (const clip of entry.clipUris) {
-      await Sharing.shareAsync(clip.uri, {
-        mimeType: "video/mp4",
-        UTI: "public.mpeg-4",
-      });
+  };
+
+  const share = useCallback(async () => {
+    if (entry === null) return;
+    try {
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert("Sharing unavailable", "Sharing isn't available on this device.");
+        return;
+      }
+      for (const clip of entry.clipUris) {
+        await Sharing.shareAsync(clip.uri, { mimeType: "video/mp4", UTI: "public.mpeg-4" });
+      }
+    } catch {
+      Alert.alert("Couldn't share take", "Your videos are still in the library. Please try again.");
     }
   }, [entry]);
 
   const saveToPhotos = useCallback(async () => {
-    if (entry === null) {
-      return;
+    if (entry === null) return;
+    try {
+      if (Platform.OS !== "android" || Number(Platform.Version) < 30) {
+        const permission = await MediaLibrary.requestPermissionsAsync(true);
+        if (!permission.granted) {
+          Alert.alert(
+            `${galleryName === "Photos" ? "Photos" : "Gallery"} access is off`,
+            Platform.OS === "android"
+              ? "Allow storage write access in Settings to save this take."
+              : "Allow Add Photos access in Settings to save this take.",
+          );
+          return;
+        }
+      }
+      for (const clip of entry.clipUris) {
+        if (Platform.OS === "android" && Number(Platform.Version) >= 30) {
+          await MediaLibrary.Asset.create(clip.uri);
+        } else {
+          await saveToLibraryAsync(clip.uri);
+        }
+      }
+      await playHaptic("success");
+      Alert.alert(`Saved to ${galleryName}`, "Every video in this take was saved.");
+    } catch {
+      Alert.alert("Couldn't save every video", "Your take is still in the library. Some videos may already have been saved. Please try again.");
     }
-    const permission = await MediaLibrary.requestPermissionsAsync(true);
-    if (!permission.granted) {
-      Alert.alert(
-        "Photos access is off",
-        "Allow Add Photos access in Settings to save this take.",
-      );
-      return;
-    }
-    for (const clip of entry.clipUris) {
-      await MediaLibrary.saveToLibraryAsync(clip.uri);
-    }
-    await playHaptic("success");
-    Alert.alert("Saved to Photos", "Every video in this take was saved.");
-  }, [entry]);
+  }, [entry, galleryName]);
 
   const confirmDelete = useCallback(() => {
     if (entry === null) {
@@ -161,6 +201,32 @@ export function RecordingDetailScreen() {
       contentInsetAdjustmentBehavior="automatic"
       style={styles.screen}
     >
+      <Modal visible={renameDraft !== null} transparent animationType="fade" onRequestClose={() => { if (!renameBusy) setRenameDraft(null); }}>
+        <View style={styles.dialogBackdrop}>
+          <View accessibilityViewIsModal style={styles.dialog}>
+            <AppText variant="title">Rename take</AppText>
+            <AppText>Choose a name that will stay with this recording.</AppText>
+            <TextInput
+              accessibilityLabel="Take name"
+              autoFocus
+              editable={!renameBusy}
+              onChangeText={setRenameDraft}
+              onSubmitEditing={() => void saveRename()}
+              returnKeyType="done"
+              style={styles.renameInput}
+              value={renameDraft ?? ""}
+            />
+            <View style={styles.dialogActions}>
+              <Pressable accessibilityRole="button" disabled={renameBusy} onPress={() => setRenameDraft(null)} style={styles.dialogButton}>
+                <AppText>Cancel</AppText>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityState={{ disabled: renameBusy || !renameDraft?.trim() }} disabled={renameBusy || !renameDraft?.trim()} onPress={() => void saveRename()} style={styles.dialogButton}>
+                <AppText tone="accent">{renameBusy ? "Saving…" : "Save"}</AppText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <View style={styles.videoCard}>
         <VideoView
           contentFit="contain"
@@ -218,7 +284,7 @@ export function RecordingDetailScreen() {
 
       <View style={styles.actionGrid}>
         <ActionButton icon="square.and.arrow.up" label="Share" onPress={share} />
-        <ActionButton icon="photo.badge.arrow.down" label="Save to Photos" onPress={saveToPhotos} />
+        <ActionButton icon="photo.badge.arrow.down" label={`Save to ${galleryName}`} onPress={saveToPhotos} />
       </View>
       <Pressable
         accessibilityRole="button"
@@ -243,6 +309,7 @@ function ActionButton({
   label: string;
   onPress: () => Promise<void>;
 }>) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -255,7 +322,12 @@ function ActionButton({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  dialogBackdrop: { flex: 1, justifyContent: "center", padding: spacing.section, backgroundColor: "rgba(0,0,0,0.5)" },
+  dialog: { backgroundColor: colors.surface, borderRadius: radii.card, padding: spacing.control, gap: spacing.regular },
+  dialogActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.regular },
+  dialogButton: { minHeight: 48, justifyContent: "center", paddingHorizontal: spacing.regular },
+  renameInput: { color: colors.primary, backgroundColor: colors.raisedSurface, borderRadius: radii.small, padding: spacing.regular, fontSize: 17 },
   screen: { backgroundColor: colors.background, flex: 1 },
   content: { gap: spacing.control, padding: spacing.control, paddingBottom: spacing.spacious },
   centered: {

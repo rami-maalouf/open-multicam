@@ -1,15 +1,20 @@
 import { Button, Column, Host } from "@expo/ui";
 import { Link } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, ScrollView, StyleSheet, View } from "react-native";
+import { AppState, Platform, ScrollView, StyleSheet, View } from "react-native";
 
 import tipJar, { type TipJarStatus } from "../../../modules/tip-jar";
 import { AppText } from "@/components/app-text";
 import { Icon } from "@/components/icon";
 import { supportUrl } from "@/core/privacy";
-import { colors, radii, spacing } from "@/theme";
+import { radii, spacing, useThemeColors, useThemedStyles, type ThemeColors } from "@/theme";
 
 export function SupportScreen() {
+  const styles = useThemedStyles(createStyles);
+  const colors = useThemeColors();
+  const storeName = Platform.OS === "android" ? "Google Play" : "App Store";
+  const storeProvider = Platform.OS === "android" ? "Google Play" : "Apple";
+  const storeAccount = Platform.OS === "android" ? "Google Account" : "Apple Account";
   const [status, setStatus] = useState<TipJarStatus | null>(null);
   const [busy, setBusy] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
@@ -23,11 +28,11 @@ export function SupportScreen() {
         setMessage(next.available || next.hasSupported ? null : "Donations are temporarily unavailable. You can still use every camera feature.");
       }
     }).catch(() => {
-      if (active.current) setMessage("Couldn't connect to the App Store. Please try again when you're online.");
+      if (active.current) setMessage(`Couldn't connect to the ${storeName}. Please try again when you're online.`);
     }).finally(() => {
       if (active.current) setBusy(false);
     });
-  }, []);
+  }, [storeName]);
 
   useEffect(() => {
     active.current = true;
@@ -53,18 +58,18 @@ export function SupportScreen() {
         const restored = await tipJar.restore();
         if (active.current) {
           setStatus(restored);
-          setMessage(restored.hasSupported ? null : "No previous donation was found for this Apple Account.");
+          setMessage(restored.hasSupported ? null : `No previous donation was found for this ${storeAccount}.`);
         }
       } else {
         const result = await tipJar.purchase();
         if (active.current && result === "purchased") {
           setStatus((current) => ({ available: current?.available ?? true, displayPrice: current?.displayPrice, hasSupported: true }));
         } else if (active.current && result === "pending") {
-          setMessage("Your donation is awaiting approval from Apple. Thank you for your support.");
+          setMessage(`Your donation is awaiting approval from ${storeProvider}. Thank you for your support.`);
         }
       }
     } catch {
-      if (active.current) setMessage("The App Store couldn't complete this request. Please try again. You can restore a previous donation using Restore Purchase.");
+      if (active.current) setMessage(`${storeName} couldn't complete this request. Please try again. You can restore a previous donation using Restore Purchase.`);
     } finally {
       operationRunning.current = false;
       if (active.current) setBusy(false);
@@ -86,7 +91,7 @@ export function SupportScreen() {
           {status?.hasSupported ? "Thank you for your support" : "Support OpenMulticam"}
         </AppText>
         <AppText tone="secondary" variant="body">
-          {status?.hasSupported ? "Your donation is restored on this Apple Account. I'm grateful you chose to support the app." : "A one-time donation, billed by Apple. Every camera feature is free, whether you donate or not. There is no subscription."}
+          {status?.hasSupported ? `Your donation is restored on this ${storeAccount}. I'm grateful you chose to support the app.` : `A one-time donation, billed by ${storeProvider}. Every camera feature is free, whether you donate or not. There is no subscription.`}
         </AppText>
         {!status?.hasSupported && (
           <Host matchContents seedColor={colors.accent}>
@@ -94,7 +99,7 @@ export function SupportScreen() {
               <Button
                 testID="donate-button"
                 disabled={busy}
-                label={busy ? "Connecting to App Store…" : status?.available && status.displayPrice ? `Donate ${status.displayPrice}` : "Retry App Store"}
+                label={busy ? `Connecting to ${storeName}…` : status?.available && status.displayPrice ? `Donate ${status.displayPrice}` : `Retry ${storeName}`}
                 onPress={() => {
                   if (status?.available && status.displayPrice) void run("purchase");
                   else { setBusy(true); void refresh(); }
@@ -116,7 +121,7 @@ export function SupportScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.control, gap: spacing.spacious },
   intro: { gap: spacing.regular, paddingTop: spacing.regular },

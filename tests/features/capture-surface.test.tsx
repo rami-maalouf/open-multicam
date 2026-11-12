@@ -1,6 +1,6 @@
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 
 import { CaptureScreen } from "@/screens/shell/app-shell-screens";
 import { render } from "@/testing/render";
@@ -247,7 +247,7 @@ describe("native capture surface", () => {
     const screen = render(<CaptureScreen />);
 
     await waitFor(() => {
-      expect(screen.queryByText("Two cameras,\none iPhone.")).toBeNull();
+      expect(screen.queryByText("Two cameras,\none device.")).toBeNull();
     });
     expect(screen.getByText("SimCam Back")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
@@ -317,7 +317,7 @@ describe("native capture surface", () => {
     });
     // the first screen shows the mark and the headline, and the launch image gives way to it
     expect(screen.getByTestId("capture-brand-mark")).toBeTruthy();
-    expect(screen.getByText("Two cameras,\none iPhone.")).toBeTruthy();
+    expect(screen.getByText("Two cameras,\none device.")).toBeTruthy();
     expect(mockRevealApp).toHaveBeenCalled();
     fireEvent.press(screen.getByRole("button", { name: "Continue" }));
 
@@ -325,6 +325,36 @@ describe("native capture surface", () => {
       expect(mockRequestCameraPermission).toHaveBeenCalledTimes(1);
       expect(mockRequestMicrophonePermission).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("offers microphone permission on Android when camera access was already granted", async () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    mockGetPermissionStatus.mockResolvedValue({
+      kind: "capture-permissions", camera: "authorized", microphone: "not-determined",
+    });
+    try {
+      const screen = render(<CaptureScreen />);
+      fireEvent.press(await screen.findByRole("button", { name: "Continue" }));
+      await waitFor(() => expect(mockRequestMicrophonePermission).toHaveBeenCalledTimes(1));
+    } finally {
+      jest.restoreAllMocks();
+    }
+  });
+
+  it("keeps an active take intact when focus refreshes", async () => {
+    mockDiscoverCapabilities.mockResolvedValue(simcamCapabilities);
+    const screen = render(<CaptureScreen />);
+    const record = await screen.findByRole("button", { name: "Record" });
+    await waitFor(() => expect(record).toBeEnabled());
+    fireEvent.press(record);
+    await screen.findByRole("button", { name: "Stop recording" });
+    const configurationCount = mockConfigure.mock.calls.length;
+    await act(async () => {
+      mockCaptureFocusEffect?.();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(mockConfigure).toHaveBeenCalledTimes(configurationCount);
+    expect(screen.getByRole("button", { name: "Stop recording" })).toBeEnabled();
   });
 
   it("opens Settings after camera access is denied", async () => {

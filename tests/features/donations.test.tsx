@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { fireEvent } from "@testing-library/react-native";
 
 import tipJar from "../../modules/tip-jar";
@@ -114,4 +115,18 @@ it("renders the privacy policy offline", async () => {
   await waitFor(() => expect(screen.getByText("Your recordings stay with you")).toBeTruthy());
   expect(screen.getByText("Optional donations")).toBeTruthy();
   expect(screen.getByText("Contact support")).toBeTruthy();
+});
+
+it("identifies Google Play and the Google Account for Android donations", async () => {
+  jest.replaceProperty(Platform, "OS", "android");
+  store.restore.mockResolvedValue(available);
+  try {
+    const screen = render(<SupportScreen />);
+    await screen.findByText("Donate $1.99");
+    expect(screen.getByText(/billed by Google Play/)).toBeTruthy();
+    fireEvent.press(screen.getByTestId("restore-donation-button"));
+    await screen.findByText("No previous donation was found for this Google Account.");
+  } finally {
+    jest.restoreAllMocks();
+  }
 });

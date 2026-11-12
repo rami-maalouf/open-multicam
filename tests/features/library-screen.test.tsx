@@ -51,7 +51,7 @@ describe("recording library", () => {
     const screen = render(<LibraryScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText("Your takes stay on this iPhone")).toBeTruthy();
+      expect(screen.getByText("Your takes stay on this device")).toBeTruthy();
     });
     expect(screen.getByRole("button", { name: "Open camera" })).toBeTruthy();
   });

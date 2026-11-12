@@ -4,6 +4,7 @@ import {
   AppState,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -45,7 +46,7 @@ import {
   reportRecorderSuccess,
 } from "@/core/telemetry/recorder";
 import { playHaptic } from "@/foundation/haptics/haptics";
-import { colors, radii, spacing } from "@/theme";
+import { radii, spacing, useThemedStyles, type ThemeColors } from "@/theme";
 
 type CapturePhase =
   | "checking"
@@ -223,11 +224,12 @@ function formatElapsed(elapsedMs: number): string {
 
 function permissionMessage(status: CapturePermissionStatus): string {
   return status === "restricted"
-    ? "Camera access is restricted on this iPhone."
+    ? "Camera access is restricted on this device."
     : "Camera access is off. Open Settings to use OpenMulticam.";
 }
 
 export function CaptureScreen() {
+  const styles = useThemedStyles(createStyles);
   const dimensions = useWindowDimensions();
   const orientation =
     dimensions.width > dimensions.height ? "landscape" : "portrait";
@@ -333,12 +335,19 @@ export function CaptureScreen() {
   );
 
   const refresh = useCallback(async () => {
+    // rotation and permission dialogs can trigger focus while a take is active.
+    if (["recording", "finalizing"].includes(phaseRef.current)) return;
     setPhase("checking");
     setMessage("Checking camera access…");
 
     try {
       const permissions = await multicamCaptureModule.getPermissionStatus();
-      if (permissions.camera === "not-determined") {
+      // android can grant the camera earlier, through the system settings, without ever asking for the microphone.
+      const needsMicrophonePrompt =
+        Platform.OS === "android" &&
+        permissions.camera === "authorized" &&
+        permissions.microphone === "not-determined";
+      if (permissions.camera === "not-determined" || needsMicrophonePrompt) {
         setPhase("needs-permission");
         setMessage(
           "OpenMulticam needs camera access to show a live preview and microphone access to record sound.",
@@ -434,6 +443,7 @@ export function CaptureScreen() {
           if (event.state.kind === "completed" && !isUserStopping.current) {
             setRecordingStartedAt(null);
             setElapsedMs(0);
+            phaseRef.current = "checking";
             setPhase("checking");
             setMessage("The interrupted take was saved safely.");
             if (AppState.currentState === "active") {
@@ -663,7 +673,7 @@ export function CaptureScreen() {
               tone="previewLabel"
               variant="title"
             >
-              {"Two cameras,\none iPhone."}
+              {"Two cameras,\none device."}
             </AppText>
             <AppText style={styles.overlayCopy} tone="previewSecondary">
               {message}
@@ -796,6 +806,7 @@ function CameraSheet({
   mode: CaptureMode;
   selection: CameraSlotSelection | null;
 }>) {
+  const styles = useThemedStyles(createStyles);
   const modes = availableModes(configurations);
   const usableCameras = camerasFor(configurations, mode);
   const partners = partnersFor(
@@ -934,7 +945,7 @@ function CameraSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { backgroundColor: colors.previewChrome, flex: 1 },
   topBar: {
     alignItems: "center",

@@ -5,6 +5,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  Platform,
   StyleSheet,
   View,
 } from "react-native";
@@ -19,9 +20,11 @@ import {
   recordingDurationMs,
   type RecordingLibraryEntry,
 } from "@/core/library/entry";
-import { colors, radii, shadows, spacing } from "@/theme";
+import { radii, shadows, spacing, useThemeColors, useThemedStyles, type ThemeColors } from "@/theme";
 
 export function LibraryScreen() {
+  const styles = useThemedStyles(createStyles);
+  const colors = useThemeColors();
   const [recordings, setRecordings] = useState<
     readonly RecordingLibraryEntry[]
   >([]);
@@ -81,6 +84,7 @@ export function LibraryScreen() {
 function RecordingRow({
   recording,
 }: Readonly<{ recording: RecordingLibraryEntry }>) {
+  const styles = useThemedStyles(createStyles);
   const { kind: recordingKind, icon: recordingIcon } = recordingKindOf(recording);
 
   return (
@@ -132,17 +136,18 @@ function recordingKindOf(
 }
 
 function EmptyLibrary({ errorMessage }: Readonly<{ errorMessage: string | null }>) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.emptyStateCard}>
       <View style={styles.emptyStateIcon}>
         <Icon name="rectangle.stack" size="prominent" tone="accent" />
       </View>
       <AppText style={styles.emptyTitle} variant="headline">
-        {errorMessage ?? "Your takes stay on this iPhone"}
+        {errorMessage ?? "Your takes stay on this device"}
       </AppText>
       <AppText style={styles.supportingCopy} tone="secondary">
         {errorMessage === null
-          ? "Record your first take, then return here to watch, rename, share, or save it to Photos."
+          ? `Record your first take, then return here to watch, rename, share, or save it to ${Platform.OS === "android" ? "your gallery" : "Photos"}.`
           : "Pull to refresh, or return to the camera and try again."}
       </AppText>
       <Link href="/" asChild>
@@ -157,7 +162,7 @@ function EmptyLibrary({ errorMessage }: Readonly<{ errorMessage: string | null }
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { backgroundColor: colors.background, flex: 1 },
   centered: {
     alignItems: "center",
