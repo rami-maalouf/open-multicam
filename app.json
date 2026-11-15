@@ -3,7 +3,7 @@
     "name": "OpenMulticam",
     "slug": "open-multicam",
     "description": "Private, native multicamera video recording.",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "platforms": [
       "ios",
       "android"
