@@ -22,4 +22,6 @@ bun assets/brand/prism.mjs
 
 It writes the SVG sources, renders them with macOS `sips`, and flattens the app icons to opaque RGB with `ffmpeg`. Change the art in `assets/brand/prism.mjs`, never in the PNGs.
 
-The launch mark keeps round beam ends and has no background, so it reads on both launch backgrounds: `#f7f6f2` in light mode and `#080d0f` in dark mode. iOS applies its own corner mask to the app icon. A new native build is required for installed apps and App Store Connect to receive these assets.
+The launch mark keeps round beam ends and has no background. It sits on a dark launch background in both appearances: `#05090b` in light mode and `#030607` in dark mode. iOS applies its own corner mask to the app icon. A new native build is required for installed apps and App Store Connect to receive these assets.
+
+iOS caches the launch screen by asset name, not by content. When the art changes but the name stays the same, an updated app keeps showing the old launch art until the device restarts. Then the splash view fades the new art in over it. `plugins/with-fresh-launch-screen.js` prevents this. At prebuild it renames the launch logo and background to `SplashScreenLogo-<hash>` and `SplashScreenBackground-<hash>`, using a hash of their content. New art always gets a new name, so no change is needed when the art changes.

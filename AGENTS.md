@@ -13,6 +13,7 @@
 
 - `tests/library/fixtures/android-recovery.json` is checked by both `RecoveryContractTest.kt` and `tests/library/recovery-contract.test.ts`. Change the Kotlin recovery rules and the fixture together.
 - `Icon` only accepts names in `src/components/icon-sources.ts`, so a new SF Symbol needs an Android glyph there.
+- `plugins/with-fresh-launch-screen` must stay before `expo-splash-screen` in `app.json`. It gives the iOS launch assets content-hashed names, because iOS caches launch art by name across app updates.
 
 ## Emulator e2e
 

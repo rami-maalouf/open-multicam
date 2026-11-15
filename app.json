@@ -30,6 +30,7 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/with-fresh-launch-screen",
       [
         "expo-splash-screen",
         {
