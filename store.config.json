@@ -3,7 +3,7 @@
   "apple": {
     "version": "1.0.2",
     "release": {
-      "automaticRelease": false
+      "automaticRelease": true
     },
     "info": {
       "en-US": {
