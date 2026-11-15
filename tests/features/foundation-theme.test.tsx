@@ -70,9 +70,21 @@ describe("semantic theme foundation", () => {
     expect(
       screen.getByRole("image", { name: "Open library" }).props.tintColor,
     ).not.toEqual(
-      screen.getByTestId("recording-indicator").props.tintColor,
+      screen.getByTestId("recording-indicator", { includeHiddenElements: true }).props.tintColor,
     );
     expect(screen.queryByRole("image", { name: "circle.fill" })).toBeNull();
+    // a row reads its children's names as its label, so the decorative icon must be hidden
+    // or its sf symbol name lands in the row's voiceover label
+    expect(screen.queryByTestId("recording-indicator")).toBeNull();
+    expect(screen.getByTestId("recording-indicator", { includeHiddenElements: true })).toHaveProp("accessibilityElementsHidden", true);
+    expect(screen.getByTestId("recording-indicator", { includeHiddenElements: true })).toHaveProp(
+      "importantForAccessibility",
+      "no-hide-descendants",
+    );
+    expect(screen.getByRole("image", { name: "Open library" })).toHaveProp(
+      "accessibilityElementsHidden",
+      false,
+    );
   });
 
   it("updates Android colors with appearance and contrast", () => {
