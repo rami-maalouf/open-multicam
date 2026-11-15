@@ -59,6 +59,8 @@ Use the exact verified build ID. Uploading places the build in App Store Connect
 bunx eas-cli@23.2.0 metadata:push --non-interactive
 ```
 
+`metadata:push` deletes every App Preview video that `store.config.json` does not list, but it leaves unlisted screenshots alone. For 1.0.2 it deleted the preview that App Store Connect copied from 1.0.1, so `info.en-US.previews` now lists it. The file is goldie's output, `goldie/out/previews/iphone-6.9/en-US/preview.mp4`, which is gitignored. Run `goldie preview` (or copy the approved video to that path) before you push metadata from a fresh checkout.
+
 EAS Metadata does not currently expose Apple's new `socialMedia` and `socialMediaAgeRestricted` answers. Both are **No** for OpenMulticam. Check these in App Store Connect after syncing metadata. Reviewer contact details are maintained privately in App Store Connect.
 
 ## Before submitting
