@@ -22,8 +22,37 @@ export function recordingDisplayName(entry: RecordingLibraryEntry): string {
   }).format(new Date(entry.createdAtUtcMs));
 }
 
+// ready takes are whole; recovered takes were interrupted but kept at least one
+// playable video; damaged takes have nothing left to play and can only be deleted
+export type RecordingHealth = "ready" | "recovered" | "damaged";
+
+export function recordingHealth(entry: RecordingLibraryEntry): RecordingHealth {
+  if (entry.outcome.kind === "ready") {
+    return "ready";
+  }
+  return playableClipUris(entry).length > 0 ? "recovered" : "damaged";
+}
+
+export function playableClipUris(
+  entry: RecordingLibraryEntry,
+): readonly RecordingClipUri[] {
+  if (entry.outcome.kind === "ready") {
+    return entry.clipUris;
+  }
+  const playable = new Set<string>(
+    entry.clips.flatMap((clip) => (clip.media === null ? [] : [clip.id])),
+  );
+  return entry.clipUris.filter((clip) => playable.has(clip.clipId));
+}
+
 export function recordingDurationMs(entry: RecordingLibraryEntry): number {
-  return entry.outcome.kind === "ready" ? entry.outcome.durationMs : 0;
+  if (entry.outcome.kind === "ready") {
+    return entry.outcome.durationMs;
+  }
+  const durations = entry.clips.flatMap((clip) =>
+    clip.media === null ? [] : [clip.media.durationMs],
+  );
+  return durations.length === 0 ? 0 : Math.max(...durations);
 }
 
 export function formatRecordingDuration(durationMs: number): string {

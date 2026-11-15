@@ -1,0 +1,23 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.multicamcapture'
+version = '1.0.0'
+
+android {
+  namespace 'expo.modules.multicamcapture'
+  defaultConfig {
+    minSdkVersion 24
+    versionCode 1
+    versionName '1.0.0'
+  }
+  testOptions { unitTests.returnDefaultValues = true }
+}
+
+dependencies {
+  testImplementation 'junit:junit:4.13.2'
+  // the android stub of org.json returns defaults in unit tests, so the recovery contract test parses with the real one
+  testImplementation 'org.json:json:20240303'
+}

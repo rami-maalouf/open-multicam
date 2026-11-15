@@ -1,6 +1,6 @@
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 
 import { CaptureScreen } from "@/screens/shell/app-shell-screens";
 import { render } from "@/testing/render";
@@ -247,7 +247,7 @@ describe("native capture surface", () => {
     const screen = render(<CaptureScreen />);
 
     await waitFor(() => {
-      expect(screen.queryByText("Two cameras,\none iPhone.")).toBeNull();
+      expect(screen.queryByText("Two cameras,\none device.")).toBeNull();
     });
     expect(screen.getByText("SimCam Back")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
@@ -317,7 +317,7 @@ describe("native capture surface", () => {
     });
     // the first screen shows the mark and the headline, and the launch image gives way to it
     expect(screen.getByTestId("capture-brand-mark")).toBeTruthy();
-    expect(screen.getByText("Two cameras,\none iPhone.")).toBeTruthy();
+    expect(screen.getByText("Two cameras,\none device.")).toBeTruthy();
     expect(mockRevealApp).toHaveBeenCalled();
     fireEvent.press(screen.getByRole("button", { name: "Continue" }));
 
@@ -325,6 +325,36 @@ describe("native capture surface", () => {
       expect(mockRequestCameraPermission).toHaveBeenCalledTimes(1);
       expect(mockRequestMicrophonePermission).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("offers microphone permission on Android when camera access was already granted", async () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    mockGetPermissionStatus.mockResolvedValue({
+      kind: "capture-permissions", camera: "authorized", microphone: "not-determined",
+    });
+    try {
+      const screen = render(<CaptureScreen />);
+      fireEvent.press(await screen.findByRole("button", { name: "Continue" }));
+      await waitFor(() => expect(mockRequestMicrophonePermission).toHaveBeenCalledTimes(1));
+    } finally {
+      jest.restoreAllMocks();
+    }
+  });
+
+  it("keeps an active take intact when focus refreshes", async () => {
+    mockDiscoverCapabilities.mockResolvedValue(simcamCapabilities);
+    const screen = render(<CaptureScreen />);
+    const record = await screen.findByRole("button", { name: "Record" });
+    await waitFor(() => expect(record).toBeEnabled());
+    fireEvent.press(record);
+    await screen.findByRole("button", { name: "Stop recording" });
+    const configurationCount = mockConfigure.mock.calls.length;
+    await act(async () => {
+      mockCaptureFocusEffect?.();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(mockConfigure).toHaveBeenCalledTimes(configurationCount);
+    expect(screen.getByRole("button", { name: "Stop recording" })).toBeEnabled();
   });
 
   it("opens Settings after camera access is denied", async () => {
@@ -417,6 +447,128 @@ describe("native capture surface", () => {
       configurable: true,
       value: previousAppState,
     });
+  });
+
+  it("offers retry when the native preview is interrupted", async () => {
+    mockDiscoverCapabilities.mockResolvedValue(simcamCapabilities);
+    const screen = render(<CaptureScreen />);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Record" })).toBeEnabled(),
+    );
+
+    act(() => {
+      mockModuleEventListener?.({
+        kind: "state-changed",
+        sequence: 1,
+        state: {
+          kind: "interrupted",
+          reason: "media-services-reset",
+          recoverable: false,
+        },
+      });
+    });
+
+    expect(
+      await screen.findByText(
+        "Another app or the system took over the camera. Try again.",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Record" })).toBeDisabled();
+
+    fireEvent.press(screen.getByRole("button", { name: "Try Again" }));
+    await waitFor(() => {
+      expect(mockConfigure).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
+    });
+  });
+
+  it("does not report a ready preview that was interrupted while it configured", async () => {
+    mockDiscoverCapabilities.mockResolvedValue(simcamCapabilities);
+    mockConfigure.mockImplementationOnce(async () => {
+      mockModuleEventListener?.({
+        kind: "state-changed",
+        sequence: 1,
+        state: { kind: "configuring", requestId: "single:simcam-back" },
+      });
+      mockModuleEventListener?.({
+        kind: "state-changed",
+        sequence: 2,
+        state: {
+          kind: "interrupted",
+          reason: "system-pressure-critical",
+          recoverable: false,
+        },
+      });
+      return { ok: true, value: {} };
+    });
+    const screen = render(<CaptureScreen />);
+
+    expect(
+      await screen.findByText(
+        "The device is too warm to use the cameras. Let it cool down, then try again.",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Record" })).toBeDisabled();
+  });
+
+  it("reopens the cameras when the preview comes back after leaving the screen", async () => {
+    mockDiscoverCapabilities.mockResolvedValue(simcamCapabilities);
+    const screen = render(<CaptureScreen />);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Record" })).toBeEnabled(),
+    );
+    const previousAppState = AppState.currentState;
+    Object.defineProperty(AppState, "currentState", {
+      configurable: true,
+      value: "active",
+    });
+
+    act(() => {
+      mockModuleEventListener?.({
+        kind: "state-changed",
+        sequence: 1,
+        state: { kind: "interrupted", reason: "backgrounded", recoverable: true },
+      });
+    });
+
+    await waitFor(() => {
+      expect(mockConfigure).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
+    });
+    Object.defineProperty(AppState, "currentState", {
+      configurable: true,
+      value: previousAppState,
+    });
+  });
+
+  it("keeps the cameras closed after a take stops because the device is too warm", async () => {
+    mockDiscoverCapabilities.mockResolvedValue(simcamCapabilities);
+    const screen = render(<CaptureScreen />);
+    const recordButton = await screen.findByRole("button", { name: "Record" });
+    await waitFor(() => expect(recordButton).toBeEnabled());
+    fireEvent.press(recordButton);
+    await screen.findByRole("button", { name: "Stop recording" });
+
+    act(() => {
+      mockModuleEventListener?.({
+        kind: "state-changed",
+        sequence: 1,
+        state: {
+          kind: "completed",
+          recordingSetId: "take-1",
+          durationMs: 2_000,
+          reason: "system-pressure-critical",
+        },
+      });
+    });
+
+    expect(
+      await screen.findByText(
+        "Your take was saved. Recording stopped because the device became too warm. Let it cool down, then try again.",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try Again" })).toBeTruthy();
+    expect(mockConfigure).toHaveBeenCalledTimes(1);
   });
 
   it("shows native start and stop failures", async () => {

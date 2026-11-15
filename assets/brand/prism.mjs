@@ -94,6 +94,24 @@ const icon = svg(`
   </g>
   ${sparkle(214, 236, 40)}${sparkle(300, 150, 20)}${sparkle(800, 880, 26)}`);
 
+// android masks its launcher icons to the middle 72 of 108 dp, and only the middle 66 dp is safe, so
+// the adaptive icon gets the art scaled into that circle over a separate studio background
+const studio = svg(`
+  <defs>
+    <radialGradient id="bg" cx="0.42" cy="0.3" r="0.9">
+      <stop offset="0" stop-color="#17414b"/><stop offset="0.6" stop-color="#0b2329"/><stop offset="1" stop-color="#06151a"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>`);
+const adaptive = svg(`
+  <g transform="translate(512 524) scale(0.9) translate(-512 -478)">
+    ${beam([-120, 641], [420, 516], "#ffffff")}
+    ${beam([600, 500], [1160, 210], AQUA)}
+    ${beam([600, 500], [1160, 784], RED)}
+    ${prism()}
+  </g>
+  ${sparkle(352, 330, 26)}${sparkle(410, 268, 13)}${sparkle(672, 730, 17)}`);
+
 // the launch mark: the whole art with round beam ends, on transparency, for light and dark
 const splash = svg(`
   <g transform="translate(512 512) scale(0.9) translate(-512 -478)">
@@ -114,6 +132,8 @@ const mark = `<svg xmlns="http://www.w3.org/2000/svg" width="944" height="520" v
 
 writeFileSync(join(here, "icon.svg"), icon);
 writeFileSync(join(here, "splash.svg"), splash);
+writeFileSync(join(here, "adaptive-icon.svg"), adaptive);
+writeFileSync(join(here, "adaptive-icon-background.svg"), studio);
 
 const sips = (...args) => execFileSync("sips", args, { stdio: "ignore" });
 const png = (from, to, size) => sips("-s", "format", "png", ...(size ? ["-Z", String(size)] : []), from, "--out", to);
@@ -125,6 +145,9 @@ for (const name of ["icon.png", "icon-dark.png"]) {
   execFileSync("ffmpeg", ["-v", "error", "-y", "-i", tmp, "-pix_fmt", "rgb24", join(assets, name)]);
 }
 png(join(here, "splash.svg"), join(assets, "splash-icon.png"));
+png(join(here, "adaptive-icon.svg"), join(assets, "adaptive-icon.png"));
+png(join(here, "adaptive-icon-background.svg"), tmp);
+execFileSync("ffmpeg", ["-v", "error", "-y", "-i", tmp, "-pix_fmt", "rgb24", join(assets, "adaptive-icon-background.png")]);
 
 // the website's cuts of the icon
 mkdirSync(website, { recursive: true });
@@ -135,4 +158,4 @@ png(join(here, "mark.svg"), join(here, "mark.png"));
 png(join(assets, "icon.png"), join(website, "icon-180.png"), 180);
 png(join(assets, "icon.png"), join(website, "icon-64.png"), 64);
 execFileSync("rm", ["-f", tmp]);
-console.log("wrote assets/icon.png, assets/icon-dark.png, assets/splash-icon.png and the website icons, and the mark for the app and the website");
+console.log("wrote assets/icon.png, assets/icon-dark.png, assets/splash-icon.png, the android adaptive icon and the website icons, and the mark for the app and the website");

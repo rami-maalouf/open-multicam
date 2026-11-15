@@ -1,0 +1,412 @@
+{
+  "_comment": "android recovery contract: CaptureRules.recovered(staging, media) must equal expected, and expected must pass parseRecordingSetManifest",
+  "cases": [
+    {
+      "name": "two-file take with one unreadable clip",
+      "health": "recovered",
+      "staging": {
+        "kind": "recording-set-manifest",
+        "schemaVersion": 1,
+        "name": null,
+        "createdAtUtcMs": 1788195600000,
+        "startedAtPtsSeconds": null,
+        "preset": {
+          "profile": "core1080p",
+          "orientation": "landscape",
+          "width": 1920,
+          "height": 1080,
+          "frameRate": 30,
+          "codec": "h264",
+          "bitrate": 12000000,
+          "stabilization": "off"
+        },
+        "warnings": [],
+        "recordingSetId": "5f0c7c1e-6a3b-4b8e-9d2a-1c0e7f6b2a10",
+        "mode": "discrete",
+        "cameraA": {
+          "id": "0",
+          "label": "Back wide camera (0)",
+          "position": "back"
+        },
+        "cameraB": {
+          "id": "1",
+          "label": "Front wide camera (1)",
+          "position": "front"
+        },
+        "audio": {
+          "kind": "present",
+          "route": {
+            "label": "Device microphone",
+            "channelCount": 1,
+            "sampleRateHz": 44100
+          }
+        },
+        "outcome": {
+          "kind": "staging"
+        },
+        "clips": [
+          {
+            "id": "c1a2b3c4-0000-4000-8000-00000000000a",
+            "role": "cameraA",
+            "relativePath": "camera-a.mp4",
+            "status": "staging",
+            "media": null,
+            "issue": null
+          },
+          {
+            "id": "c1a2b3c4-0000-4000-8000-00000000000b",
+            "role": "cameraB",
+            "relativePath": "camera-b.mp4",
+            "status": "staging",
+            "media": null,
+            "issue": null
+          }
+        ]
+      },
+      "media": {
+        "c1a2b3c4-0000-4000-8000-00000000000a": {
+          "width": 1920,
+          "height": 1080,
+          "durationMs": 4120,
+          "fileSizeBytes": 6182044,
+          "videoTrackCount": 1,
+          "audioTrackCount": 1,
+          "playable": true
+        },
+        "c1a2b3c4-0000-4000-8000-00000000000b": null
+      },
+      "expected": {
+        "kind": "recording-set-manifest",
+        "schemaVersion": 1,
+        "name": null,
+        "createdAtUtcMs": 1788195600000,
+        "startedAtPtsSeconds": null,
+        "preset": {
+          "profile": "core1080p",
+          "orientation": "landscape",
+          "width": 1920,
+          "height": 1080,
+          "frameRate": 30,
+          "codec": "h264",
+          "bitrate": 12000000,
+          "stabilization": "off"
+        },
+        "warnings": [
+          {
+            "kind": "recovery",
+            "message": "Recording was interrupted before finalization."
+          }
+        ],
+        "recordingSetId": "5f0c7c1e-6a3b-4b8e-9d2a-1c0e7f6b2a10",
+        "mode": "discrete",
+        "cameraA": {
+          "id": "0",
+          "label": "Back wide camera (0)",
+          "position": "back"
+        },
+        "cameraB": {
+          "id": "1",
+          "label": "Front wide camera (1)",
+          "position": "front"
+        },
+        "audio": {
+          "kind": "present",
+          "route": {
+            "label": "Device microphone",
+            "channelCount": 1,
+            "sampleRateHz": 44100
+          }
+        },
+        "outcome": {
+          "kind": "recoverable",
+          "reason": "finalization-incomplete",
+          "playableClipIds": [
+            "c1a2b3c4-0000-4000-8000-00000000000a"
+          ]
+        },
+        "clips": [
+          {
+            "id": "c1a2b3c4-0000-4000-8000-00000000000a",
+            "role": "cameraA",
+            "relativePath": "camera-a.mp4",
+            "status": "recoverable",
+            "media": {
+              "width": 1920,
+              "height": 1080,
+              "durationMs": 4120,
+              "fileSizeBytes": 6182044,
+              "videoTrackCount": 1,
+              "audioTrackCount": 1,
+              "playable": true
+            },
+            "issue": "Recovered after the recording was interrupted."
+          },
+          {
+            "id": "c1a2b3c4-0000-4000-8000-00000000000b",
+            "role": "cameraB",
+            "relativePath": "camera-b.mp4",
+            "status": "corrupt",
+            "media": null,
+            "issue": "The interrupted file could not be decoded."
+          }
+        ]
+      }
+    },
+    {
+      "name": "single take with no playable video",
+      "health": "damaged",
+      "staging": {
+        "kind": "recording-set-manifest",
+        "schemaVersion": 1,
+        "name": null,
+        "createdAtUtcMs": 1788195600000,
+        "startedAtPtsSeconds": null,
+        "preset": {
+          "profile": "core1080p",
+          "orientation": "portrait",
+          "width": 1080,
+          "height": 1920,
+          "frameRate": 30,
+          "codec": "h264",
+          "bitrate": 12000000,
+          "stabilization": "off"
+        },
+        "warnings": [],
+        "recordingSetId": "7b1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f",
+        "mode": "single",
+        "cameraA": {
+          "id": "1",
+          "label": "Front wide camera (1)",
+          "position": "front"
+        },
+        "audio": {
+          "kind": "absent",
+          "reason": "permission-not-granted"
+        },
+        "outcome": {
+          "kind": "staging"
+        },
+        "clips": [
+          {
+            "id": "d2b3c4d5-0000-4000-8000-000000000001",
+            "role": "single",
+            "relativePath": "single.mp4",
+            "status": "staging",
+            "media": null,
+            "issue": null
+          }
+        ]
+      },
+      "media": {
+        "d2b3c4d5-0000-4000-8000-000000000001": null
+      },
+      "expected": {
+        "kind": "recording-set-manifest",
+        "schemaVersion": 1,
+        "name": null,
+        "createdAtUtcMs": 1788195600000,
+        "startedAtPtsSeconds": null,
+        "preset": {
+          "profile": "core1080p",
+          "orientation": "portrait",
+          "width": 1080,
+          "height": 1920,
+          "frameRate": 30,
+          "codec": "h264",
+          "bitrate": 12000000,
+          "stabilization": "off"
+        },
+        "warnings": [
+          {
+            "kind": "recovery",
+            "message": "Recording was interrupted before finalization."
+          }
+        ],
+        "recordingSetId": "7b1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f",
+        "mode": "single",
+        "cameraA": {
+          "id": "1",
+          "label": "Front wide camera (1)",
+          "position": "front"
+        },
+        "audio": {
+          "kind": "absent",
+          "reason": "permission-not-granted"
+        },
+        "outcome": {
+          "kind": "corrupt",
+          "reason": "unreadable-track"
+        },
+        "clips": [
+          {
+            "id": "d2b3c4d5-0000-4000-8000-000000000001",
+            "role": "single",
+            "relativePath": "single.mp4",
+            "status": "corrupt",
+            "media": null,
+            "issue": "The interrupted file could not be decoded."
+          }
+        ]
+      }
+    },
+    {
+      "name": "finalized take whose library move was interrupted",
+      "health": "ready",
+      "staging": {
+        "kind": "recording-set-manifest",
+        "schemaVersion": 1,
+        "name": null,
+        "createdAtUtcMs": 1788195600000,
+        "startedAtPtsSeconds": 12.5,
+        "preset": {
+          "profile": "core1080p",
+          "orientation": "landscape",
+          "width": 1920,
+          "height": 1080,
+          "frameRate": 30,
+          "codec": "h264",
+          "bitrate": 12000000,
+          "stabilization": "off"
+        },
+        "warnings": [],
+        "recordingSetId": "9c8b7a6f-5e4d-4c3b-8a19-0f1e2d3c4b5a",
+        "mode": "pip",
+        "cameraA": {
+          "id": "0",
+          "label": "Back wide camera (0)",
+          "position": "back"
+        },
+        "cameraB": {
+          "id": "1",
+          "label": "Front wide camera (1)",
+          "position": "front"
+        },
+        "audio": {
+          "kind": "present",
+          "route": {
+            "label": "Device microphone",
+            "channelCount": 1,
+            "sampleRateHz": 44100
+          }
+        },
+        "composition": {
+          "kind": "pip",
+          "primaryCamera": "A",
+          "visible": true,
+          "inset": {
+            "x": 0.68,
+            "y": 0.04,
+            "width": 0.3,
+            "height": 0.3
+          }
+        },
+        "outcome": {
+          "kind": "ready",
+          "durationMs": 4120,
+          "finalizedAtUtcMs": 1788195604120
+        },
+        "clips": [
+          {
+            "id": "e3c4d5e6-0000-4000-8000-000000000001",
+            "role": "composite",
+            "relativePath": "composite.mp4",
+            "status": "ready",
+            "media": {
+              "width": 1920,
+              "height": 1080,
+              "durationMs": 4120,
+              "fileSizeBytes": 6182044,
+              "videoTrackCount": 1,
+              "audioTrackCount": 1,
+              "playable": true
+            },
+            "issue": null
+          }
+        ]
+      },
+      "media": {
+        "e3c4d5e6-0000-4000-8000-000000000001": {
+          "width": 1920,
+          "height": 1080,
+          "durationMs": 4120,
+          "fileSizeBytes": 6182044,
+          "videoTrackCount": 1,
+          "audioTrackCount": 1,
+          "playable": true
+        }
+      },
+      "expected": {
+        "kind": "recording-set-manifest",
+        "schemaVersion": 1,
+        "name": null,
+        "createdAtUtcMs": 1788195600000,
+        "startedAtPtsSeconds": 12.5,
+        "preset": {
+          "profile": "core1080p",
+          "orientation": "landscape",
+          "width": 1920,
+          "height": 1080,
+          "frameRate": 30,
+          "codec": "h264",
+          "bitrate": 12000000,
+          "stabilization": "off"
+        },
+        "warnings": [],
+        "recordingSetId": "9c8b7a6f-5e4d-4c3b-8a19-0f1e2d3c4b5a",
+        "mode": "pip",
+        "cameraA": {
+          "id": "0",
+          "label": "Back wide camera (0)",
+          "position": "back"
+        },
+        "cameraB": {
+          "id": "1",
+          "label": "Front wide camera (1)",
+          "position": "front"
+        },
+        "audio": {
+          "kind": "present",
+          "route": {
+            "label": "Device microphone",
+            "channelCount": 1,
+            "sampleRateHz": 44100
+          }
+        },
+        "composition": {
+          "kind": "pip",
+          "primaryCamera": "A",
+          "visible": true,
+          "inset": {
+            "x": 0.68,
+            "y": 0.04,
+            "width": 0.3,
+            "height": 0.3
+          }
+        },
+        "outcome": {
+          "kind": "ready",
+          "durationMs": 4120,
+          "finalizedAtUtcMs": 1788195604120
+        },
+        "clips": [
+          {
+            "id": "e3c4d5e6-0000-4000-8000-000000000001",
+            "role": "composite",
+            "relativePath": "composite.mp4",
+            "status": "ready",
+            "media": {
+              "width": 1920,
+              "height": 1080,
+              "durationMs": 4120,
+              "fileSizeBytes": 6182044,
+              "videoTrackCount": 1,
+              "audioTrackCount": 1,
+              "playable": true
+            },
+            "issue": null
+          }
+        ]
+      }
+    }
+  ]
+}

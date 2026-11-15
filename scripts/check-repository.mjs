@@ -35,6 +35,11 @@ function listRepositoryCandidates() {
 }
 
 function pathViolation(filePath) {
+  // the website demo is a shipped marketing asset, not a captured recording.
+  if (filePath === "website/src/public/media/feeds.mp4") {
+    return false;
+  }
+
   return forbiddenPathPatterns.some((pattern) => pattern.test(filePath));
 }
 

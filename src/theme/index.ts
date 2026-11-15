@@ -17,3 +17,5 @@ export type {
   ThemeContrast,
   ThemePalette,
 } from "./tokens";
+
+export { useThemeColors, useThemedStyles, type ThemeColors } from "./use-theme";

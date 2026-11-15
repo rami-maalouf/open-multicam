@@ -1,6 +1,6 @@
 import { Text, type TextProps } from "react-native";
 
-import { colors, typography } from "@/theme";
+import { useThemeColors, typography } from "@/theme";
 
 export type AppTextVariant = keyof typeof typography;
 export type AppTextTone =
@@ -34,6 +34,7 @@ export function AppText({
   variant = "body",
   ...props
 }: AppTextProps) {
+  const colors = useThemeColors();
   return (
     <Text
       {...props}

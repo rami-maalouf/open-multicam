@@ -10,12 +10,13 @@ import { useColorScheme } from "react-native";
 import { AccessibilityPreferencesProvider } from "@/foundation/accessibility/preferences";
 import { holdLaunchScreen } from "@/foundation/launch/launch-screen";
 import "@/core/telemetry";
-import { colors } from "@/theme";
+import { useThemeColors } from "@/theme";
 
 holdLaunchScreen();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const colors = useThemeColors();
   const navigationTheme = useMemo(() => {
     const baseTheme = colorScheme === "dark" ? DarkTheme : DefaultTheme;
 
@@ -30,7 +31,7 @@ export default function RootLayout() {
         text: colors.primary as string,
       },
     };
-  }, [colorScheme]);
+  }, [colorScheme, colors]);
 
   return (
     <AccessibilityPreferencesProvider>
