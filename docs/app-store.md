@@ -1,8 +1,16 @@
 # App Store release
 
-Last checked: October 24, 2026.
+Last checked: November 15, 2026.
 
 OpenMulticam is a free iPhone app with an optional, one-time developer donation. Every camera feature is free. The donation follows Twilight's StoreKit 2 non-consumable model, including restoration through the Apple Account.
+
+## November 15 release: 1.0.2
+
+- Version: 1.0.2, production build 5. EAS build: `11a6e800-91b5-46e3-9037-502a95958908`, source commit `e11c119` (the merge of PR #6). EAS upload submission: `439f3a72-bb3a-4a71-8af4-db6bde4e8eec`.
+- Main fix: after an update, the launch screen no longer shows the old teal logo. `plugins/with-fresh-launch-screen.js` gives the launch assets content-hashed names (see [brand assets](brand-assets.md)).
+- The listing keeps four 1206 x 2622 and four 1320 x 2868 screenshots and the app preview video (re-uploaded, see "Build and upload"). Release notes come from `store.config.json`.
+- Release settings: manual release after approval, update to all users at once, existing rating kept.
+- Submitted to App Review on November 15, 2026 at 1:39 AM local time. Status: Waiting for Review. After approval, release 1.0.2 by hand in App Store Connect.
 
 ## October 24 release preparation
 
