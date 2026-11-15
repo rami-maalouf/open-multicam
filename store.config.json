@@ -25,7 +25,7 @@
           "recorder"
         ],
         "promoText": "Two perspectives, one iPhone. Record separate files, picture-in-picture, or split view. All camera features are free, with optional support.",
-        "releaseNotes": "The app now always opens on the prism. Before, the old launch art could stay after an update.\n\nRecovered and damaged takes now show in the library, with only the actions they support.\n\nThe capture screen now tells you why the camera stopped, for example when another app takes the camera or your iPhone gets too warm. If recording stops, your take is saved.",
+        "releaseNotes": "The app now always opens on the prism. Before, the old launch art could stay after an update.\n\nRecovered and damaged takes now show in the library, with only the actions they support.\n\nThe capture screen now tells you why the camera stopped, for example when another app takes the camera or your iPhone gets too warm. If recording stops, your take is saved.\n\nVoiceOver no longer reads icon names in the library and on buttons.",
         "privacyPolicyUrl": "https://github.com/rami-maalouf/open-multicam/blob/main/docs/privacy.md",
         "supportUrl": "https://github.com/rami-maalouf/open-multicam/blob/main/docs/support.md",
         "marketingUrl": "https://cam.orbitlabs.studio"
