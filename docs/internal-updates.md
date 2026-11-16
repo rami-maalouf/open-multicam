@@ -19,7 +19,8 @@ The privacy policy says there is no app-operated server, and Release 1 is local 
 - `.eas/workflows/verify-update.yml` publishes an update to `verify`.
 - `.eas/workflows/ship-update.yml` republishes the latest `verify` update group to `internal`. It does not bundle again, so testers get the same files that ran on the simulator.
 - The app waits up to 5 seconds at launch for a new update, so a new update shows on the first cold launch. On a slow network it shows on the next launch.
-- `runtimeVersion` uses the `appVersion` policy. An update reaches only builds with the same app version, so make both builds again after a version change.
+- Internal builds use their own version, `OTA_APP_VERSION` in `app.config.ts` (1.1.0), not the App Store version in `app.json`. Apple closes a version for new builds once it is approved, so the two must not share one. If Apple rejects an upload with "The train version is closed", raise `OTA_APP_VERSION` and make both builds again.
+- `runtimeVersion` uses the `appVersion` policy, so it follows `OTA_APP_VERSION`. An update reaches only builds with the same version.
 - An update changes JavaScript and assets only. A change to `modules/` or to a config plugin needs new builds.
 - The simulator has no cameras. Check changes on screens that do not need a live camera, or give the session a camera feed in Expo Simulators.
 

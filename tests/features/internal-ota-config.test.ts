@@ -1,7 +1,7 @@
 import type { ExpoConfig } from "expo/config";
 
 import appJson from "../../app.json";
-import appConfig, { OTA_FLAG, OTA_LAUNCH_WAIT_MS } from "../../app.config";
+import appConfig, { OTA_APP_VERSION, OTA_FLAG, OTA_LAUNCH_WAIT_MS } from "../../app.config";
 import easJson from "../../eas.json";
 
 function resolve(flag: string | undefined): ExpoConfig {
@@ -35,6 +35,7 @@ describe("internal over-the-air updates", () => {
 
     expect(config.updates?.enabled).toBe(false);
     expect(config.updates?.url).toBeUndefined();
+    expect(config.version).toBe(appJson.expo.version);
   });
 
   it("keeps updates off for any value other than 1", () => {
@@ -50,6 +51,15 @@ describe("internal over-the-air updates", () => {
       checkAutomatically: "ON_LOAD",
       fallbackToCacheTimeout: OTA_LAUNCH_WAIT_MS,
     });
+  });
+
+  it("gives internal builds a version above the app store version", () => {
+    const parse = (version: string) => version.split(".").map(Number);
+    const [storeMajor = 0, storeMinor = 0] = parse(appJson.expo.version);
+    const [major = 0, minor = 0] = parse(OTA_APP_VERSION);
+
+    expect(resolve("1").version).toBe(OTA_APP_VERSION);
+    expect(major * 1000 + minor).toBeGreaterThan(storeMajor * 1000 + storeMinor);
   });
 
   it("sets the flag only on the internal testflight and verify simulator profiles", () => {
