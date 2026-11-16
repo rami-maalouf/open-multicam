@@ -25,9 +25,18 @@ jobs:
       - uses: eas/install_node_modules
       - name: Republish the latest verify update to internal
         run: |
-          npx eas-cli@latest update:republish \
-            --branch verify \
+          # update:republish takes only --group in non-interactive mode, so look up the
+          # latest group on the verify branch first.
+          group=$(npx -y eas-cli@latest update:list --branch verify --limit 1 --json --non-interactive \
+            | node -e 'let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => { const u = JSON.parse(s).currentPage?.[0]; process.stdout.write(u?.group ?? ""); });')
+          if [ -z "$group" ]; then
+            echo "no update on the verify branch. run verify-update.yml first." >&2
+            exit 1
+          fi
+          echo "shipping update group $group"
+          npx -y eas-cli@latest update:republish \
+            --group "$group" \
             --destination-channel internal \
             --platform ios \
-            --message "ship the update verified in expo simulators" \
+            --message "ship update group $group, verified in expo simulators" \
             --non-interactive
