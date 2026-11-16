@@ -52,19 +52,30 @@ describe("internal over-the-air updates", () => {
     });
   });
 
-  it("sets the flag only on the internal build profile, which uses the internal channel", () => {
-    const profiles = easJson.build as Record<
-      string,
-      { env?: Record<string, string>; channel?: string }
-    >;
+  it("sets the flag only on the internal testflight and verify simulator profiles", () => {
+    type Profile = {
+      extends?: string;
+      env?: Record<string, string>;
+      channel?: string;
+      distribution?: string;
+      ios?: { simulator?: boolean };
+    };
+    const profiles = easJson.build as Record<string, Profile>;
 
     expect(profiles["internal-ota"]).toMatchObject({
       channel: "internal",
       env: { [OTA_FLAG]: "1" },
     });
+    expect(profiles["verify-simulator"]).toMatchObject({
+      extends: "internal-ota",
+      channel: "verify",
+      distribution: "internal",
+      ios: { simulator: true },
+    });
 
     for (const [name, profile] of Object.entries(profiles)) {
-      if (name !== "internal-ota") {
+      if (name !== "internal-ota" && name !== "verify-simulator") {
+        expect(profile.extends).not.toBe("internal-ota");
         expect(profile.env?.[OTA_FLAG]).toBeUndefined();
         expect(profile.channel).toBeUndefined();
       }

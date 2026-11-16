@@ -56,7 +56,7 @@ OpenMulticam intentionally has:
 - Camera, microphone, and add-only Photos descriptions written for this product.
 - No bundle identifier yet. Final Apple identity remains gated near release preparation.
 - No EAS project id, owner, updates URL, submit profile, credential, entitlement, or channel.
-- Embedded updates only in store builds. Runtime network updates are disabled for the local-only Release 1 contract. Internal TestFlight builds from the `internal-ota` profile are the one exception (see `docs/internal-updates.md`).
+- Embedded updates only in store builds. Runtime network updates are disabled for the local-only Release 1 contract. Internal TestFlight builds from the `internal-ota` profile are the one exception (see `docs/internal-updates.md`). The `verify-simulator` profile, a release build for Expo Simulators, uses the same exception.
 
 Run this forbidden-identity check from the OpenMulticam repository:
 

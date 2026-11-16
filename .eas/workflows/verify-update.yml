@@ -1,0 +1,25 @@
+# step 1 of 2: publish an over-the-air update to the `verify` channel.
+#
+# only the `verify-simulator` build listens to `verify`. start it in expo simulators, check
+# the change there, then run ship-update.yml to send the same update group to testflight
+# testers. the app store build has updates off and never receives either. see
+# docs/internal-updates.md.
+#
+# run it from any git ref (a branch, a tag or a commit):
+#   eas workflow:run verify-update.yml
+# or from an agent with the expo mcp `workflow_run` tool (fileName: verify-update.yml).
+
+name: Publish update for verification
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  publish_update:
+    name: Publish update to the verify channel
+    type: update
+    env:
+      OPENMULTICAM_OTA: "1"
+    params:
+      channel: verify
+      platform: ios

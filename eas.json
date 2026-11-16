@@ -43,6 +43,15 @@
       "env": {
         "OPENMULTICAM_OTA": "1"
       }
+    },
+    "verify-simulator": {
+      "extends": "internal-ota",
+      "channel": "verify",
+      "distribution": "internal",
+      "autoIncrement": false,
+      "ios": {
+        "simulator": true
+      }
     }
   },
   "submit": {
