@@ -36,6 +36,13 @@
       "android": {
         "buildType": "app-bundle"
       }
+    },
+    "internal-ota": {
+      "extends": "production",
+      "channel": "internal",
+      "env": {
+        "OPENMULTICAM_OTA": "1"
+      }
     }
   },
   "submit": {
@@ -44,6 +51,9 @@
         "ascAppId": "6810275542",
         "appleTeamId": "3V2UU7RRK9"
       }
+    },
+    "internal-ota": {
+      "extends": "production"
     }
   }
 }

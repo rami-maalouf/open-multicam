@@ -1,0 +1,25 @@
+# publish an over-the-air update to internal testflight builds.
+#
+# only builds from the `internal-ota` profile listen to the `internal` channel. the app
+# store build has updates off and never receives this update. see docs/internal-updates.md.
+#
+# run it from any git ref (a branch, a tag or a commit):
+#   eas workflow:run publish-update.yml
+# or from an agent with the expo mcp `workflow_run` tool (fileName: publish-update.yml).
+#
+# roll back: run this workflow again at the commit you want users to have.
+
+name: Publish internal update
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  publish_update:
+    name: Publish update to the internal channel
+    type: update
+    env:
+      OPENMULTICAM_OTA: "1"
+    params:
+      channel: internal
+      platform: ios
