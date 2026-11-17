@@ -25,3 +25,21 @@
 - `-gpu swiftshader_indirect` aborted the emulator under camera load; the default GPU works.
 - Thermal states: `adb shell cmd thermalservice override-status 4` (critical), `0` to reset.
 - uiautomator cannot dump while the recording timer or the video player animates; use screenshots then.
+
+## Cloud simulator (Expo Simulators)
+
+`bun run ios:cloud` runs this app on an Expo Simulators cloud device in the same way as `bun run ios`:
+
+- It makes the same Debug build. While the native fingerprint does not change, it reuses the build.
+- It runs Metro on its own port (never 8081) behind Expo's tunnel and connects the dev client, so Fast Refresh works.
+- It opens the browser preview.
+
+Ctrl+C stops Metro and the cloud device.
+
+Agents:
+
+1. Run `bun run ios:cloud -- --detach`.
+2. Drive the device with `cloudsim exec bunx agent-device@latest snapshot -i` and `press @eN`. Take screenshots with `cloudsim shot <png>`.
+3. Always finish with `cloudsim stop`. Sessions are billed.
+
+`cloudsim doctor` checks the setup. See `~/Documents/code/cloudsim/README.md` and the `eas-simulator` skill.
