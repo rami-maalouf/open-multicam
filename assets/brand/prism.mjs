@@ -78,14 +78,21 @@ function prism() {
 
 const svg = (body) => `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">${body}</svg>\n`;
 
-// the app icon: the art scaled up so the beams run off the edges, on a dark teal studio
-const icon = svg(`
+// the studio behind the app icons. the development build gets a warm amber studio, so it
+// never looks like the store app on a home screen
+const STUDIO = ["#17414b", "#0b2329", "#06151a"];
+const DEV_STUDIO = ["#ffc451", "#f58a1f", "#c4510c"];
+
+const studioFill = ([inner, middle, outer]) => `
   <defs>
     <radialGradient id="bg" cx="0.42" cy="0.3" r="0.9">
-      <stop offset="0" stop-color="#17414b"/><stop offset="0.6" stop-color="#0b2329"/><stop offset="1" stop-color="#06151a"/>
+      <stop offset="0" stop-color="${inner}"/><stop offset="0.6" stop-color="${middle}"/><stop offset="1" stop-color="${outer}"/>
     </radialGradient>
   </defs>
-  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#bg)"/>`;
+
+// the app icon: the art scaled up so the beams run off the edges, on the studio
+const appIcon = (studio) => svg(`${studioFill(studio)}
   <g transform="translate(512 530) scale(1.27) translate(-512 -478)">
     ${beam([-120, 641], [420, 516], "#ffffff")}
     ${beam([600, 500], [1160, 210], AQUA)}
@@ -96,13 +103,6 @@ const icon = svg(`
 
 // android masks its launcher icons to the middle 72 of 108 dp, and only the middle 66 dp is safe, so
 // the adaptive icon gets the art scaled into that circle over a separate studio background
-const studio = svg(`
-  <defs>
-    <radialGradient id="bg" cx="0.42" cy="0.3" r="0.9">
-      <stop offset="0" stop-color="#17414b"/><stop offset="0.6" stop-color="#0b2329"/><stop offset="1" stop-color="#06151a"/>
-    </radialGradient>
-  </defs>
-  <rect width="1024" height="1024" fill="url(#bg)"/>`);
 const adaptive = svg(`
   <g transform="translate(512 524) scale(0.9) translate(-512 -478)">
     ${beam([-120, 641], [420, 516], "#ffffff")}
@@ -130,24 +130,30 @@ const mark = `<svg xmlns="http://www.w3.org/2000/svg" width="944" height="520" v
 </svg>
 `;
 
-writeFileSync(join(here, "icon.svg"), icon);
+writeFileSync(join(here, "icon.svg"), appIcon(STUDIO));
+writeFileSync(join(here, "icon-dev.svg"), appIcon(DEV_STUDIO));
 writeFileSync(join(here, "splash.svg"), splash);
 writeFileSync(join(here, "adaptive-icon.svg"), adaptive);
-writeFileSync(join(here, "adaptive-icon-background.svg"), studio);
+writeFileSync(join(here, "adaptive-icon-background.svg"), svg(studioFill(STUDIO)));
+writeFileSync(join(here, "adaptive-icon-background-dev.svg"), svg(studioFill(DEV_STUDIO)));
 
 const sips = (...args) => execFileSync("sips", args, { stdio: "ignore" });
 const png = (from, to, size) => sips("-s", "format", "png", ...(size ? ["-Z", String(size)] : []), from, "--out", to);
 
 // the app icons must be opaque: flatten the render to rgb
 const tmp = join(here, ".render.png");
-png(join(here, "icon.svg"), tmp);
-for (const name of ["icon.png", "icon-dark.png"]) {
-  execFileSync("ffmpeg", ["-v", "error", "-y", "-i", tmp, "-pix_fmt", "rgb24", join(assets, name)]);
-}
+const opaque = (from, ...to) => {
+  png(join(here, from), tmp);
+  for (const name of to) {
+    execFileSync("ffmpeg", ["-v", "error", "-y", "-i", tmp, "-pix_fmt", "rgb24", join(assets, name)]);
+  }
+};
+opaque("icon.svg", "icon.png", "icon-dark.png");
+opaque("icon-dev.svg", "icon-dev.png");
 png(join(here, "splash.svg"), join(assets, "splash-icon.png"));
 png(join(here, "adaptive-icon.svg"), join(assets, "adaptive-icon.png"));
-png(join(here, "adaptive-icon-background.svg"), tmp);
-execFileSync("ffmpeg", ["-v", "error", "-y", "-i", tmp, "-pix_fmt", "rgb24", join(assets, "adaptive-icon-background.png")]);
+opaque("adaptive-icon-background.svg", "adaptive-icon-background.png");
+opaque("adaptive-icon-background-dev.svg", "adaptive-icon-background-dev.png");
 
 // the website's cuts of the icon
 mkdirSync(website, { recursive: true });
@@ -158,4 +164,4 @@ png(join(here, "mark.svg"), join(here, "mark.png"));
 png(join(assets, "icon.png"), join(website, "icon-180.png"), 180);
 png(join(assets, "icon.png"), join(website, "icon-64.png"), 64);
 execFileSync("rm", ["-f", tmp]);
-console.log("wrote assets/icon.png, assets/icon-dark.png, assets/splash-icon.png, the android adaptive icon and the website icons, and the mark for the app and the website");
+console.log("wrote assets/icon.png, assets/icon-dark.png, the development icons, assets/splash-icon.png, the android adaptive icon and the website icons, and the mark for the app and the website");
