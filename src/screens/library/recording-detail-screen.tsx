@@ -291,7 +291,7 @@ export function RecordingDetailScreen() {
                 ]}
               >
                 <AppText
-                  tone={index === selectedClipIndex ? "previewLabel" : "primary"}
+                  tone={index === selectedClipIndex ? "primary" : "secondary"}
                   variant="caption"
                 >
                   {clipLabels[index]}
@@ -418,7 +418,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     minHeight: 38,
     paddingHorizontal: spacing.small,
   },
-  clipButtonSelected: { backgroundColor: colors.accent },
+  clipButtonSelected: { backgroundColor: colors.surface },
   headingRow: { alignItems: "flex-start", flexDirection: "row", gap: spacing.regular },
   headingText: { flex: 1, gap: spacing.small },
   iconButton: {
@@ -437,12 +437,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     gap: spacing.small,
     justifyContent: "center",
-    minHeight: 84,
+    minHeight: 66,
     padding: spacing.regular,
   },
   deleteButton: {
     alignItems: "center",
-    backgroundColor: colors.surface,
     borderRadius: radii.control,
     flexDirection: "row",
     gap: spacing.small,

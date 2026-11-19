@@ -1,0 +1,42 @@
+# step 2 of 2: send the verified update to internal testflight builds.
+#
+# republishes the latest update group on the `verify` branch to the `internal` channel. it
+# does not bundle again, so testers get the same files that ran in expo simulators. run it
+# only after the update passed on the `verify-simulator` build. see docs/internal-updates.md.
+#
+#   eas workflow:run ship-update.yml
+# or from an agent with the expo mcp `workflow_run` tool (fileName: ship-update.yml).
+#
+# roll back: run verify-update.yml at the commit you want, check it, then run this again.
+
+name: Ship verified update
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  ship:
+    name: Republish the verified update to the internal channel
+    environment: production
+    env:
+      OPENMULTICAM_OTA: "1"
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Republish the latest verify update to internal
+        run: |
+          # update:republish takes only --group in non-interactive mode, so look up the
+          # latest group on the verify branch first.
+          group=$(npx -y eas-cli@latest update:list --branch verify --limit 1 --json --non-interactive \
+            | node -e 'let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => { const u = JSON.parse(s).currentPage?.[0]; process.stdout.write(u?.group ?? ""); });')
+          if [ -z "$group" ]; then
+            echo "no update on the verify branch. run verify-update.yml first." >&2
+            exit 1
+          fi
+          echo "shipping update group $group"
+          npx -y eas-cli@latest update:republish \
+            --group "$group" \
+            --destination-channel internal \
+            --platform ios \
+            --message "ship update group $group, verified in expo simulators" \
+            --non-interactive

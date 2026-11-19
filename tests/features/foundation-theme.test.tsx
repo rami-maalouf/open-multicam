@@ -104,10 +104,10 @@ describe("semantic theme foundation", () => {
         );
       }
       const screen = render(<Harness contrast={false} />);
-      expect(screen.getByTestId("theme-probe")).toHaveStyle({ backgroundColor: "#f7f6f2" });
+      expect(screen.getByTestId("theme-probe")).toHaveStyle({ backgroundColor: resolveThemePalette("light", "standard").background });
       scheme.mockReturnValue("dark");
       screen.rerender(<Harness contrast={false} />);
-      expect(screen.getByTestId("theme-probe")).toHaveStyle({ backgroundColor: "#080d0f" });
+      expect(screen.getByTestId("theme-probe")).toHaveStyle({ backgroundColor: resolveThemePalette("dark", "standard").background });
       screen.rerender(<Harness contrast={true} />);
       expect(screen.getByTestId("theme-probe")).toHaveStyle({ backgroundColor: "#000000" });
     } finally {
@@ -122,7 +122,7 @@ describe("semantic theme foundation", () => {
         jest.replaceProperty(rn.Platform, "OS", "android");
         jest.spyOn(rn.Appearance, "getColorScheme").mockReturnValue("dark");
         const { colors: androidColors } = require("@/theme");
-        expect(androidColors.background).toBe("#080d0f");
+        expect(androidColors.background).toBe(resolveThemePalette("dark", "standard").background);
       });
     } finally {
       jest.restoreAllMocks();

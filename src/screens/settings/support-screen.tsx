@@ -125,7 +125,7 @@ export function SupportScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.control, gap: spacing.spacious },
+  content: { padding: spacing.section, gap: spacing.screen, maxWidth: 640, width: "100%", alignSelf: "center" },
   intro: { gap: spacing.regular, paddingTop: spacing.regular },
   card: { backgroundColor: colors.surface, borderRadius: radii.card, padding: spacing.control, gap: spacing.regular },
 });

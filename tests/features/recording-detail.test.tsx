@@ -1,4 +1,4 @@
-import { fireEvent, waitFor } from "@testing-library/react-native";
+import { fireEvent, fireEventAsync, waitFor } from "@testing-library/react-native";
 import { Alert, Platform } from "react-native";
 
 import type { RecordingLibraryEntry } from "@/core/library/entry";
@@ -153,10 +153,10 @@ describe("recording detail", () => {
       await screen.findByTestId("video-player");
       fireEvent.press(screen.getByRole("button", { name: "Rename take" }));
       fireEvent.changeText(screen.getByLabelText("Take name"), "Morning");
-      fireEvent.press(screen.getByRole("button", { name: "Save" }));
+      await fireEventAsync.press(screen.getByRole("button", { name: "Save" }));
       await waitFor(() => expect(alertSpy).toHaveBeenCalledWith("Couldn't rename take", expect.any(String)));
       expect(screen.getByLabelText("Take name")).toHaveProp("value", "Morning");
-      fireEvent.press(screen.getByRole("button", { name: "Save" }));
+      await fireEventAsync.press(screen.getByRole("button", { name: "Save" }));
       await waitFor(() => expect(screen.queryByLabelText("Take name")).toBeNull());
       expect(mockRenameRecording).toHaveBeenLastCalledWith("set-discrete", "Morning");
       expect(promptSpy).not.toHaveBeenCalled();

@@ -56,6 +56,7 @@ export function AdaptiveMaterial({
     return (
       <GlassView
         {...props}
+        colorScheme={material === "previewOverlay" ? "dark" : "auto"}
         glassEffectStyle="regular"
         isInteractive={interactive}
         style={materialStyle}
