@@ -62,7 +62,7 @@ describe("internal over-the-air updates", () => {
     expect(major * 1000 + minor).toBeGreaterThan(storeMajor * 1000 + storeMinor);
   });
 
-  it("sets the flag only on the internal testflight and verify simulator profiles", () => {
+  it("sets the flag only on the internal testflight, internal device and verify simulator profiles", () => {
     type Profile = {
       extends?: string;
       env?: Record<string, string>;
@@ -82,9 +82,18 @@ describe("internal over-the-air updates", () => {
       distribution: "internal",
       ios: { simulator: true },
     });
+    // the ad hoc copy of the testflight build: same channel and version line, installed from a link
+    expect(profiles["internal-ota-device"]).toMatchObject({
+      extends: "internal-ota",
+      distribution: "internal",
+    });
+    expect(profiles["internal-ota-device"]?.channel).toBeUndefined();
+    expect(profiles["internal-ota-device"]?.ios?.simulator).toBeUndefined();
+
+    const otaProfiles = ["internal-ota", "internal-ota-device", "verify-simulator"];
 
     for (const [name, profile] of Object.entries(profiles)) {
-      if (name !== "internal-ota" && name !== "verify-simulator") {
+      if (!otaProfiles.includes(name)) {
         expect(profile.extends).not.toBe("internal-ota");
         expect(profile.env?.[OTA_FLAG]).toBeUndefined();
         expect(profile.channel).toBeUndefined();

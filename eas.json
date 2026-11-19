@@ -47,6 +47,11 @@
         "OPENMULTICAM_OTA": "1"
       }
     },
+    "internal-ota-device": {
+      "extends": "internal-ota",
+      "distribution": "internal",
+      "autoIncrement": false
+    },
     "verify-simulator": {
       "extends": "internal-ota",
       "channel": "verify",

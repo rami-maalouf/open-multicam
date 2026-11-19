@@ -9,11 +9,12 @@ The privacy policy says there is no app-operated server, and Release 1 is local 
 ## How it works
 
 - `app.config.ts` turns updates on only when `OPENMULTICAM_OTA=1`.
-- Two build profiles in `eas.json` set that flag:
+- Three build profiles in `eas.json` set that flag:
 
   | Profile | Channel | Build | Who runs it |
   | --- | --- | --- | --- |
   | `internal-ota` | `internal` | release, App Store signing, TestFlight | internal testers |
+  | `internal-ota-device` | `internal` | release, ad hoc signing, install link | registered devices, without TestFlight |
   | `verify-simulator` | `verify` | release, iOS simulator | Expo Simulators |
 
 - `.eas/workflows/verify-update.yml` publishes an update to `verify`.
@@ -34,6 +35,12 @@ eas build --profile verify-simulator --platform ios
 ```
 
 The `internal-ota` build goes to TestFlight. Add it to the internal testing group only. Never select an `internal-ota` build for an App Store version: it checks for updates at launch.
+
+To install the same build without TestFlight, make the ad hoc copy. It gets the same updates, because it has the same channel and version. It installs only on devices in its provisioning profile (`eas device:create` registers a new one), and it replaces an App Store or TestFlight install on that device:
+
+```bash
+eas build --profile internal-ota-device --platform ios
+```
 
 ## Ship a change
 
