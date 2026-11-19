@@ -51,3 +51,5 @@ Updates are on only for TestFlight builds (`internal-ota`, channel `internal`, i
 ## Simulator evidence in fix PRs
 
 For a simulator-verified fix, follow [the PR media procedure](docs/pr-simulator-media.md) from the first reproduction. Include the before and after screenshots, animated previews and full recordings in the PR description.
+
+For a simulator-verified PR, include the issue-specific scenario when opening the PR to trigger the recording job described in `docs/pr-simulator-media.md`. Set `camera: true` for capture-screen checks.

@@ -21,3 +21,23 @@ Capture the same action on the baseline and on the verified fix. Label the clips
 | [Watch full recording](BEFORE_VIDEO_URL) | [Watch full recording](AFTER_VIDEO_URL) |
 
 Use raw GitHub image URLs for this public repository. The GIFs play inside the description and the recording links open the full-resolution MP4s.
+
+## Run the PR recording job
+
+Include one `simulator-scenario` block when opening a same-repository PR to main. Opening, reopening or pushing a new commit runs the scenario automatically. To run it on an already-open PR after editing the description, apply the `simulator-review` label (remove and reapply it for subsequent runs). This uses GitHub macOS build minutes and two bounded Expo Simulators sessions. The existing GitHub Actions secret `EXPO_TOKEN` needs simulator access for this Expo project.
+
+For the capture toolbar, this scenario starts each drag near the lower edge of its button. Both runs grant camera and microphone access, inject the placeholder camera feed, and wait for the native capture surface to report that it is previewing.
+
+```simulator-scenario
+{
+  "camera": true,
+  "steps": [
+    {"action":"pan","label":"Open library","startY":0.86,"dx":0,"dy":90,"durationMs":1800},
+    {"action":"pan","label":"Open settings","startY":0.86,"dx":0,"dy":90,"durationMs":1800}
+  ]
+}
+```
+
+For another issue, supply its own ordered interactions. A tap uses `{"action":"tap","label":"Open settings"}`. Labels resolve against the visible accessibility tree on each device. Set `camera` to false when the test does not need a live preview.
+
+GitHub builds release simulator apps from the event's exact base and head commits, with OTA updates disabled. The recording job installs each binary on a fresh cloud iPhone, performs the scenario and stops the session. It uses the media helper to create full-screen previews. A separate publishing job writes both screenshots, loops and full recording links into a managed section of the PR body. Reviewers judge the visual result from those recordings.

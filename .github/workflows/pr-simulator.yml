@@ -1,0 +1,126 @@
+name: Record PR simulator evidence
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, labeled, synchronize, reopened]
+
+permissions: {}
+
+concurrency:
+  group: simulator-evidence-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  scenario:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      ((github.event.action == 'labeled' && github.event.label.name == 'simulator-review') ||
+       (github.event.action != 'labeled' && contains(github.event.pull_request.body, '```simulator-scenario')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - run: node scripts/pr-simulator/scenario.mjs
+
+  build:
+    needs: scenario
+    runs-on: macos-26
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - side: before
+            sha: ${{ github.event.pull_request.base.sha }}
+          - side: after
+            sha: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.sha }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - name: Build the release simulator app at the selected commit
+        env:
+          LANG: en_US.UTF-8
+          OPENMULTICAM_OTA: '0'
+        run: |
+          bun install --frozen-lockfile
+          bunx expo prebuild --platform ios --no-install
+          (cd ios && pod install)
+          xcodebuild -quiet -workspace ios/OpenMulticam.xcworkspace -scheme OpenMulticam \
+            -configuration Release -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/build" ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build
+          tar -C "$RUNNER_TEMP/build/Build/Products/Release-iphonesimulator" \
+            -czf "$RUNNER_TEMP/app.tgz" OpenMulticam.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.side }}
+          path: ${{ runner.temp }}/app.tgz
+          overwrite: true
+          retention-days: 1
+
+  record:
+    needs: build
+    runs-on: macos-26
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: app-*
+          path: ${{ runner.temp }}/apps
+      - name: Prepare simulator tools
+        run: |
+          bun install --frozen-lockfile
+          bun install -g eas-cli@latest
+          command -v ffmpeg || brew install ffmpeg
+      - name: Record both revisions
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/media"
+          for side in before after; do
+            dir="$RUNNER_TEMP/apps/app-$side"
+            tar -xzf "$dir/app.tgz" -C "$dir"
+            node scripts/pr-simulator/record.mjs "$side" "$dir/OpenMulticam.app" "$RUNNER_TEMP/media"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: evidence
+          path: ${{ runner.temp }}/media
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  publish:
+    needs: record
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: evidence
+          path: .agents/evidence/pr-${{ github.event.pull_request.number }}
+      - name: Add full-screen media to the PR description
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/pr-simulator/publish.mjs
