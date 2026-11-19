@@ -25,6 +25,7 @@ function SettingsRow({ detail, onPress, testID, title }: SettingsRowProps) {
 
   return (
     <ListItem
+      colors={{ containerColor: "transparent" }}
       onPress={onPress}
       testID={testID}
       trailing={onPress && <Icon name="chevron.right" size="compact" tone="secondary" />}

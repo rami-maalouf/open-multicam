@@ -1,5 +1,4 @@
 import { BottomSheet, RNHostView } from "@expo/ui";
-import { fillMaxHeight } from "@expo/ui/jetpack-compose/modifiers";
 import { Link, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -12,7 +11,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   CaptureSurfaceView,
@@ -873,6 +872,8 @@ function CameraSheet({
 }>) {
   const styles = useThemedStyles(createStyles);
   const colors = useThemeColors();
+  const { height } = useWindowDimensions();
+  const { bottom } = useSafeAreaInsets();
   const modes = availableModes(configurations);
   const usableCameras = camerasFor(configurations, mode);
   const cameras = (capabilities?.cameras ?? [])
@@ -891,110 +892,112 @@ function CameraSheet({
       isPresented={isVisible}
       onDismiss={onClose}
       snapPoints={["half"]}
-      modifiers={Platform.OS === "android" ? [fillMaxHeight(0.5)] : undefined}
       contentPadding={0}
       containerColor={colors.background}
       testID="camera-sheet"
     >
-      <RNHostView>
-        <ScrollView contentContainerStyle={styles.sheet} nestedScrollEnabled>
-          <View style={styles.sheetHeader}>
-            <AppText variant="title">Cameras</AppText>
-            <Pressable
-              accessibilityLabel="Close camera picker"
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={onClose}
-            >
-              <Icon
-                name="xmark.circle.fill"
-                size="prominent"
-                tone="secondary"
-              />
-            </Pressable>
-          </View>
-          <AppText tone="secondary" variant="callout">
-            {mode === "single" ? "Choose the camera to record with." : "Tap a camera to use it second. Tap again to make it the main camera."}
-          </AppText>
-
-          <View style={styles.styleRow}>
-            {modes.map((candidate) => (
+      {/* material measures the content plus its 48 dp drag handle to set the expanded anchor. */}
+      <RNHostView matchContents={Platform.OS === "android" ? { vertical: true } : false}>
+        <View style={Platform.OS === "android" ? { height: Math.max(1, height / 2 - 48 - bottom) } : { flex: 1 }}>
+          <ScrollView contentContainerStyle={styles.sheet} nestedScrollEnabled>
+            <View style={styles.sheetHeader}>
+              <AppText variant="title">Cameras</AppText>
               <Pressable
-                accessibilityLabel={`${modeTitle(candidate)} style`}
+                accessibilityLabel="Close camera picker"
                 accessibilityRole="button"
-                accessibilityState={{ selected: candidate === mode }}
-                key={candidate}
-                onPress={() => {
-                  const next = resolveSelection(
-                    configurations,
-                    candidate,
-                    selection?.leadingCameraId ?? null,
-                    selection?.trailingCameraId ?? null,
-                  );
-                  if (next !== null) {
-                    void onSelect(next);
-                  }
-                }}
-                style={[
-                  styles.styleChip,
-                  candidate === mode && styles.styleChipSelected,
-                ]}
-                testID={`camera-sheet-style-${candidate}`}
+                hitSlop={8}
+                onPress={onClose}
               >
-                <Icon name={modeIcon(candidate)} size="compact" tone={candidate === mode ? "accent" : "secondary"} />
-                <AppText variant="caption">{candidate === "pip" ? "PiP" : modeTitle(candidate)}</AppText>
+                <Icon
+                  name="xmark.circle.fill"
+                  size="prominent"
+                  tone="secondary"
+                />
               </Pressable>
-            ))}
-          </View>
+            </View>
+            <AppText tone="secondary" variant="callout">
+              {mode === "single" ? "Choose the camera to record with." : "Tap a camera to use it second. Tap again to make it the main camera."}
+            </AppText>
 
-          <View style={styles.tileGrid}>
-            {cameras.map((camera) => {
-              const slot = slotFor(camera.id);
-              return (
+            <View style={styles.styleRow}>
+              {modes.map((candidate) => (
                 <Pressable
-                  accessibilityLabel={`${cameraTileCaption(camera)} camera${
-                    slot === null ? "" : `, slot ${slot}`
-                  }`}
+                  accessibilityLabel={`${modeTitle(candidate)} style`}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: slot !== null }}
-                  key={camera.id}
+                  accessibilityState={{ selected: candidate === mode }}
+                  key={candidate}
                   onPress={() => {
-                    const next = selectCamera(
+                    const next = resolveSelection(
                       configurations,
-                      mode,
-                      selection,
-                      camera.id,
+                      candidate,
+                      selection?.leadingCameraId ?? null,
+                      selection?.trailingCameraId ?? null,
                     );
                     if (next !== null) {
                       void onSelect(next);
                     }
                   }}
                   style={[
-                    styles.cameraTile,
-                    slot !== null && styles.cameraTileSelected,
+                    styles.styleChip,
+                    candidate === mode && styles.styleChipSelected,
                   ]}
-                  testID={`camera-tile-${camera.id}`}
+                  testID={`camera-sheet-style-${candidate}`}
                 >
-                  <View style={styles.cameraTileHeader}>
-                    <AppText variant="headline">
-                      {cameraTileLabel(camera)}
-                    </AppText>
-                    {slot === null ? null : (
-                      <View style={styles.slotBadge}>
-                        <AppText style={styles.slotBadgeText} variant="caption">
-                          {slot}
-                        </AppText>
-                      </View>
-                    )}
-                  </View>
-                  <AppText tone="secondary" variant="caption">
-                    {cameraTileCaption(camera)}
-                  </AppText>
+                  <Icon name={modeIcon(candidate)} size="compact" tone={candidate === mode ? "accent" : "secondary"} />
+                  <AppText variant="caption">{candidate === "pip" ? "PiP" : modeTitle(candidate)}</AppText>
                 </Pressable>
-            );
-            })}
-          </View>
-        </ScrollView>
+              ))}
+            </View>
+
+            <View style={styles.tileGrid}>
+              {cameras.map((camera) => {
+                const slot = slotFor(camera.id);
+                return (
+                  <Pressable
+                    accessibilityLabel={`${cameraTileCaption(camera)} camera${
+                      slot === null ? "" : `, slot ${slot}`
+                    }`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: slot !== null }}
+                    key={camera.id}
+                    onPress={() => {
+                      const next = selectCamera(
+                        configurations,
+                        mode,
+                        selection,
+                        camera.id,
+                      );
+                      if (next !== null) {
+                        void onSelect(next);
+                      }
+                    }}
+                    style={[
+                      styles.cameraTile,
+                      slot !== null && styles.cameraTileSelected,
+                    ]}
+                    testID={`camera-tile-${camera.id}`}
+                  >
+                    <View style={styles.cameraTileHeader}>
+                      <AppText variant="headline">
+                        {cameraTileLabel(camera)}
+                      </AppText>
+                      {slot === null ? null : (
+                        <View style={styles.slotBadge}>
+                          <AppText style={styles.slotBadgeText} variant="caption">
+                            {slot}
+                          </AppText>
+                        </View>
+                      )}
+                    </View>
+                    <AppText tone="secondary" variant="caption">
+                      {cameraTileCaption(camera)}
+                    </AppText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </View>
       </RNHostView>
     </BottomSheet>
   );

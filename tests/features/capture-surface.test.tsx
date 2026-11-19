@@ -17,6 +17,10 @@ const mockRevealApp = jest.fn();
 let mockModuleEventListener: ((event: unknown) => void) | null = null;
 let mockCaptureFocusEffect: (() => void | (() => void)) | null = null;
 
+jest.mock("react-native-safe-area-context", () =>
+  require("react-native-safe-area-context/jest/mock").default,
+);
+
 // the native sheet presents its children in a separate window outside its anchor.
 jest.mock("@expo/ui", () => ({
   BottomSheet: ({ children, isPresented }: { children: ReactNode; isPresented: boolean }) =>
