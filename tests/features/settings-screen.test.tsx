@@ -26,8 +26,8 @@ jest.mock("@expo/ui", () => {
   return {
     Host: ({ children }: { children?: React.ReactNode }) =>
       React.createElement(View, null, children),
-    List: ({ children }: { children?: React.ReactNode }) =>
-      React.createElement(View, null, children),
+    FieldGroup: Object.assign(({ children }: { children?: React.ReactNode }) =>
+      React.createElement(View, null, children), { Section: View }),
     ListItem,
     Text: ({
       children,

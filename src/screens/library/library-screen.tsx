@@ -22,7 +22,7 @@ import {
   recordingHealth,
   type RecordingLibraryEntry,
 } from "@/core/library/entry";
-import { radii, shadows, spacing, useThemeColors, useThemedStyles, type ThemeColors } from "@/theme";
+import { radii, spacing, useThemeColors, useThemedStyles, type ThemeColors } from "@/theme";
 
 export function LibraryScreen() {
   const styles = useThemedStyles(createStyles);
@@ -160,8 +160,7 @@ function EmptyLibrary({ errorMessage }: Readonly<{ errorMessage: string | null }
       </AppText>
       <Link href="/" asChild>
         <Pressable accessibilityRole="button" style={styles.primaryAction}>
-          <Icon name="camera.fill" size="regular" tone="previewLabel" />
-          <AppText tone="previewLabel" variant="headline">
+          <AppText style={styles.actionLabel} variant="headline">
             Open camera
           </AppText>
         </Pressable>
@@ -191,28 +190,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radii.card,
     flexDirection: "row",
     gap: spacing.regular,
-    minHeight: 88,
+    minHeight: 72,
     padding: spacing.regular,
-    ...shadows.floating,
   },
   pressed: { opacity: 0.7 },
   recordingArtwork: {
     alignItems: "center",
-    aspectRatio: 4 / 3,
+    width: 48,
     backgroundColor: colors.raisedSurface,
     borderRadius: radii.control,
-    height: 64,
+    height: 48,
     justifyContent: "center",
   },
   recordingText: { flex: 1, gap: spacing.compact },
   emptyStateCard: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: radii.card,
     gap: spacing.small,
     paddingHorizontal: spacing.section,
     paddingVertical: spacing.spacious,
-    ...shadows.floating,
   },
   emptyStateIcon: {
     alignItems: "center",
@@ -225,16 +220,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   emptyTitle: { textAlign: "center" },
   supportingCopy: { maxWidth: 320, textAlign: "center" },
+  actionLabel: { color: colors.background },
   primaryAction: {
     alignItems: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     borderRadius: radii.control,
     flexDirection: "row",
     gap: spacing.small,
     justifyContent: "center",
     marginTop: spacing.section,
-    minHeight: 52,
+    minHeight: 46,
     paddingHorizontal: spacing.control,
-    width: "100%",
+    alignSelf: "center",
   },
 });

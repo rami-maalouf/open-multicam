@@ -24,6 +24,6 @@ export function PrivacyScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.control, gap: spacing.spacious },
+  content: { padding: spacing.section, gap: spacing.screen, maxWidth: 640, width: "100%", alignSelf: "center" },
   section: { gap: spacing.small },
 });

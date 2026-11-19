@@ -1,9 +1,10 @@
+import { BottomSheet, RNHostView } from "@expo/ui";
+import { fillMaxHeight } from "@expo/ui/jetpack-compose/modifiers";
 import { Link, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AppState,
   Image,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -26,7 +27,6 @@ import { revealApp } from "@/foundation/launch/launch-screen";
 import {
   availableModes,
   camerasFor,
-  partnersFor,
   resolveSelection,
   selectCamera,
   type CameraSlotSelection,
@@ -48,7 +48,7 @@ import {
   reportRecorderSuccess,
 } from "@/core/telemetry/recorder";
 import { playHaptic } from "@/foundation/haptics/haptics";
-import { radii, spacing, useThemedStyles, type ThemeColors } from "@/theme";
+import { radii, spacing, useThemeColors, useThemedStyles, type ThemeColors } from "@/theme";
 
 type CapturePhase =
   | "checking"
@@ -662,12 +662,7 @@ export function CaptureScreen() {
     <SafeAreaView edges={["top", "bottom"]} style={styles.screen}>
       <View style={styles.topBar}>
         <View style={styles.identity}>
-          <View
-            style={[
-              styles.liveIndicator,
-              phase === "recording" && styles.recordingIndicator,
-            ]}
-          />
+          {phase === "recording" && <View style={styles.recordingIndicator} />}
           <AppText tone="previewLabel" variant="headline">
             {phase === "recording" ? formatElapsed(elapsedMs) : "OpenMulticam"}
           </AppText>
@@ -754,7 +749,7 @@ export function CaptureScreen() {
                 onPress={() => void requestPermissions()}
                 style={styles.permissionButton}
               >
-                <AppText tone="previewLabel" variant="headline">
+                <AppText style={styles.permissionLabel} variant="headline">
                   Continue
                 </AppText>
               </Pressable>
@@ -765,7 +760,7 @@ export function CaptureScreen() {
                 onPress={() => void multicamCaptureModule.openSettings()}
                 style={styles.permissionButton}
               >
-                <AppText tone="previewLabel" variant="headline">
+                <AppText style={styles.permissionLabel} variant="headline">
                   Open Settings
                 </AppText>
               </Pressable>
@@ -776,7 +771,7 @@ export function CaptureScreen() {
                 onPress={() => void refresh()}
                 style={styles.permissionButton}
               >
-                <AppText tone="previewLabel" variant="headline">
+                <AppText style={styles.permissionLabel} variant="headline">
                   Try Again
                 </AppText>
               </Pressable>
@@ -803,7 +798,7 @@ export function CaptureScreen() {
                     : "camera.fill"
                 }
                 size="compact"
-                tone="accent"
+                tone="previewLabel"
               />
               <AppText tone="previewLabel" variant="caption">
                 {configurationLabel(selectedConfiguration)}
@@ -877,13 +872,9 @@ function CameraSheet({
   selection: CameraSlotSelection | null;
 }>) {
   const styles = useThemedStyles(createStyles);
+  const colors = useThemeColors();
   const modes = availableModes(configurations);
   const usableCameras = camerasFor(configurations, mode);
-  const partners = partnersFor(
-    configurations,
-    mode,
-    selection?.leadingCameraId ?? null,
-  );
   const cameras = (capabilities?.cameras ?? [])
     .filter((camera) => usableCameras.has(camera.id))
     .sort((left, right) => cameraTileRank(left) - cameraTileRank(right));
@@ -896,15 +887,17 @@ function CameraSheet({
   };
 
   return (
-    <Modal
-      animationType="slide"
-      onRequestClose={onClose}
-      presentationStyle="pageSheet"
+    <BottomSheet
+      isPresented={isVisible}
+      onDismiss={onClose}
+      snapPoints={["half"]}
+      modifiers={Platform.OS === "android" ? [fillMaxHeight(0.5)] : undefined}
+      contentPadding={0}
+      containerColor={colors.background}
       testID="camera-sheet"
-      visible={isVisible}
     >
-      <SafeAreaView style={styles.sheetScreen}>
-        <View style={styles.sheet}>
+      <RNHostView>
+        <ScrollView contentContainerStyle={styles.sheet} nestedScrollEnabled>
           <View style={styles.sheetHeader}>
             <AppText variant="title">Cameras</AppText>
             <Pressable
@@ -921,8 +914,7 @@ function CameraSheet({
             </Pressable>
           </View>
           <AppText tone="secondary" variant="callout">
-            Tap a camera to make it the second one. Tap it again to make it the
-            main one.
+            {mode === "single" ? "Choose the camera to record with." : "Tap a camera to use it second. Tap again to make it the main camera."}
           </AppText>
 
           <View style={styles.styleRow}>
@@ -949,21 +941,15 @@ function CameraSheet({
                 ]}
                 testID={`camera-sheet-style-${candidate}`}
               >
-                <Icon name={modeIcon(candidate)} size="compact" tone="accent" />
-                <AppText variant="caption">{modeTitle(candidate)}</AppText>
+                <Icon name={modeIcon(candidate)} size="compact" tone={candidate === mode ? "accent" : "secondary"} />
+                <AppText variant="caption">{candidate === "pip" ? "PiP" : modeTitle(candidate)}</AppText>
               </Pressable>
             ))}
           </View>
 
-          <ScrollView contentContainerStyle={styles.tileGrid}>
+          <View style={styles.tileGrid}>
             {cameras.map((camera) => {
               const slot = slotFor(camera.id);
-              const isPairable =
-                slot !== null ||
-                mode === "single" ||
-                partners.has(camera.id) ||
-                selection === null;
-
               return (
                 <Pressable
                   accessibilityLabel={`${cameraTileCaption(camera)} camera${
@@ -986,7 +972,6 @@ function CameraSheet({
                   style={[
                     styles.cameraTile,
                     slot !== null && styles.cameraTileSelected,
-                    !isPairable && styles.cameraTileDimmed,
                   ]}
                   testID={`camera-tile-${camera.id}`}
                 >
@@ -1007,11 +992,11 @@ function CameraSheet({
                   </AppText>
                 </Pressable>
             );
-          })}
-          </ScrollView>
-        </View>
-      </SafeAreaView>
-    </Modal>
+            })}
+          </View>
+        </ScrollView>
+      </RNHostView>
+    </BottomSheet>
   );
 }
 
@@ -1025,13 +1010,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingTop: spacing.small,
   },
   identity: { alignItems: "center", flexDirection: "row", gap: spacing.small },
-  liveIndicator: {
-    backgroundColor: colors.accent,
+  recordingIndicator: {
+    backgroundColor: colors.recording,
     borderRadius: radii.capsule,
     height: 8,
     width: 8,
   },
-  recordingIndicator: { backgroundColor: colors.recording },
   navigation: { flexDirection: "row", gap: spacing.small },
   navigationButton: { borderRadius: radii.capsule },
   navigationMaterial: {
@@ -1055,21 +1039,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   // the mark is 944 by 520, drawn by assets/brand/prism.mjs
   brandMark: {
-    height: 88,
+    height: 60,
     marginBottom: spacing.section,
-    width: 160,
+    width: 110,
   },
   overlayTitle: { maxWidth: 360, textAlign: "center" },
   overlayCopy: { marginTop: spacing.small, maxWidth: 340, textAlign: "center" },
   permissionButton: {
     alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radii.control,
+    backgroundColor: colors.previewLabel,
+    borderRadius: radii.capsule,
     marginTop: spacing.section,
     minHeight: 50,
     justifyContent: "center",
     paddingHorizontal: spacing.section,
   },
+  permissionLabel: { color: colors.previewChrome },
   cameraPickerButton: {
     alignSelf: "center",
     bottom: spacing.control,
@@ -1080,6 +1065,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radii.capsule,
     flexDirection: "row",
     gap: spacing.small,
+    minHeight: 44,
     maxWidth: 340,
     paddingHorizontal: spacing.regular,
     paddingVertical: spacing.small,
@@ -1107,21 +1093,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: 60,
   },
   stopControlInner: { borderRadius: radii.small, height: 34, width: 34 },
-  sheetScreen: { backgroundColor: colors.background, flex: 1 },
-  sheet: { flex: 1, gap: spacing.regular, padding: spacing.control },
+  sheet: { gap: spacing.control, paddingHorizontal: spacing.section, paddingTop: Platform.OS === "ios" ? spacing.section : 0, paddingBottom: spacing.screen },
   sheetHeader: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  styleRow: { flexDirection: "row", gap: spacing.small },
+  styleRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.compact },
   styleChip: {
     alignItems: "center",
     backgroundColor: colors.surface,
     borderColor: "transparent",
     borderRadius: radii.control,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     flex: 1,
+    minWidth: 66,
     gap: spacing.compact,
     paddingHorizontal: spacing.small,
     paddingVertical: spacing.small,
@@ -1140,7 +1126,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.surface,
     borderColor: "transparent",
     borderRadius: radii.card,
-    borderWidth: 2,
+    borderWidth: 1,
     // two columns that fill the sheet, like the style row above them
     flexBasis: "40%",
     flexGrow: 1,
@@ -1149,7 +1135,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.regular,
   },
   cameraTileSelected: { borderColor: colors.accent },
-  cameraTileDimmed: { opacity: 0.4 },
   cameraTileHeader: {
     alignItems: "center",
     flexDirection: "row",
@@ -1163,5 +1148,5 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: "center",
     width: 24,
   },
-  slotBadgeText: { color: colors.previewChrome },
+  slotBadgeText: { color: colors.background },
 });
