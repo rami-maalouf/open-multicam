@@ -71,8 +71,7 @@ force-push.**
 
 ## Evidence policy
 
-Two things are captured on **every** run, no exceptions - see the mandatory
-proof note above:
+Follow [the simulator media procedure](../../docs/pr-simulator-media.md) for every fix PR. Capture these items:
 
 1. The simulator session URL for the repro session and, separately, for the
    verification session.
@@ -80,22 +79,15 @@ proof note above:
    state). Even for a crash: screenshot the crash/springboard moment for
    "before" and the working screen for "after."
 
-Then choose one evidence class to decide what **additional** proof to add on
-top of the two mandatory items above - this is about strengthening the
-review, never about skipping the screenshots or the session links:
+3. A recording of each interaction, an inline animated preview of each recording,
+   and a link to each full video. Begin recording before reproducing the issue
+   in step 2 and before repeating the steps on the fix in step 7.
 
-- `static-visual`: layout, spacing, color, type, icons, clipping, or a stable
-  rendered state. The mandatory before/after screenshots ARE the evidence
-  here; no extra capture needed.
-- `temporal`: animation, pressed state, gesture, transition, timing, jank,
-  dropped frames, or a crash sequence - likely common in a camera app (e.g.
-  preview freezing, picture-in-picture drag jank). Add the session's own
-  replay (the session URL, already mandatory above) as the primary proof of
-  motion - a still can't show it. Do not additionally use the
-  `agent-device record start/stop` verb: iOS video capture via that verb is
-  unreliable (roughly 1-in-3 success rate) and can wedge the recorder for
-  the rest of the session. The session URL replay is sufficient; don't
-  retry `record`.
+Choose the evidence class for the PR:
+
+- `static-visual`: capture the path to the affected layout or screen.
+- `temporal`: record the complete gesture, animation, transition or crash
+  sequence. Choose matching mid-action frames for the two screenshots.
 - `structural-runtime`: wrong route, missing element, persistence, camera
   session lifecycle, or non-visual logic. Add exact logs and a regression
   test under `tests/` on top of the mandatory before/after screenshots - the
@@ -200,15 +192,9 @@ skill (see above); the shape is:
      - `Fixes #$ISSUE_NUMBER`
      - the root cause, in two or three sentences
      - an **Evidence** section naming the selected class
-     - the before/after screenshots rendered side by side (not bare links) -
-       use a two-column markdown image table with `raw.githubusercontent.com`
-       URLs from the fix branch. Confirm with `curl -sI <url>` that each URL
-       returns `HTTP 200` before finishing (a 404 means the branch/screenshot
-       commit didn't push).
-     - `Watch the repro: <session #1 URL>` and
-       `Watch the verified fix: <session #2 URL>` - always both, every run
-     - for `temporal`, note that the replay is the primary proof (the stills
-       are a supplement, not the main evidence, for motion bugs)
+     - the media table from `docs/pr-simulator-media.md`, with both screenshots,
+       inline animated previews and full video links
+     - links to the repro and verification sessions
      - for `structural-runtime`, also include the exact assertion, log, or
        regression test that proves the change, alongside the screenshots
      - how it was verified (test run + on-device pass)

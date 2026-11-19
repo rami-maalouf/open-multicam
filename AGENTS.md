@@ -47,3 +47,7 @@ Agents:
 ## Over-the-air updates (EAS Update)
 
 Updates are on only for TestFlight builds (`internal-ota`, channel `internal`, internal and external groups), their ad hoc copy for registered devices (`internal-ota-device`, also channel `internal`), and the simulator check build (`verify-simulator`, channel `verify`). The App Store build keeps them off, because the privacy policy promises no app-operated server. Before you publish or change anything about updates, read `docs/internal-updates.md`. It describes the verify-then-ship workflows and the separate internal version line.
+
+## Simulator evidence in fix PRs
+
+For a simulator-verified fix, follow [the PR media procedure](docs/pr-simulator-media.md) from the first reproduction. Include the before and after screenshots, animated previews and full recordings in the PR description.
