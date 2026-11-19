@@ -1,6 +1,6 @@
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
-import { AppState, Platform } from "react-native";
+import { AppState, Platform, StyleSheet } from "react-native";
 
 import { CaptureScreen } from "@/screens/shell/app-shell-screens";
 import { render } from "@/testing/render";
@@ -132,6 +132,17 @@ const simcamCapabilities = {
 } as const;
 
 describe("native capture surface", () => {
+  it("keeps both drag-interactive navigation buttons above the camera preview", () => {
+    const screen = render(<CaptureScreen />);
+    const header = StyleSheet.flatten(screen.getByTestId("capture-top-bar").props.style);
+    const preview = StyleSheet.flatten(screen.getByTestId("capture-preview").props.style);
+
+    expect(header.zIndex).toBeGreaterThan(preview.zIndex ?? 0);
+    expect(header.overflow).toBe("visible");
+    expect(screen.getByRole("button", { name: "Open library" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open settings" })).toBeTruthy();
+  });
+
   beforeEach(() => {
     mockModuleEventListener = null;
     mockCaptureFocusEffect = null;
