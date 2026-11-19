@@ -2,7 +2,7 @@ import { render as renderWithoutProviders } from "@testing-library/react-native"
 import * as Haptics from "expo-haptics";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { useEffect } from "react";
-import { AccessibilityInfo } from "react-native";
+import { AccessibilityInfo, StyleSheet } from "react-native";
 
 import { AdaptiveMaterial } from "@/components/adaptive-material";
 import {
@@ -210,6 +210,10 @@ describe("adaptive material", () => {
 
     expect(screen.getByTestId("material").type).toBe("GlassView");
     expect(screen.getByTestId("material")).toHaveProp("isInteractive", true);
+    // The iOS press-and-drag shape must not be clipped to the 44pt resting frame.
+    expect(StyleSheet.flatten(screen.getByTestId("material").props.style)).toEqual(
+      expect.objectContaining({ overflow: "visible" }),
+    );
   });
 
   it("falls back to a system blur on earlier iOS versions", () => {
@@ -220,6 +224,9 @@ describe("adaptive material", () => {
 
     expect(screen.getByTestId("material").type).toBe("BlurView");
     expect(screen.getByTestId("material")).toHaveProp("intensity", 64);
+    expect(StyleSheet.flatten(screen.getByTestId("material").props.style)).toEqual(
+      expect.objectContaining({ overflow: "hidden" }),
+    );
   });
 
   it("uses a solid readable surface when transparency is reduced", () => {
