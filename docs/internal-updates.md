@@ -67,6 +67,8 @@ Run `verify-update.yml` at the commit you want testers to have, check it on the 
 
 Give the coding agent access to this repository with permission to write contents and pull requests. Connect the Expo project to the same repository. The GitHub connection in Expo lets EAS fetch a commit. The coding agent uses its own GitHub access to push a branch and open the PR.
 
+For the PR step, use a coding session with GitHub write access, such as Codex with this repository authorized. Before filming, create a branch and a draft PR from the same account and client you plan to show. A successful local push only verifies the local Git login.
+
 For a JavaScript-only fix, use this prompt:
 
 > Reproduce the bug on the verify-simulator build in Expo Simulators and capture the gesture. Make the fix on a new branch and open a draft PR against main. Run verify-update.yml at the PR head SHA. Cold-launch the simulator build, confirm it loaded that update, and repeat the gesture. Put the before and after evidence, tested SHA and EAS run link on the PR. When the visual check and PR validation both pass at that SHA, mark it ready for review. Leave merging and shipping to me.
