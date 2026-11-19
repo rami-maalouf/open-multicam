@@ -1006,6 +1006,7 @@ function CameraSheet({
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { backgroundColor: colors.previewChrome, flex: 1 },
   topBar: {
+    zIndex: 1,
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
