@@ -73,7 +73,7 @@ Requires Bun and Xcode for iOS, or JDK 17 and the Android SDK for Android. The l
 
 ```bash
 bun install
-bun run ios          # build and run on an ios simulator or device
+bun run ios          # build and run on an iOS simulator or device
 bun run android      # build and run on an android emulator or device
 bun run start        # start the dev server (dev client)
 ```
