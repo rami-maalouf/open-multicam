@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { pullRequest, scenario } from "./scenario.mjs";
 
@@ -58,4 +58,4 @@ function publish() {
   const body = render(currentBody(), pr, assets, root);
   execFileSync("gh", ["api", "--method", "PATCH", api, "--input", "-", "--silent"], { input: JSON.stringify({ body }) });
 }
-if (process.argv[1] === fileURLToPath(import.meta.url)) publish();
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) publish();

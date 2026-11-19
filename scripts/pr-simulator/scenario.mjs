@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 
@@ -24,4 +24,4 @@ export function pullRequest() {
   return JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")).pull_request;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) scenario(pullRequest().body ?? "");
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) scenario(pullRequest().body ?? "");
