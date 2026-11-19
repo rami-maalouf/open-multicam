@@ -659,7 +659,7 @@ export function CaptureScreen() {
 
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.screen}>
-      <View style={styles.topBar}>
+      <View style={styles.topBar} testID="capture-top-bar">
         <View style={styles.identity}>
           {phase === "recording" && <View style={styles.recordingIndicator} />}
           <AppText tone="previewLabel" variant="headline">
@@ -706,7 +706,7 @@ export function CaptureScreen() {
         </View>
       </View>
 
-      <View style={styles.preview}>
+      <View style={styles.preview} testID="capture-preview">
         {/* an accessible container would hide the camera picker and the
             overlay buttons from VoiceOver, so the description is its own
             element, under the surface so the inset still answers touches */}
@@ -1011,6 +1011,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: spacing.control,
     paddingTop: spacing.small,
+    // Interactive Liquid Glass extends beyond the bar as the finger drags down.
+    // Keep it in front of the sibling native camera preview instead of underneath it.
+    overflow: "visible",
+    position: "relative",
+    zIndex: 1,
   },
   identity: { alignItems: "center", flexDirection: "row", gap: spacing.small },
   recordingIndicator: {
