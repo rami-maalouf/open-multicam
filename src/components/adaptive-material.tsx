@@ -36,7 +36,12 @@ export function AdaptiveMaterial({
     previewOverlay: colors.previewChrome,
     floatingControl: colors.raisedSurface,
   }[material];
-  const materialStyle = [{ overflow: "hidden" as const }, style];
+  // Native Liquid Glass grows beyond its resting bounds during a press-and-drag.
+  // Do not clip that animation; static materials still clip to their rounded shape.
+  const materialStyle = [
+    { overflow: interactive ? ("visible" as const) : ("hidden" as const) },
+    style,
+  ];
 
   if (reduceTransparency || Platform.OS !== "ios") {
     return (
