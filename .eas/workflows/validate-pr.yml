@@ -1,0 +1,17 @@
+name: Validate pull request
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review, base_ref_changed]
+  workflow_dispatch: {}
+
+jobs:
+  validate:
+    name: Validate OpenMulticam
+    environment: preview
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Check repository, lint, types, tests, coverage and Expo dependencies
+        run: bun run validate
