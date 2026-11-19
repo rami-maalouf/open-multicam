@@ -43,3 +43,7 @@ Agents:
 3. Always finish with `cloudsim stop`. Sessions are billed.
 
 `cloudsim doctor` checks the setup. See `~/Documents/code/cloudsim/README.md` and the `eas-simulator` skill.
+
+## Over-the-air updates (EAS Update)
+
+Updates are on only for internal TestFlight builds (`internal-ota`, channel `internal`) and the simulator check build (`verify-simulator`, channel `verify`). The App Store build keeps them off, because the privacy policy promises no app-operated server. Before you publish or change anything about updates, read `docs/internal-updates.md`. It describes the verify-then-ship workflows and the separate internal version line.
