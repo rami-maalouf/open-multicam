@@ -34,7 +34,9 @@ eas build --profile internal-ota --platform ios --auto-submit-with-profile inter
 eas build --profile verify-simulator --platform ios
 ```
 
-The `internal-ota` build goes to TestFlight. Add it to the internal testing group only. Never select an `internal-ota` build for an App Store version: it checks for updates at launch.
+The `internal-ota` build goes to TestFlight. It can go to the internal group ("Team (Expo)") and to the external group ("External Testers", which needs Beta App Review). Never select an `internal-ota` build for an App Store version: it checks for updates at launch.
+
+External testers are told in "What to Test" that the beta checks Expo's update service at launch. The request sends the platform, the runtime version, the IDs of the running and embedded updates, a random install ID (`EAS-Client-ID`) and, after a crash, the error text. It sends no recordings, personal information or location. Keep that text accurate when you change how updates work.
 
 To install the same build without TestFlight, make the ad hoc copy. It gets the same updates, because it has the same channel and version. It installs only on devices in its provisioning profile (`eas device:create` registers a new one), and it replaces an App Store or TestFlight install on that device:
 
