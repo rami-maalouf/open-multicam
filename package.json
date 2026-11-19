@@ -15,7 +15,7 @@
     "test:e2e:sim": "bun e2e/simulator/runner.ts",
     "test:e2e:device": "bun e2e/device/runner.ts",
     "check:repository": "bun scripts/check-repository.mjs",
-    "doctor": "bunx expo-doctor",
+    "doctor": "bun x expo-doctor",
     "validate": "bun run check:repository && bun run lint && bun run typecheck && bun run test:coverage && bun run doctor",
     "test:storekit": "bun scripts/run-storekit-tests.mjs",
     "android": "expo run:android"
