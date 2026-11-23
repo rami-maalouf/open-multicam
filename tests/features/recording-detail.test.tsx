@@ -1,4 +1,5 @@
 import { fireEvent, fireEventAsync, waitFor } from "@testing-library/react-native";
+import { Observe } from "expo-observe";
 import { Alert, Platform } from "react-native";
 
 import type { RecordingLibraryEntry } from "@/core/library/entry";
@@ -68,6 +69,10 @@ const entry = {
   ],
 } satisfies RecordingLibraryEntry;
 
+function reportedMessages(): string[] {
+  return jest.mocked(Observe.reportError).mock.calls.map(([error]) => (error as Error).message);
+}
+
 describe("recording detail", () => {
   let alertSpy: jest.SpyInstance;
   let promptSpy: jest.SpyInstance;
@@ -91,6 +96,8 @@ describe("recording detail", () => {
     mockPause.mockReset();
     alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
     promptSpy = jest.spyOn(Alert, "prompt").mockImplementation(() => undefined);
+    jest.mocked(Observe.markInteractive).mockClear();
+    jest.mocked(Observe.reportError).mockClear();
   });
 
   afterEach(() => {
@@ -105,6 +112,7 @@ describe("recording detail", () => {
       expect(screen.getByTestId("video-player")).toBeTruthy();
       expect(screen.getByText(/1920 × 1080/)).toBeTruthy();
     });
+    expect(Observe.markInteractive).toHaveBeenCalledTimes(1);
 
     fireEvent.press(screen.getByRole("button", { name: "Front" }));
     expect(mockPause).toHaveBeenCalledTimes(1);
@@ -155,6 +163,7 @@ describe("recording detail", () => {
       fireEvent.changeText(screen.getByLabelText("Take name"), "Morning");
       await fireEventAsync.press(screen.getByRole("button", { name: "Save" }));
       await waitFor(() => expect(alertSpy).toHaveBeenCalledWith("Couldn't rename take", expect.any(String)));
+      expect(reportedMessages()).toEqual(["take.rename failed: disk unavailable"]);
       expect(screen.getByLabelText("Take name")).toHaveProp("value", "Morning");
       await fireEventAsync.press(screen.getByRole("button", { name: "Save" }));
       await waitFor(() => expect(screen.queryByLabelText("Take name")).toBeNull());
@@ -202,6 +211,7 @@ describe("recording detail", () => {
     await screen.findByTestId("video-player");
     fireEvent.press(screen.getByRole("button", { name: "Save to Photos" }));
     await waitFor(() => expect(alertSpy).toHaveBeenCalledWith("Couldn't save every video", expect.stringContaining("Some videos")));
+    expect(reportedMessages()).toEqual(["take.save failed: storage full"]);
     expect(screen.getByTestId("video-player")).toBeTruthy();
     expect(mockDeleteRecording).not.toHaveBeenCalled();
   });
@@ -213,6 +223,51 @@ describe("recording detail", () => {
     await waitFor(() => {
       expect(screen.getByText("This take is no longer available.")).toBeTruthy();
     });
+    expect(Observe.markInteractive).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops loading and reports it when the library cannot be read", async () => {
+    mockListRecordings.mockRejectedValue(new Error("disk unavailable"));
+    const screen = render(<RecordingDetailScreen />);
+
+    expect(await screen.findByText("This take is no longer available.")).toBeTruthy();
+    expect(reportedMessages()).toEqual(["take.load failed: disk unavailable"]);
+  });
+
+  it("explains and reports a failed rename from the iOS prompt", async () => {
+    mockRenameRecording.mockRejectedValueOnce(new Error("disk unavailable"));
+    const screen = render(<RecordingDetailScreen />);
+    await screen.findByTestId("video-player");
+
+    fireEvent.press(screen.getByRole("button", { name: "Rename take" }));
+    const promptActions = promptSpy.mock.calls[0]?.[2] as
+      | Array<{ onPress?: (value?: string) => void }>
+      | undefined;
+    promptActions?.[1]?.onPress?.("Morning");
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Couldn't rename take", "Your name was kept. Please try again.");
+    });
+    expect(reportedMessages()).toEqual(["take.rename failed: disk unavailable"]);
+  });
+
+  it("keeps the take and reports it when deletion fails", async () => {
+    mockDeleteRecording.mockRejectedValueOnce(new Error("permission denied"));
+    const screen = render(<RecordingDetailScreen />);
+    await screen.findByTestId("video-player");
+
+    fireEvent.press(screen.getByRole("button", { name: "Delete take" }));
+    const deleteActions = alertSpy.mock.calls.find(([title]) => title === "Delete this take?")?.[2] as
+      | Array<{ onPress?: () => void }>
+      | undefined;
+    deleteActions?.[1]?.onPress?.();
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Couldn't delete take", "The take is still in the library. Please try again.");
+    });
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(reportedMessages()).toEqual(["take.delete failed: permission denied"]);
+    expect(screen.getByTestId("video-player")).toBeTruthy();
   });
 
   it("handles unavailable sharing and denied Photos access", async () => {
@@ -241,6 +296,7 @@ describe("recording detail", () => {
       await screen.findByTestId("video-player");
       fireEvent.press(screen.getByRole("button", { name: "Share" }));
       await waitFor(() => expect(alert).toHaveBeenCalledWith("Couldn't share take", expect.any(String)));
+      expect(reportedMessages()).toEqual(["take.share failed: share provider unavailable"]);
       expect(screen.getByTestId("video-player")).toBeTruthy();
       expect(mockDeleteRecording).not.toHaveBeenCalled();
     } finally {

@@ -1,4 +1,5 @@
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
+import { Observe } from "expo-observe";
 import type { ReactNode } from "react";
 import { AppState, Platform, StyleSheet } from "react-native";
 
@@ -132,7 +133,7 @@ const simcamCapabilities = {
 } as const;
 
 describe("native capture surface", () => {
-  it("keeps both drag-interactive navigation buttons above the camera preview", () => {
+  it("keeps both drag-interactive navigation buttons above the camera preview", async () => {
     const screen = render(<CaptureScreen />);
     const header = StyleSheet.flatten(screen.getByTestId("capture-top-bar").props.style);
     const preview = StyleSheet.flatten(screen.getByTestId("capture-preview").props.style);
@@ -141,6 +142,9 @@ describe("native capture surface", () => {
     expect(header.overflow).toBe("visible");
     expect(screen.getByRole("button", { name: "Open library" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open settings" })).toBeTruthy();
+    // let the deferred camera discovery finish inside the test, or its state updates land
+    // after it and react warns about updates outside act
+    expect(await screen.findByText(/No simulator camera source was found/)).toBeTruthy();
   });
 
   beforeEach(() => {
@@ -178,7 +182,13 @@ describe("native capture surface", () => {
     mockOpenSettings.mockReset();
     mockOpenSettings.mockResolvedValue(true);
     mockRevealApp.mockReset();
+    jest.mocked(Observe.markInteractive).mockClear();
+    jest.mocked(Observe.reportError).mockClear();
   });
+
+  function reportedMessages(): string[] {
+    return jest.mocked(Observe.reportError).mock.calls.map(([error]) => (error as Error).message);
+  }
 
   it("mounts the native surface and explains simulator availability", async () => {
     const screen = render(<CaptureScreen />);
@@ -194,6 +204,9 @@ describe("native capture surface", () => {
       ).toBeTruthy();
     });
     expect(mockDiscoverCapabilities).toHaveBeenCalledTimes(1);
+    expect(Observe.markInteractive).toHaveBeenCalledWith({
+      params: { captureState: "unavailable" },
+    });
   });
 
   it("detects a simulator camera injected after the app launches", async () => {
@@ -274,10 +287,16 @@ describe("native capture surface", () => {
     expect(screen.getByText("SimCam Back")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Record" })).toBeEnabled();
     expect(screen.getByTestId("native-capture-surface")).toBeTruthy();
-    // the launch image waits a beat for the first frames, then lets the preview through
+    // the launch image waits a beat for the first frames, then lets the preview through, and
+    // that is when the screen counts as interactive
     expect(mockRevealApp).not.toHaveBeenCalled();
+    expect(Observe.markInteractive).not.toHaveBeenCalled();
     await waitFor(() => expect(mockRevealApp).toHaveBeenCalledTimes(1), {
       timeout: 2_000,
+    });
+    expect(Observe.markInteractive).toHaveBeenCalledTimes(1);
+    expect(Observe.markInteractive).toHaveBeenCalledWith({
+      params: { captureState: "ready" },
     });
   });
 
@@ -341,6 +360,9 @@ describe("native capture surface", () => {
     expect(screen.getByTestId("capture-brand-mark")).toBeTruthy();
     expect(screen.getByText("Two cameras,\none device.")).toBeTruthy();
     expect(mockRevealApp).toHaveBeenCalled();
+    expect(Observe.markInteractive).toHaveBeenCalledWith({
+      params: { captureState: "needs-permission" },
+    });
     fireEvent.press(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() => {
@@ -645,6 +667,11 @@ describe("native capture surface", () => {
         stopFailure.getByText("The recording could not be finalized."),
       ).toBeTruthy();
     });
+    // the dashboard gets the stable codes, not the words on screen
+    expect(reportedMessages()).toEqual([
+      "capture.start failed: recording_start_failed",
+      "capture.stop failed: finalization_failed",
+    ]);
   });
 
   it("switches between hardware-supported camera configurations", async () => {
@@ -804,11 +831,34 @@ describe("native capture surface", () => {
     const screen = render(<CaptureScreen />);
 
     const retry = await screen.findByRole("button", { name: "Try Again" });
+    expect(reportedMessages()).toEqual(["capture.prepare failed: camera reset"]);
     mockDiscoverCapabilities.mockResolvedValue(simcamCapabilities);
     fireEvent.press(retry);
 
     await waitFor(() => {
       expect(screen.getByText("SimCam Back")).toBeTruthy();
+    });
+  });
+
+  it("reports a configuration the cameras refuse and offers retry", async () => {
+    mockDiscoverCapabilities.mockResolvedValue(simcamCapabilities);
+    mockConfigure.mockResolvedValueOnce({
+      ok: false,
+      error: {
+        kind: "capture-error",
+        code: "camera_unavailable",
+        message: "The camera is in use by another app.",
+        retryable: true,
+        recoveryAction: "retry",
+      },
+    });
+    const screen = render(<CaptureScreen />);
+
+    expect(await screen.findByText("The camera is in use by another app.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try Again" })).toBeTruthy();
+    expect(reportedMessages()).toEqual(["capture.configure failed: camera_unavailable"]);
+    expect(Observe.markInteractive).toHaveBeenCalledWith({
+      params: { captureState: "failed" },
     });
   });
 });

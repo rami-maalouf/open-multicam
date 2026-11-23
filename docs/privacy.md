@@ -1,10 +1,14 @@
 # OpenMulticam privacy policy
 
-Last updated: November 10, 2026
+Last updated: November 22, 2026
 
 ## Your recordings stay with you
 
-OpenMulticam is made by Rami Maalouf. The released app does not collect your recordings, personal information, usage analytics, advertising identifiers, or location. There is no account or app-operated server. Camera and microphone input is processed on your device.
+OpenMulticam is made by Rami Maalouf. Your recordings stay on your device until you export or share them. The app does not collect your name, contact details, photo library, advertising identifiers, or precise location, and there is no account or app-operated server. Camera and microphone input is processed on your device.
+
+## Crash and performance reports
+
+To find and fix problems, the app sends anonymous crash reports, error reports, and performance measurements to [Expo Observe](https://docs.expo.dev/eas/observe/introduction/), a service of Expo, the company whose tools OpenMulticam is built with. A report contains how long the app took to start and to open each screen, the screen's name, error messages with the place in the app's code where they happened, and device details such as the model, system version, language, app version, and battery, temperature, and network state. Each report carries a random ID that the app creates when it is installed. The ID is not linked to your identity and usually changes when you reinstall the app. Expo also receives the IP address of each report and keeps the country it came from. Reports do not include your recordings, take names, or anything you type. Expo keeps them for about 90 days, processes them only on our behalf, and does not use them for advertising or tracking ([Expo's privacy policy](https://expo.dev/privacy)). Because reports are not tied to you, they cannot be looked up by your name, and they are deleted automatically. Apart from these reports, the app sends nothing from your device unless you donate, open a link, or export a recording.
 
 ## Camera, microphone, and exports
 
@@ -28,6 +32,6 @@ Opening support or source-code links takes you to GitHub, which applies its own 
 
 ## Contact and policy updates
 
-For privacy questions, contact Rami Maalouf through the support link below. Changes to this policy will be published on the privacy policy page. Last updated November 10, 2026.
+For privacy questions, contact Rami Maalouf through the support link below. Changes to this policy will be published on the privacy policy page. Last updated November 22, 2026.
 
 [Contact support](https://github.com/rami-maalouf/open-multicam/issues)

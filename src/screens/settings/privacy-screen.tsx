@@ -1,4 +1,6 @@
+import { useObserve } from "expo-observe";
 import { Link } from "expo-router";
+import { useEffect } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import { AppText } from "@/components/app-text";
@@ -7,6 +9,13 @@ import { spacing, useThemedStyles, type ThemeColors } from "@/theme";
 
 export function PrivacyScreen() {
   const styles = useThemedStyles(createStyles);
+  const { markInteractive } = useObserve();
+
+  // the policy is bundled text, so the screen is interactive as soon as it renders
+  useEffect(() => {
+    markInteractive();
+  }, [markInteractive]);
+
   return (
     <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic" style={styles.screen}>
       {privacySections.map(({ title, body }) => (

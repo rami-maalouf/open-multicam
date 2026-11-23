@@ -1,4 +1,5 @@
 import { waitFor } from "@testing-library/react-native";
+import { Observe } from "expo-observe";
 import type { ReactNode } from "react";
 
 import { LibraryScreen } from "@/screens/library/library-screen";
@@ -49,16 +50,20 @@ function libraryEntry(
 describe("recording library", () => {
   beforeEach(() => {
     mockListRecordings.mockReset();
+    jest.mocked(Observe.markInteractive).mockClear();
+    jest.mocked(Observe.reportError).mockClear();
   });
 
   it("shows an actionable empty state", async () => {
     mockListRecordings.mockResolvedValue([]);
     const screen = render(<LibraryScreen />);
 
+    expect(Observe.markInteractive).not.toHaveBeenCalled();
     await waitFor(() => {
       expect(screen.getByText("Your takes stay on this device")).toBeTruthy();
     });
     expect(screen.getByRole("button", { name: "Open camera" })).toBeTruthy();
+    expect(Observe.markInteractive).toHaveBeenCalledTimes(1);
   });
 
   it("renders single, discrete, and picture-in-picture takes", async () => {
@@ -99,6 +104,10 @@ describe("recording library", () => {
       ).toBeTruthy();
     });
     expect(screen.getByRole("button", { name: "Open camera" })).toBeTruthy();
+    expect(jest.mocked(Observe.reportError).mock.calls.map(([error]) => (error as Error).message)).toEqual([
+      "library.read failed: disk unavailable",
+    ]);
+    expect(Observe.markInteractive).toHaveBeenCalled();
   });
 
   it("marks recovered and damaged takes instead of showing them as empty 0:00 takes", async () => {

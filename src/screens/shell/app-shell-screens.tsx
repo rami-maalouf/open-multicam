@@ -1,6 +1,8 @@
 import { FieldGroup, Host, ListItem, Text } from "@expo/ui";
 import * as Application from "expo-application";
+import { useObserve } from "expo-observe";
 import { router } from "expo-router";
+import { useEffect } from "react";
 import { Platform } from "react-native";
 
 import { Icon } from "@/components/icon";
@@ -47,6 +49,13 @@ function SettingsRow({ detail, onPress, testID, title }: SettingsRowProps) {
 
 export function SettingsScreen() {
   const colors = useThemeColors();
+  const { markInteractive } = useObserve();
+
+  // every row is static, so the screen is interactive as soon as it renders
+  useEffect(() => {
+    markInteractive();
+  }, [markInteractive]);
+
   return (
     <Host style={{ flex: 1 }} seedColor={colors.accent} useViewportSizeMeasurement>
       <FieldGroup>

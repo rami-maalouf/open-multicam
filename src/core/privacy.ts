@@ -4,7 +4,11 @@ export const privacyPolicyUrl = "https://github.com/rami-maalouf/open-multicam/b
 export const privacySections = [
   {
     title: "Your recordings stay with you",
-    body: "OpenMulticam is made by Rami Maalouf. The released app does not collect your recordings, personal information, usage analytics, advertising identifiers, or location. There is no account or app-operated server. Camera and microphone input is processed on your device.",
+    body: "OpenMulticam is made by Rami Maalouf. Your recordings stay on your device until you export or share them. The app does not collect your name, contact details, photo library, advertising identifiers, or precise location, and there is no account or app-operated server. Camera and microphone input is processed on your device.",
+  },
+  {
+    title: "Crash and performance reports",
+    body: "To find and fix problems, the app sends anonymous crash reports, error reports, and performance measurements to Expo Observe, a service of Expo, the company whose tools OpenMulticam is built with. A report contains how long the app took to start and to open each screen, the screen's name, error messages with the place in the app's code where they happened, and device details such as the model, system version, language, app version, and battery, temperature, and network state. Each report carries a random ID that the app creates when it is installed. The ID is not linked to your identity and usually changes when you reinstall the app. Expo also receives the IP address of each report and keeps the country it came from. Reports do not include your recordings, take names, or anything you type. Expo keeps them for about 90 days, processes them only on our behalf, and does not use them for advertising or tracking. Because reports are not tied to you, they cannot be looked up by your name, and they are deleted automatically. Apart from these reports, the app sends nothing from your device unless you donate, open a link, or export a recording.",
   },
   {
     title: "Camera, microphone, and exports",
@@ -28,6 +32,6 @@ export const privacySections = [
   },
   {
     title: "Contact and policy updates",
-    body: "For privacy questions, contact Rami Maalouf through the support link below. Changes to this policy will be published on the privacy policy page. Last updated November 10, 2026.",
+    body: "For privacy questions, contact Rami Maalouf through the support link below. Changes to this policy will be published on the privacy policy page. Last updated November 22, 2026.",
   },
 ] as const;

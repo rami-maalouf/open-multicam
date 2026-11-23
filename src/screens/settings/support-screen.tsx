@@ -1,4 +1,5 @@
 import { Button, Column, Host } from "@expo/ui";
+import { useObserve } from "expo-observe";
 import { Link } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Platform, ScrollView, StyleSheet, View } from "react-native";
@@ -7,6 +8,7 @@ import tipJar, { type TipJarStatus } from "../../../modules/tip-jar";
 import { AppText } from "@/components/app-text";
 import { Icon } from "@/components/icon";
 import { supportUrl } from "@/core/privacy";
+import { reportHandledError } from "@/core/telemetry/observe";
 import { radii, spacing, useThemeColors, useThemedStyles, type ThemeColors } from "@/theme";
 
 export function SupportScreen() {
@@ -22,6 +24,7 @@ export function SupportScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const active = useRef(true);
   const operationRunning = useRef(false);
+  const { markInteractive } = useObserve();
 
   const refresh = useCallback(() => {
     return tipJar.getStatus().then((next) => {
@@ -29,7 +32,8 @@ export function SupportScreen() {
         setStatus(next);
         setMessage(next.available || next.hasSupported ? null : "Donations are temporarily unavailable. You can still use every camera feature.");
       }
-    }).catch(() => {
+    }).catch((error: unknown) => {
+      reportHandledError("donation.status", error);
       if (active.current) setMessage(`Couldn't connect to ${storePlace}. Please try again when you're online.`);
     }).finally(() => {
       if (active.current) setBusy(false);
@@ -49,6 +53,13 @@ export function SupportScreen() {
       foreground.remove();
     };
   }, [refresh]);
+
+  // interactive once the store answered, so the donate and restore buttons work
+  useEffect(() => {
+    if (!busy) {
+      markInteractive();
+    }
+  }, [busy, markInteractive]);
 
   const run = async (action: "purchase" | "restore") => {
     if (operationRunning.current) return;
@@ -70,7 +81,8 @@ export function SupportScreen() {
           setMessage(`Your donation is awaiting approval from ${storeProvider}. Thank you for your support.`);
         }
       }
-    } catch {
+    } catch (error) {
+      reportHandledError(action === "restore" ? "donation.restore" : "donation.purchase", error);
       if (active.current) setMessage(`${storeName} couldn't complete this request. Please try again. You can restore a previous donation using Restore Purchase.`);
     } finally {
       operationRunning.current = false;

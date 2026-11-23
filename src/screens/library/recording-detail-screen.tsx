@@ -1,5 +1,6 @@
 import * as MediaLibrary from "expo-media-library";
 import { saveToLibraryAsync } from "expo-media-library/legacy";
+import { useObserve } from "expo-observe";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -28,6 +29,7 @@ import {
   recordingHealth,
   type RecordingLibraryEntry,
 } from "@/core/library/entry";
+import { reportHandledError } from "@/core/telemetry/observe";
 import { playHaptic } from "@/foundation/haptics/haptics";
 import { radii, spacing, useThemeColors, useThemedStyles, type ThemeColors } from "@/theme";
 
@@ -38,6 +40,7 @@ export function RecordingDetailScreen() {
     recordingSetId: string;
   }>();
   const router = useRouter();
+  const { markInteractive } = useObserve();
   const [entry, setEntry] = useState<RecordingLibraryEntry | null>(null);
   const [renameDraft, setRenameDraft] = useState<string | null>(null);
   const [renameBusy, setRenameBusy] = useState(false);
@@ -53,19 +56,33 @@ export function RecordingDetailScreen() {
   });
 
   const load = useCallback(async () => {
-    const recordings = await multicamCaptureModule.listRecordings();
-    setEntry(
-      recordings.find(
-        (recording) => recording.recordingSetId === recordingSetId,
-      ) ?? null,
-    );
-    setLoading(false);
+    try {
+      const recordings = await multicamCaptureModule.listRecordings();
+      setEntry(
+        recordings.find(
+          (recording) => recording.recordingSetId === recordingSetId,
+        ) ?? null,
+      );
+    } catch (error) {
+      // without this the spinner would stay forever. the take shows as unavailable instead.
+      reportHandledError("take.load", error);
+      setEntry(null);
+    } finally {
+      setLoading(false);
+    }
   }, [recordingSetId]);
 
   useEffect(() => {
     const loadTimer = setTimeout(() => void load(), 0);
     return () => clearTimeout(loadTimer);
   }, [load]);
+
+  // interactive once the take, or the reason it cannot be shown, replaces the spinner
+  useEffect(() => {
+    if (!isLoading) {
+      markInteractive();
+    }
+  }, [isLoading, markInteractive]);
 
   const clipLabels = useMemo(() => {
     if (entry === null) {
@@ -100,7 +117,11 @@ export function RecordingDetailScreen() {
             }
             void multicamCaptureModule
               .renameRecording(entry.recordingSetId, name)
-              .then(load);
+              .then(load)
+              .catch((error: unknown) => {
+                reportHandledError("take.rename", error);
+                Alert.alert("Couldn't rename take", "Your name was kept. Please try again.");
+              });
           },
         },
       ],
@@ -116,7 +137,8 @@ export function RecordingDetailScreen() {
       await multicamCaptureModule.renameRecording(entry.recordingSetId, renameDraft.trim());
       await load();
       setRenameDraft(null);
-    } catch {
+    } catch (error) {
+      reportHandledError("take.rename", error);
       Alert.alert("Couldn't rename take", "Your name was kept. Please try again.");
     } finally {
       setRenameBusy(false);
@@ -133,7 +155,8 @@ export function RecordingDetailScreen() {
       for (const clip of clips) {
         await Sharing.shareAsync(clip.uri, { mimeType: "video/mp4", UTI: "public.mpeg-4" });
       }
-    } catch {
+    } catch (error) {
+      reportHandledError("take.share", error);
       Alert.alert("Couldn't share take", "Your videos are still in the library. Please try again.");
     }
   }, [clips, entry]);
@@ -162,7 +185,8 @@ export function RecordingDetailScreen() {
       }
       await playHaptic("success");
       Alert.alert(`Saved to ${galleryName}`, "Every video in this take was saved.");
-    } catch {
+    } catch (error) {
+      reportHandledError("take.save", error);
       Alert.alert("Couldn't save every video", "Your take is still in the library. Some videos may already have been saved. Please try again.");
     }
   }, [clips, entry, galleryName]);
@@ -182,7 +206,11 @@ export function RecordingDetailScreen() {
           onPress: () => {
             void multicamCaptureModule
               .deleteRecording(entry.recordingSetId)
-              .then(() => router.replace("/library"));
+              .then(() => router.replace("/library"))
+              .catch((error: unknown) => {
+                reportHandledError("take.delete", error);
+                Alert.alert("Couldn't delete take", "The take is still in the library. Please try again.");
+              });
           },
         },
       ],

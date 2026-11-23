@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import { fireEvent } from "@testing-library/react-native";
+import { Observe } from "expo-observe";
 
 import tipJar from "../../modules/tip-jar";
 import { SupportScreen } from "@/screens/settings/support-screen";
@@ -25,6 +26,10 @@ jest.mock("@expo/ui", () => {
 jest.mock("expo-router", () => ({ Link: require("react-native").View }));
 
 const store = jest.mocked(tipJar);
+
+function reportedMessages(): string[] {
+  return jest.mocked(Observe.reportError).mock.calls.map(([error]) => (error as Error).message);
+}
 const available = { available: true, displayPrice: "$1.99", hasSupported: false };
 
 beforeEach(() => {
@@ -36,7 +41,10 @@ beforeEach(() => {
 
 it("shows the actual store price and acknowledges a successful optional donation", async () => {
   const screen = render(<SupportScreen />);
+  expect(Observe.markInteractive).not.toHaveBeenCalled();
   await screen.findByText("Donate $1.99");
+  // interactive once the store answered and the donate button works
+  expect(Observe.markInteractive).toHaveBeenCalledTimes(1);
   fireEvent.press(screen.getByTestId("donate-button"));
   await screen.findByText("Thank you for your support");
   expect(store.purchase).toHaveBeenCalledTimes(1);
@@ -56,6 +64,7 @@ it("handles offline product loading and recovery", async () => {
   store.getStatus.mockRejectedValueOnce(new Error("offline"));
   const screen = render(<SupportScreen />);
   await screen.findByText(/Couldn't connect to the App Store/);
+  expect(reportedMessages()).toEqual(["donation.status failed: offline"]);
   fireEvent.press(screen.getByTestId("donate-button"));
   await screen.findByText("Donate $1.99");
 });
@@ -86,6 +95,15 @@ it("explains an empty restore without marking the user as a supporter", async ()
   await screen.findByText(/No previous donation/);
 });
 
+it("reports a restore the store could not complete", async () => {
+  store.restore.mockRejectedValue(new Error("not signed in"));
+  const screen = render(<SupportScreen />);
+  await screen.findByText("Donate $1.99");
+  fireEvent.press(screen.getByTestId("restore-donation-button"));
+  await screen.findByText(/couldn't complete this request/);
+  expect(reportedMessages()).toEqual(["donation.restore failed: not signed in"]);
+});
+
 it("handles purchase errors and prevents overlapping requests", async () => {
   let rejectPurchase: (error: Error) => void = () => {};
   store.purchase.mockImplementation(() => new Promise((_resolve, reject) => { rejectPurchase = reject; }));
@@ -96,6 +114,7 @@ it("handles purchase errors and prevents overlapping requests", async () => {
   expect(store.restore).not.toHaveBeenCalled();
   await act(async () => { rejectPurchase(new Error("failed")); });
   await screen.findByText(/couldn't complete this request/);
+  expect(reportedMessages()).toEqual(["donation.purchase failed: failed"]);
 });
 
 it("refreshes a purchase completed outside the screen and removes its observer", async () => {
@@ -113,6 +132,8 @@ it("refreshes a purchase completed outside the screen and removes its observer",
 it("renders the privacy policy offline", async () => {
   const screen = render(<PrivacyScreen />);
   await waitFor(() => expect(screen.getByText("Your recordings stay with you")).toBeTruthy());
+  expect(screen.getByText("Crash and performance reports")).toBeTruthy();
+  expect(Observe.markInteractive).toHaveBeenCalledTimes(1);
   expect(screen.getByText("Optional donations")).toBeTruthy();
   expect(screen.getByText("Contact support")).toBeTruthy();
 });

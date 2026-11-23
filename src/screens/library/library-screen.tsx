@@ -1,5 +1,6 @@
+import { useObserve } from "expo-observe";
 import { Link, useFocusEffect, type Href } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -22,6 +23,7 @@ import {
   recordingHealth,
   type RecordingLibraryEntry,
 } from "@/core/library/entry";
+import { reportHandledError } from "@/core/telemetry/observe";
 import { radii, spacing, useThemeColors, useThemedStyles, type ThemeColors } from "@/theme";
 
 export function LibraryScreen() {
@@ -32,12 +34,14 @@ export function LibraryScreen() {
   >([]);
   const [isLoading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { markInteractive } = useObserve();
 
   const refresh = useCallback(async () => {
     try {
       setErrorMessage(null);
       setRecordings(await multicamCaptureModule.listRecordings());
-    } catch {
+    } catch (error) {
+      reportHandledError("library.read", error);
       setErrorMessage("The recording library could not be read.");
     } finally {
       setLoading(false);
@@ -50,6 +54,13 @@ export function LibraryScreen() {
       return () => clearTimeout(refreshTimer);
     }, [refresh]),
   );
+
+  // interactive once the takes, the empty state or the read error replace the spinner
+  useEffect(() => {
+    if (!isLoading) {
+      markInteractive();
+    }
+  }, [isLoading, markInteractive]);
 
   if (isLoading) {
     return (

@@ -1,4 +1,5 @@
 import { BottomSheet, RNHostView } from "@expo/ui";
+import { useObserve } from "expo-observe";
 import { Link, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -42,6 +43,10 @@ import type {
   DeviceCapabilities,
   SupportedCaptureConfiguration,
 } from "@/core/capture/types";
+import {
+  reportCaptureFailure,
+  reportHandledError,
+} from "@/core/telemetry/observe";
 import {
   reportRecorderFailure,
   reportRecorderSuccess,
@@ -253,6 +258,9 @@ function permissionMessage(status: CapturePermissionStatus): string {
 
 export function CaptureScreen() {
   const styles = useThemedStyles(createStyles);
+  const { markInteractive } = useObserve();
+  // the reveal timer below must not restart when the hook hands back a new function
+  const markInteractiveRef = useRef(markInteractive);
   const dimensions = useWindowDimensions();
   const orientation =
     dimensions.width > dimensions.height ? "landscape" : "portrait";
@@ -348,6 +356,7 @@ export function CaptureScreen() {
       const validated = validateCaptureRequest(request, discoveredCapabilities);
 
       if (!validated.ok) {
+        reportCaptureFailure("validate", validated.error);
         setPhase("failed");
         setMessage(validated.error.message);
         return;
@@ -356,6 +365,7 @@ export function CaptureScreen() {
       pendingInterruption.current = null;
       const result = await multicamCaptureModule.configure(validated.value);
       if (!result.ok) {
+        reportCaptureFailure("configure", result.error);
         setPhase("failed");
         setMessage(result.error.message);
         await playHaptic("error");
@@ -412,7 +422,8 @@ export function CaptureScreen() {
       const discovered = await multicamCaptureModule.discoverCapabilities();
       setCapabilities(discovered);
       await configure(discovered, currentConfigurationId.current ?? undefined);
-    } catch {
+    } catch (error) {
+      reportHandledError("capture.prepare", error);
       setPhase("failed");
       setMessage("The camera could not be prepared. Try again.");
     }
@@ -442,6 +453,10 @@ export function CaptureScreen() {
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
+
+  useEffect(() => {
+    markInteractiveRef.current = markInteractive;
+  }, [markInteractive]);
 
   useFocusEffect(
     useCallback(() => {
@@ -644,16 +659,21 @@ export function CaptureScreen() {
   ].includes(phase);
 
   // the launch image waits for the first real content: a screen that needs the viewer, or the
-  // cameras once their first frames have had time to reach the preview
+  // cameras once their first frames have had time to reach the preview. that moment is also
+  // when the screen becomes interactive, tagged with what the viewer can do there.
   useEffect(() => {
     if (shouldShowBlockingOverlay && phase !== "checking") {
       revealApp();
+      markInteractiveRef.current({ params: { captureState: phase } });
       return;
     }
     if (phase !== "ready") {
       return;
     }
-    const revealTimer = setTimeout(revealApp, firstFramesMs);
+    const revealTimer = setTimeout(() => {
+      revealApp();
+      markInteractiveRef.current({ params: { captureState: phase } });
+    }, firstFramesMs);
     return () => clearTimeout(revealTimer);
   }, [phase, shouldShowBlockingOverlay]);
 

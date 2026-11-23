@@ -1,4 +1,5 @@
 import { fireEvent } from "@testing-library/react-native";
+import { Observe } from "expo-observe";
 import { Platform } from "react-native";
 
 import { SettingsScreen } from "@/screens/shell/app-shell-screens";
@@ -85,5 +86,12 @@ describe("settings screen", () => {
     fireEvent.press(screen.getByTestId("support-settings-row"));
 
     expect(mockPush.mock.calls).toEqual([["/privacy"], ["/support"]]);
+  });
+
+  it("is interactive as soon as its static rows render", () => {
+    jest.mocked(Observe.markInteractive).mockClear();
+    render(<SettingsScreen />);
+
+    expect(Observe.markInteractive).toHaveBeenCalledTimes(1);
   });
 });

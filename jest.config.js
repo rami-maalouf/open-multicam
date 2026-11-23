@@ -10,6 +10,7 @@ module.exports = {
     "^@/(.*)$": "<rootDir>/src/$1",
     "^tuft-telemetry/expo$":
       "<rootDir>/tests/mocks/tuft-telemetry-expo.ts",
+    "^expo-observe$": "<rootDir>/tests/mocks/expo-observe.tsx",
   },
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",
