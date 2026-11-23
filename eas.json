@@ -33,8 +33,10 @@
       "distribution": "store",
       "environment": "production",
       "autoIncrement": true,
+      "uploadSourceMaps": true,
       "ios": {
-        "image": "macos-tahoe-26.5-xcode-26.6"
+        "image": "macos-tahoe-26.5-xcode-26.6",
+        "buildArtifactPaths": ["ios/build/*.app.dSYM.zip"]
       },
       "android": {
         "buildType": "app-bundle"

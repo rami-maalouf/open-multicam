@@ -14,12 +14,27 @@ name: Publish update for verification
 on:
   workflow_dispatch: {}
 
+# a custom job instead of the prebuilt `type: update` job, because that job cannot upload source
+# maps for expo observe. with them, observe maps errors from this update back to source files.
+# ship-update.yml republishes the same update group, so testers run exactly this bundle.
+
 jobs:
   publish_update:
     name: Publish update to the verify channel
-    type: update
+    environment: production
     env:
       OPENMULTICAM_OTA: "1"
-    params:
-      channel: verify
-      platform: ios
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Publish the update with its source maps
+        run: |
+          # like the prebuilt job, name the update after the commit it was built from
+          message="$(git log -1 --pretty=%s 2>/dev/null || true)"
+          bunx eas-cli@latest update \
+            --channel verify \
+            --platform ios \
+            --environment production \
+            --message "${message:-verify update}" \
+            --upload-source-maps \
+            --non-interactive
