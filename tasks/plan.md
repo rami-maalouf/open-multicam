@@ -23,7 +23,7 @@ This Phase 2 document defines architecture, dependency order, work packages, che
 - Minimum OS: iOS 18.6
 - Release format: 1080p H.264 at supported 24, 25, or 30 fps
 - Later releases: advanced iPhone capture, then Android core
-- Privacy: local-only, no account, network service, telemetry, or monetization
+- Privacy: recordings stay local; no account, app-operated network service, or monetization. Anonymous crash and performance reports go to Expo Observe (approved by the owner in November 2026)
 
 ## System boundaries
 
@@ -459,7 +459,7 @@ Exit evidence:
 
 ### WP-6.3: Complete privacy and release documentation
 
-Verify permission descriptions, no-network behavior, no telemetry, local storage disclosure, export behavior, acknowledgements, support diagnostics, and release runbook. Confirm the final bundle identifier and new EAS identity before signing work.
+Verify permission descriptions, that the only network traffic is the Expo Observe reports, the telemetry disclosure, local storage disclosure, export behavior, acknowledgements, support diagnostics, and release runbook. Confirm the final bundle identifier and new EAS identity before signing work.
 
 Exit evidence:
 

@@ -26,4 +26,4 @@ Settings > Support OpenMulticam contains an optional one-time donation billed by
 
 ## Privacy
 
-Read the [privacy policy](privacy.md). The released app has no advertising or analytics and does not upload your recordings to an app-operated server.
+Read the [privacy policy](privacy.md). The released app has no advertising and never uploads your recordings. To help fix problems, it sends anonymous crash, error, and performance reports to Expo Observe.

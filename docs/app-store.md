@@ -76,12 +76,35 @@ EAS Metadata does not currently expose Apple's new `socialMedia` and `socialMedi
 - The Account Holder must accept the current Apple Developer Program License Agreement.
 - Developer donations require the Paid Apps Agreement, legal entity information, and any tax/banking information Apple requests, even though the app itself is free.
 - Keep the [privacy policy](privacy.md) and [support page](support.md) publicly accessible at their listing URLs.
-- App Privacy: Data Not Collected. Production telemetry is disabled in code and covered by a release privacy test. Recordings and StoreKit entitlement checks stay on the device; Apple processes payments.
+- App Privacy: set the answers in [App Privacy and data safety](#app-privacy-and-data-safety) before you submit the first build with Expo Observe. The published Data Not Collected label is no longer accurate for that build.
 - Age rating: 4+, with all questionnaire content and interactive features absent. No hosted social media, chat, advertising, or unrestricted web browser.
 - Content rights: the app does not contain third-party media. Use only approved, non-private sample footage in store screenshots.
 - Upload opaque screenshots depicting the actual app. The current listing uses 1206 x 2622 for the medium Dynamic Island display and 1320 x 2868 for the large display; verify the accepted display groups in App Store Connect for each release.
 - Upload the donation's review screenshot and complete its review notes. The first donation product must be included in the same review submission as the first app version.
 - Select the processed build, add the app version and donation for review, then submit the combined submission. Automatic release after approval is configured.
+
+## App Privacy and data safety
+
+Since November 2026, release builds send anonymous crash, error, and performance reports to Expo Observe. The [privacy policy](privacy.md) describes them. Recordings, take names, and StoreKit entitlement checks stay on the device, and Apple or Google processes payments. `tests/capture/production-privacy.test.ts` proves that the app sends nothing else and that the Expo Observe setup sends no data beyond these answers: no network traces, custom events, or global attributes, no custom endpoint, and every dynamic route parameter filtered. If you change any of that, update these answers, the privacy policy, and the test together. The answers follow Expo's [store privacy declarations for Expo Observe](https://docs.expo.dev/eas/observe/reference/store-privacy-declarations/).
+
+App Store Connect, App Privacy: "Yes, we collect data from this app", with these data types. None is linked to the user's identity and none is used for tracking.
+
+| Data type | Purposes | What it is |
+| --- | --- | --- |
+| Diagnostics > Crash Data | App Functionality | JavaScript errors and native crashes |
+| Diagnostics > Performance Data | App Functionality | launch, render, interactive, and per-screen timings |
+| Diagnostics > Other Diagnostic Data | App Functionality | device model, OS, language, app version, battery, thermal, and network state |
+| Identifiers > Device ID | App Functionality, Analytics | the random per-install Expo client ID |
+| Location > Coarse Location | Analytics | the country Expo derives from the IP address |
+| Usage Data > Product Interaction | Analytics | route names from the Expo Router integration |
+
+Google Play Console, Data safety (for the Android release):
+
+- Does the app collect or share required user data types: Yes.
+- Is all user data encrypted in transit: Yes. Expo Observe sends over HTTPS.
+- Do you provide a way for users to request deletion: No. There is no account, the reports cannot be matched to a person, and Expo deletes them after about 90 days, which is later than Google's 90-day automatic deletion condition.
+- Data types: App info and performance > Crash logs, App info and performance > Diagnostics, Device or other IDs, Location > Approximate location, and App activity > App interactions.
+- For each data type: collected, not shared (Expo is a service provider), not processed ephemerally, required (there is no opt-out), purpose Analytics.
 
 ## Current Apple requirements
 

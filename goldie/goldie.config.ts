@@ -67,7 +67,7 @@ const config: GoldieConfig = {
     price: "Free",
     description: {
       "en-US":
-        "Capture two perspectives with one iPhone. OpenMulticam records from two supported cameras at the same time, so you can capture a conversation, a demonstration, or both sides of a moment.\n\nRecord separate camera files, picture-in-picture, or a split view. Review takes in the local library, rename them, and export to Photos or share them.\n\nNo account, advertising, or analytics. Every camera feature is free.",
+        "Capture two perspectives with one iPhone. OpenMulticam records from two supported cameras at the same time, so you can capture a conversation, a demonstration, or both sides of a moment.\n\nRecord separate camera files, picture-in-picture, or a split view. Review takes in the local library, rename them, and export to Photos or share them.\n\nNo account and no advertising. Your takes stay on your iPhone until you share them, and the app sends only anonymous crash and performance reports. Every camera feature is free.",
     },
   },
 

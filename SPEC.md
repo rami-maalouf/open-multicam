@@ -17,7 +17,7 @@ Date: 2026-08-31
 5. The deployment target remains iOS 18.6. Newer camera-performance APIs are enabled conditionally when available.
 6. Release 1 records 1080p H.264 video at supported broadcast frame rates of 24, 25, or 30 fps.
 7. Internal deletion is permanent after an explicit destructive confirmation. There is no Recently Deleted area.
-8. The app is private and local-first. Release 1 has no account, backend, cloud sync, advertising, telemetry, subscription, paywall, or donation flow.
+8. The app is private and local-first. Release 1 has no account, backend, cloud sync, advertising, subscription, paywall, or donation flow. Recordings stay on the device until the user exports or shares them. The one exception to "nothing leaves the device", approved by the owner in November 2026, is Expo Observe: release builds send anonymous crash, error, and performance reports to Expo, as `docs/privacy.md` describes.
 9. DoubleTake is a capability and quality reference. OpenMulticam uses original branding, visual design, copy, and assets.
 10. React Native and Expo own the application shell. A local Swift Expo module owns all frame-sensitive capture, preview, focus, exposure, compositing, audio metering, and file-writing work.
 11. Specification approval advances the workflow one gate at a time. Starter migration and implementation wait for separate Plan and Tasks approval.
@@ -134,7 +134,7 @@ iOS 18 supports the A12-based iPhone XS, XS Max, and XR, while iOS 26 begins wit
 - On-device timeline editing, trimming, color grading, LUTs, transitions, captions, or audio mixing.
 - ProRes, Apple Log, Dolby Vision, spatial video, Cinematic mode, depth capture, or RAW video.
 - Background camera recording.
-- Cloud backup, collaboration, accounts, analytics, ads, subscriptions, or purchases.
+- Cloud backup, collaboration, accounts, usage analytics, ads, subscriptions, or purchases. Anonymous crash and performance reports through Expo Observe are the approved exception.
 - Lock Screen capture, Camera Control integration, widgets, Live Activities, or Apple Watch.
 - Max quality, HEVC, 60 fps, manual zoom, exposure bias, white-balance control, histogram, zebra, manual audio routing, input gain, or pickup-pattern controls. These belong to Release 1.1.
 - Guaranteed 4K multicamera capture. A future `Max` mode is capability-derived and must never be marketed as 4K until the supported device matrix proves it.
@@ -306,7 +306,7 @@ iOS 18 supports the A12-based iPhone XS, XS Max, and XR, while iOS 26 begins wit
 - Include current device capability diagnostics and an exportable text report with no captured media or private file paths.
 - Include storage used by the internal library and a direct library-management action.
 - Include permission state, app version, privacy statement, acknowledgements, and support information.
-- Do not add analytics toggles because Release 1 has no analytics.
+- Do not add analytics toggles because Release 1 has no usage analytics. Expo Observe crash and performance reports have no in-app toggle; the privacy policy and the store privacy answers disclose them.
 
 ### FR-15: Accessibility and interaction quality
 
@@ -693,7 +693,7 @@ Required device scenarios:
 
 - Change the iOS deployment target, begin Android implementation, or change the approved release order.
 - Add any dependency outside the approved stack.
-- Add remote services, telemetry, analytics, accounts, purchases, subscriptions, or network access.
+- Add remote services, telemetry, analytics, accounts, purchases, subscriptions, or network access beyond the approved Expo Observe reports, or widen what those reports send.
 - Change output codecs, file containers, manifest schema compatibility, or deletion behavior.
 - Add a third simultaneous camera, ProRes, Log, HDR, spatial video, streaming, or editing.
 - Change EAS project identity, signing, entitlements, CI, or App Store configuration.

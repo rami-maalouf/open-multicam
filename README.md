@@ -19,7 +19,7 @@ The primary user is a solo creator, interviewer, or educator who wants two synch
 - Keep every take in an internal library and batch-export through native system surfaces
 - Degrade honestly on unsupported hardware instead of showing controls that cannot work
 
-Release 1 records 1080p H.264 at 24, 25, or 30 fps when supported by the selected cameras. iOS requires 18.6+. Android camera combinations and frame rates are discovered from Camera2; concurrent capture requires Android 11+ and a supported device. The app is private and local-first: no account, no backend, no cloud sync. Diagnostics telemetry exists but stays off unless you configure an endpoint via env vars.
+Release 1 records 1080p H.264 at 24, 25, or 30 fps when supported by the selected cameras. iOS requires 18.6+. Android camera combinations and frame rates are discovered from Camera2; concurrent capture requires Android 11+ and a supported device. The app is private and local-first: no account, no app-operated backend, no cloud sync, and recordings stay on the device until you export or share them. Release builds send anonymous crash, error, and performance reports to [Expo Observe](https://docs.expo.dev/eas/observe/introduction/), as the [privacy policy](docs/privacy.md) describes. A separate development-only diagnostics recorder (`tuft-telemetry`) stays off unless a development build sets its endpoint and token env vars; release builds never start it.
 
 ## Architecture: Expo shell, Swift core
 

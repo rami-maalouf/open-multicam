@@ -46,7 +46,19 @@ Agents:
 
 ## Over-the-air updates (EAS Update)
 
-Updates are on only for TestFlight builds (`internal-ota`, channel `internal`, internal and external groups), their ad hoc copy for registered devices (`internal-ota-device`, also channel `internal`), and the simulator check build (`verify-simulator`, channel `verify`). The App Store build keeps them off, because the privacy policy promises no app-operated server. Before you publish or change anything about updates, read `docs/internal-updates.md`. It describes the verify-then-ship workflows and the separate internal version line.
+Updates are on only for TestFlight builds (`internal-ota`, channel `internal`, internal and external groups), their ad hoc copy for registered devices (`internal-ota-device`, also channel `internal`), and the simulator check build (`verify-simulator`, channel `verify`). The App Store build keeps them off, because the privacy policy names the Expo Observe reports as the only data the app sends. Before you publish or change anything about updates, read `docs/internal-updates.md`. It describes the verify-then-ship workflows and the separate internal version line.
+
+## Expo Observe
+
+Release builds send anonymous crash, error and performance reports to Expo Observe. `docs/privacy.md` and the store answers in `docs/app-store.md` promise exactly that data, and `tests/capture/production-privacy.test.ts` enforces it.
+
+- Setup lives in `src/app/_layout.tsx`: `<ObserveRoot>` with `FallbackScreen` (`src/screens/shell/fallback-screen.tsx`) as the whole-app error fallback, and the app's only `Observe.configure` call at module scope. Keep it the only call: a second call replaces the whole configuration. It turns on the Expo Router integration, filters `recordingSetId` out of route metrics, and tags simulator runs (PR evidence, Expo Simulators, `verify-simulator`) as environment `simulator`. A new dynamic route parameter must go into `filteredParams`; the privacy test fails otherwise.
+- Time to interactive: `useObserve().markInteractive()` runs on the capture screen when the launch image lifts (`captureState` says whether the cameras, the permission screen or an error showed), and on the library, take detail, settings, support and privacy screens once their content replaced any spinner. Add it to every new screen.
+- Handled errors go through `reportHandledError` and `reportCaptureFailure` in `src/core/telemetry/observe.ts`, never `Observe.reportError` directly. They name the failure site, report capture failures by code only, and remove URIs, paths and quoted names. Current sites: capture prepare, validate, configure, start and stop; library read; take load, rename, share, save and delete; donation status, purchase and restore.
+- Do not add `networkTraces`, `logEvent`, `setGlobalAttributes`, a custom `endpointUrl` or `dispatchInDebug` without first updating the privacy policy and the store answers. Debug builds do not dispatch.
+- Query: `eas observe:versions`, `eas observe:metrics-summary --environment production`, `eas observe:routes`, `eas observe:errors` (add `--fingerprint` for stack traces) and `eas observe:session`, or the Expo MCP `observe_*` tools (`observe_metrics_summary`, `observe_errors`, `observe_routes`, `observe_versions`, `observe_session`). Use `--environment production` to leave out simulator runs.
+- Source maps: `production` and the profiles that extend it set `uploadSourceMaps`, and `.eas/workflows/verify-update.yml` publishes with `--upload-source-maps`. Any new `eas update` publish needs that flag; `tests/features/observe-build-config.test.ts` checks it.
+- dSYM files: iOS builds from `production` and the profiles that extend it keep `ios/build/*.app.dSYM.zip` as a build artifact. For every build you release, download it from the build page and upload it in Observe > Errors > Upload debug symbols, or in Project settings > Observe debug symbols. Native crash frames then show function names.
 
 ## Simulator evidence in fix PRs
 

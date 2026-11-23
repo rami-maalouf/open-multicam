@@ -1994,10 +1994,10 @@ Human approval of this file authorizes implementation beginning at T001. Until t
 
 ### T083: Complete privacy and no-network audit
 
-**Outcome:** Prove Release 1 is local-only, has accurate permission disclosures, and emits no unexpected traffic or telemetry.
+**Outcome:** Prove Release 1 keeps recordings local, has accurate permission and telemetry disclosures, and emits no traffic other than the Expo Observe reports.
 
 **Acceptance criteria:**
-- [ ] Runtime network inspection shows no app-originated backend, analytics, advertising, or telemetry traffic.
+- [ ] Runtime network inspection shows no app-originated backend, analytics, advertising, or telemetry traffic other than the Expo Observe dispatch.
 - [ ] Permission descriptions, privacy statement, storage behavior, sharing, and Photos export match actual behavior.
 - [ ] Diagnostic and support exports contain no captured media, private paths, device identifiers, or secrets.
 

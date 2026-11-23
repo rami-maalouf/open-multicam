@@ -4,7 +4,7 @@ OpenMulticam can receive over-the-air updates in internal TestFlight builds only
 
 ## Why the App Store build has no updates
 
-The privacy policy says there is no app-operated server, and Release 1 is local only. An update check is a network request at launch. `app.json` sets `updates.enabled: false`, and only the two profiles below turn it on.
+The privacy policy says there is no app-operated server, and that the anonymous Expo Observe reports are the only data the app sends from the device. An update check is another network request at launch. `app.json` sets `updates.enabled: false`, and only the profiles below turn it on.
 
 ## How it works
 
@@ -17,7 +17,7 @@ The privacy policy says there is no app-operated server, and Release 1 is local 
   | `internal-ota-device` | `internal` | release, ad hoc signing, install link | registered devices, without TestFlight |
   | `verify-simulator` | `verify` | release, iOS simulator | Expo Simulators |
 
-- `.eas/workflows/verify-update.yml` publishes an update to `verify`.
+- `.eas/workflows/verify-update.yml` publishes an update to `verify` and uploads its source maps, so Expo Observe shows source files in stack traces from that update.
 - `.eas/workflows/ship-update.yml` republishes the latest `verify` update group to `internal`. It does not bundle again, so testers get the same files that ran on the simulator.
 - The app waits up to 5 seconds at launch for a new update, so a new update shows on the first cold launch. On a slow network it shows on the next launch.
 - Internal builds use their own version, `OTA_APP_VERSION` in `app.config.ts` (1.1.0), not the App Store version in `app.json`. Apple closes a version for new builds once it is approved, so the two must not share one. If Apple rejects an upload with "The train version is closed", raise `OTA_APP_VERSION` and make both builds again.
@@ -36,7 +36,7 @@ eas build --profile verify-simulator --platform ios
 
 The `internal-ota` build goes to TestFlight. It can go to the internal group ("Team (Expo)") and to the external group ("External Testers", which needs Beta App Review). Never select an `internal-ota` build for an App Store version: it checks for updates at launch.
 
-External testers are told in "What to Test" that the beta checks Expo's update service at launch. The request sends the platform, the runtime version, the IDs of the running and embedded updates, a random install ID (`EAS-Client-ID`) and, after a crash, the error text. It sends no recordings, personal information or location. Keep that text accurate when you change how updates work.
+External testers are told in "What to Test" that the beta checks Expo's update service at launch. The request sends the platform, the runtime version, the IDs of the running and embedded updates, a random install ID (`EAS-Client-ID`) and, after a crash, the error text. It sends no recordings, personal information or location. Like every build, the beta also sends the Expo Observe reports that the privacy policy describes. Keep that text accurate when you change how updates work.
 
 To install the same build without TestFlight, make the ad hoc copy. It gets the same updates, because it has the same channel and version. It installs only on devices in its provisioning profile (`eas device:create` registers a new one), and it replaces an App Store or TestFlight install on that device:
 
